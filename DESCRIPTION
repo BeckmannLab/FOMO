@@ -6,8 +6,8 @@ Description: An R package to automatically detect and correct mislabeled samples
     in multi-omic datasets that have multiple samples per individual. Provides functions 
     for solving, visualizing, and outputting sample mislabel information.
 Authors@R: c(
-    person("Deng", "Charles", email = "charlesfanghuideng@gmail.com", role = c("aut", "cre")),
-    person("Thompson", "Ryan", email = "ryan.thompson2@mssm.edu", role = c("aut"),
+    person("Deng", "Charles", email = "charlesfanghuideng@gmail.com", role = c("aut")),
+    person("Thompson", "Ryan", email = "ryan.thompson2@mssm.edu", role = c("aut", "cre", "cph"),
         comment = c(ORCID = "0000-0002-0450-8181")))
 License: MIT + file LICENSE
 Encoding: UTF-8
