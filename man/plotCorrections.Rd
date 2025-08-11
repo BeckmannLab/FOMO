@@ -4,7 +4,12 @@
 \alias{plotCorrections}
 \title{Plot corrections for \code{MislabelSolver} objects}
 \usage{
-plotCorrections(object, init_component_id = NULL)
+plotCorrections(
+  object,
+  query_by = c("Init_Component_ID", "Component_ID", "Subject_ID", "Genotype_Group_ID",
+    "Sample_ID"),
+  query_val = NULL
+)
 }
 \arguments{
 \item{object}{An object of class \code{MislabelSolver}}

@@ -4,7 +4,7 @@
 \alias{writeOutput}
 \title{Plot corrections for \code{MislabelSolver} objects}
 \usage{
-writeOutput(object, path = NULL)
+writeOutput(object, dir_path = NULL)
 }
 \arguments{
 \item{object}{An object of class \code{MislabelSolver}}
