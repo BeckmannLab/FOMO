@@ -1,5 +1,3 @@
-#' @import igraph
-#'
 .genotype_matrix_to_genotype_df <- function(genotype_matrix) {
     genotype_graph <- igraph::graph_from_adjacency_matrix(genotype_matrix)
     genotype_group_ids <- igraph::components(genotype_graph)$membership
@@ -13,23 +11,19 @@
     return(genotype_df)
 }
 
-#' @import dplyr
-#' @import igraph
-#' @import stringr
-#'
 .generate_corrections_graph <- function(
         relabel_data) {
-    sample_corrections_df <- relabel_data %>%
+    sample_corrections_df <- relabel_data |>
         dplyr::filter(Init_Sample_ID != Sample_ID)
-    corrections_edges <- sample_corrections_df %>%
+    corrections_edges <- sample_corrections_df |>
         dplyr::select(Init_Sample_ID, Sample_ID)
 
     corrections_vertices <- data.frame(
         Sample_ID = unique(c(sample_corrections_df[, "Init_Sample_ID"],
                              sample_corrections_df[, "Sample_ID"]))
-    ) %>%
+    ) |>
         dplyr::left_join(
-            sample_corrections_df %>% select(Sample_ID=Init_Sample_ID,
+            sample_corrections_df |> select(Sample_ID=Init_Sample_ID,
                                              Init_Component_ID,
                                              Component_ID,
                                              Subject_ID,
@@ -42,15 +36,15 @@
         )
     ## For samples that don't appear in the Init_Sample_ID column (LABELNOTFOUND samples)
     ## need to manually populate fields Is_Ghost, SwapCat_ID, and SwapCat_Shape
-    corrections_vertices_split <- corrections_vertices %>%
-        dplyr::filter(!is.na(Is_Ghost)) %>%
+    corrections_vertices_split <- corrections_vertices |>
+        dplyr::filter(!is.na(Is_Ghost)) |>
         dplyr::mutate(Is_LABELNOTFOUND = FALSE)
-    corrections_vertices_label_not_found <- corrections_vertices %>%
-        dplyr::filter(is.na(Is_Ghost)) %>%
-        dplyr::mutate(Is_LABELNOTFOUND = TRUE) %>%
-        dplyr::select("Sample_ID", "Is_LABELNOTFOUND") %>%
+    corrections_vertices_label_not_found <- corrections_vertices |>
+        dplyr::filter(is.na(Is_Ghost)) |>
+        dplyr::mutate(Is_LABELNOTFOUND = TRUE) |>
+        dplyr::select("Sample_ID", "Is_LABELNOTFOUND") |>
         dplyr::left_join(
-            sample_corrections_df %>% select(Sample_ID,
+            sample_corrections_df |> select(Sample_ID,
                                              Init_Component_ID,
                                              Component_ID,
                                              Subject_ID,
@@ -59,10 +53,10 @@
                                              SwapCat_Shape,
                                              vertex_size_scalar),
             by = "Sample_ID"
-        ) %>%
+        ) |>
         dplyr::mutate(Is_Ghost=FALSE)
     corrections_vertices <- rbind(corrections_vertices_split,
-                                  corrections_vertices_label_not_found) %>%
+                                  corrections_vertices_label_not_found) |>
         dplyr::mutate(
             shape = SwapCat_Shape,
             color = case_when(

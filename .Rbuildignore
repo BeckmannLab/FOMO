@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 fomo_package_creation.Rmd
 ^LICENSE\.md$
+^doc$
+^Meta$

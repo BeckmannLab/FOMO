@@ -9,10 +9,11 @@ writeOutput(object, dir_path = NULL)
 \arguments{
 \item{object}{An object of class \code{MislabelSolver}}
 
-\item{path}{Output directory where solver results are written. Will be created if
-directory doesn't already exist. If no directory provided, output will
-be written to the current working directory.}
+\item{dir_path}{Output directory where solver results are written. Will be
+created if directory doesn't already exist. If no directory provided,
+output will be written to the current working directory.}
 }
 \description{
-Leverages \code{visNetwork} to generate an interactive plot of sample relabels
+Leverages \code{visNetwork} to generate an interactive plot of sample
+relabels
 }

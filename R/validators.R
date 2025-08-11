@@ -1,5 +1,3 @@
-#' @importFrom assertthat assert_that
-#'
 .validate_sample_metadata <- function(sample_metadata, has_genotype_matrix=FALSE) {
     required_columns <- c("Sample_ID", "Subject_ID")
     if (!has_genotype_matrix) {
@@ -35,8 +33,6 @@
     )
 }
 
-#' @importFrom assertthat assert_that
-#'
 .validate_genotype_matrix <- function(genotype_matrix, sample_metadata) {
     rows_missing_in_cols <- setdiff(rownames(genotype_matrix), colnames(genotype_matrix))
     assertthat::assert_that(
@@ -82,8 +78,6 @@
     )
 }
 
-#' @importFrom assertthat assert_that
-#'
 .validate_swap_cats <- function(sample_metadata, swap_cats) {
     required_columns <- c("Sample_ID", "SwapCat_ID")
     missing_columns <- setdiff(required_columns, colnames(swap_cats))
@@ -111,10 +105,6 @@
     )
 }
 
-#' @importFrom assertthat assert_that
-#'
-#' @import dplyr
-#'
 .validate_anchor_samples <- function(sample_metadata, anchor_samples) {
     extra_samples <- setdiff(anchor_samples, sample_metadata$Sample_ID)
     assertthat::assert_that(
@@ -125,29 +115,29 @@
     ## Check that there are no cases where either
     ## 1. Two or more anchor samples with the different Subject_ID(s) have same Genotype_Group_ID
     ## 2. Two or more anchor samples with the same Subject_ID have different Genotype_Group_ID(s)
-    anchor_samples_consistency <- data.frame(Sample_ID = anchor_samples) %>%
+    anchor_samples_consistency <- data.frame(Sample_ID = anchor_samples) |>
         dplyr::left_join(
             sample_metadata[, c("Sample_ID", "Subject_ID", "Genotype_Group_ID")],
             by="Sample_ID"
-        ) %>%
-        dplyr::filter(!is.na(Genotype_Group_ID)) %>%
-        dplyr::group_by(Genotype_Group_ID) %>%
+        ) |>
+        dplyr::filter(!is.na(Genotype_Group_ID)) |>
+        dplyr::group_by(Genotype_Group_ID) |>
         dplyr::mutate(
             n_Subject_ID = length(unique(Subject_ID))
-        ) %>%
-        dplyr::ungroup() %>%
-        dplyr::group_by(Subject_ID) %>%
+        ) |>
+        dplyr::ungroup() |>
+        dplyr::group_by(Subject_ID) |>
         dplyr::mutate(
             n_Genotype_Group_ID = length(unique(Genotype_Group_ID))
-        ) %>%
+        ) |>
         dplyr::ungroup()
-    subject_inconsistent_samples <- anchor_samples_consistency %>%
-        dplyr::filter(n_Subject_ID != 1) %>%
-        dplyr::arrange(Sample_ID) %>%
+    subject_inconsistent_samples <- anchor_samples_consistency |>
+        dplyr::filter(n_Subject_ID != 1) |>
+        dplyr::arrange(Sample_ID) |>
         dplyr::pull(Sample_ID)
-    genotype_inconsistent_samples <- anchor_samples_consistency %>%
-        dplyr::filter(n_Genotype_Group_ID != 1) %>%
-        dplyr::arrange(Sample_ID) %>%
+    genotype_inconsistent_samples <- anchor_samples_consistency |>
+        dplyr::filter(n_Genotype_Group_ID != 1) |>
+        dplyr::arrange(Sample_ID) |>
         dplyr::pull(Sample_ID)
     assertthat::assert_that(
         length(subject_inconsistent_samples) == 0,

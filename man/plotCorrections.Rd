@@ -13,7 +13,15 @@ plotCorrections(
 }
 \arguments{
 \item{object}{An object of class \code{MislabelSolver}}
+
+\item{query_by}{Specifies the field by which to query samples for plotting. Options are: "Init_Component_ID", "Component_ID", "Subject_ID", "Genotype_Group_ID", and "Sample_ID"}
+
+\item{query_val}{The value to query by. Must not be \code{NULL} if a value is provided in \code{query_by}}
 }
 \description{
-Leverages \code{visNetwork} to generate an interactive plot of sample relabels
+Leverages \code{visNetwork} to generate an interactive plot of sample
+relabels
+}
+\details{
+UNDOCUMENTED
 }

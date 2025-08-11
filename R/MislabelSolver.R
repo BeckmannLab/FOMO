@@ -31,8 +31,6 @@
 #'
 #' @return NULL
 #'
-#' @import methods
-#'
 #' @export
 #'
 setClass("MislabelSolver",
@@ -67,8 +65,6 @@ setClass("MislabelSolver",
 #'
 #' @return A MislabelSolver object
 #'
-#' @import methods igraph
-#'
 #' @export
 #'
 MislabelSolver <- function(sample_metadata, genotype_matrix=NULL, swap_cats=NULL, anchor_samples=character(0)) {
@@ -79,7 +75,7 @@ MislabelSolver <- function(sample_metadata, genotype_matrix=NULL, swap_cats=NULL
     if (!is.null(genotype_matrix)) {
         .validate_genotype_matrix(genotype_matrix, sample_metadata)
         genotype_df <- .genotype_matrix_to_genotype_df(genotype_matrix)
-        sample_metadata <- sample_metadata %>%
+        sample_metadata <- sample_metadata |>
             left_join(genotype_df, by="Sample_ID")
     }
 
@@ -96,8 +92,6 @@ MislabelSolver <- function(sample_metadata, genotype_matrix=NULL, swap_cats=NULL
     return(methods::new("MislabelSolver", sample_metadata, genotype_matrix, swap_cats, anchor_samples))
 }
 
-#' @import dplyr
-#'
 setMethod("initialize", "MislabelSolver",
           function(.Object, sample_metadata, genotype_matrix=NULL, swap_cats=NULL, anchor_samples=character(0)) {
               # Hack to get around the NOTE "no visible binding for global variable"
@@ -113,22 +107,22 @@ setMethod("initialize", "MislabelSolver",
               if (length(all_swap_cat_ids) <= length(VISNETWORK_SWAPCAT_SHAPES)) {
                   swap_cat_shapes$SwapCat_Shape <- VISNETWORK_SWAPCAT_SHAPES[seq_along(all_swap_cat_ids)]
               }
-              swap_cats <- swap_cats %>%
+              swap_cats <- swap_cats |>
                   dplyr::left_join(swap_cat_shapes, by="SwapCat_ID")
 
               ## Initialize object 'solve_state'
-              relabel_data <- sample_metadata %>%
+              relabel_data <- sample_metadata |>
                   dplyr::mutate(
                       Init_Sample_ID = Sample_ID,
                       Init_Subject_ID = Subject_ID,
                       Is_Ghost = is.na(Genotype_Group_ID),
                       Is_Anchor = Init_Sample_ID %in% anchor_samples,
                       Solved = FALSE
-                  ) %>%
+                  ) |>
                   dplyr::left_join(swap_cats, by="Sample_ID")
-              unsolved_relabel_data <- relabel_data %>%
+              unsolved_relabel_data <- relabel_data |>
                   dplyr::filter(!is.na(Genotype_Group_ID))
-              unsolved_ghost_data <- relabel_data %>%
+              unsolved_ghost_data <- relabel_data |>
                   dplyr::filter(is.na(Genotype_Group_ID))
               putative_subjects <- data.frame(Genotype_Group_ID = character(0),
                                               Subject_ID = character(0))

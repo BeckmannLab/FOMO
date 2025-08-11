@@ -15,9 +15,10 @@ biocViews: QualityControl, GraphAndNetwork,
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
+Depends:
+    R (>= 4.1.0)
 Imports: 
     assertthat,
-    utils,
     dplyr,
     igraph,
     methods,
@@ -31,7 +32,10 @@ Imports:
     graphics,
     uuid,
     openxlsx,
-    stats
+    stats,
+    tibble,
+    rlang,
+    tidyselect
 Suggests: 
     BiocStyle, 
     knitr, 

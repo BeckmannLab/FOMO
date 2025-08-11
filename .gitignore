@@ -7,3 +7,5 @@
 fomo.Rproj
 fomo_package_creation.Rmd
 inst/doc
+/doc/
+/Meta/
