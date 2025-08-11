@@ -45,10 +45,10 @@
     corrections_vertices_split <- corrections_vertices %>% 
         dplyr::filter(!is.na(Is_Ghost)) %>% 
         dplyr::mutate(Is_LABELNOTFOUND = FALSE)
-    corrections_vertices_label_not_found <- corrections_vertices %>% 
-        dplyr::filter(is.na(Is_Ghost)) %>% 
-        dplyr::mutate(Is_LABELNOTFOUND = TRUE) %>% 
-        dplyr::select(Sample_ID, Is_LABELNOTFOUND) %>% 
+    corrections_vertices_label_not_found <- corrections_vertices %>%
+        dplyr::filter(is.na(Is_Ghost)) %>%
+        dplyr::mutate(Is_LABELNOTFOUND = TRUE) %>%
+        dplyr::select("Sample_ID", "Is_LABELNOTFOUND") %>%
         dplyr::left_join(
             sample_corrections_df %>% select(Sample_ID, 
                                              Init_Component_ID,

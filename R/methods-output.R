@@ -85,8 +85,8 @@ writeOutput <- function(object, dir_path=NULL) {
         dplyr::mutate(
             n_LABELNOTFOUND = sum(grepl(LABEL_NOT_FOUND, Proposed_Final_Sample_ID)),
             has_Ghost_Solution = any(Ghost),
-            has_LABELNOTFOUND_Solution = n_LABELNOTFOUND > 0
-        ) %>% 
+            has_LABELNOTFOUND_Solution = .data$n_LABELNOTFOUND > 0
+        ) %>%
         dplyr::ungroup()
     ambiguity_summary$All_Valid_Sample_IDs <- NA_character_
     for (i in seq_len(nrow(ambiguity_summary))) {
