@@ -13,7 +13,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 biocViews: QualityControl, GraphAndNetwork, 
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 VignetteBuilder: knitr
 Imports: 
     assertthat,
@@ -30,7 +30,8 @@ Imports:
     reshape2,
     graphics,
     uuid,
-    openxlsx
+    openxlsx,
+    stats
 Suggests: 
     BiocStyle, 
     knitr, 
