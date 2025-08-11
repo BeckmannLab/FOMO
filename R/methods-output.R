@@ -4,7 +4,7 @@
 #'
 #' @param object An object of class \code{MislabelSolver}
 #' @param path Output directory where solver results are written. Will be created if
-#'             directory doesn't already exist. If no directory provided, output will 
+#'             directory doesn't already exist. If no directory provided, output will
 #'             be written to the current working directory.
 #'
 #' @importFrom graphics plot
@@ -20,7 +20,7 @@ writeOutput <- function(object, dir_path=NULL) {
     if (is.null(dir_path)) {
         dir_path <- getwd()
     }
-    
+
     if (!dir.exists(dir_path)) {
         dir.create(dir_path, recursive=FALSE)
         if (dir.exists(dir_path)) {
@@ -37,7 +37,7 @@ writeOutput <- function(object, dir_path=NULL) {
         dplyr::mutate(Sample_Count_In_Genotype_Group=n()) %>%
         dplyr::ungroup(Genotype_Group_ID) %>%
         dplyr::left_join(
-            object@.solve_state$putative_subjects %>% 
+            object@.solve_state$putative_subjects %>%
                 filter(!is.na(Genotype_Group_ID)),
             by = "Genotype_Group_ID",
             suffix = c("", "_putative")
@@ -76,10 +76,10 @@ writeOutput <- function(object, dir_path=NULL) {
         ) %>%
         dplyr::arrange(Component_ID, Genotype_Group_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID)
 
-    ## Mislabeled samples in the same genotype group 
+    ## Mislabeled samples in the same genotype group
     ## with identical swappable categories are
     ## are ambiguities for one another
-    ambiguity_summary <- sample_summary %>% 
+    ambiguity_summary <- sample_summary %>%
         dplyr::filter(Init_Subject_ID != Inferred_Subject_ID) %>%
         dplyr::group_by(Genotype_Group_ID, SwapCat_ID) %>%
         dplyr::mutate(
@@ -108,15 +108,15 @@ writeOutput <- function(object, dir_path=NULL) {
             ambiguity_summary[i, "All_Valid_Sample_IDs"] <- paste(sample_ambiguities, collapse=", ")
         }
     }
-    ambiguity_summary <- ambiguity_summary %>% 
+    ambiguity_summary <- ambiguity_summary %>%
         dplyr::select(Init_Sample_ID, All_Valid_Sample_IDs)
-    
-    sample_summary <- sample_summary %>% 
-        dplyr::left_join(ambiguity_summary, by="Init_Sample_ID") %>% 
+
+    sample_summary <- sample_summary %>%
+        dplyr::left_join(ambiguity_summary, by="Init_Sample_ID") %>%
         dplyr::mutate(Multiple_Valid_Solutions = case_when(
             !is.na(All_Valid_Subject_IDs) > 0 ~ "multiple_valid_subjects",
             !is.na(All_Valid_Sample_IDs) > 0 ~ "one_valid_subject_multiple_valid_samples"))
-    
+
     sample_summary$Sample_Contamination_Metric_Numerator <- NA_integer_
     sample_summary$Sample_Contamination_Metric_Denominator <- NA_integer_
     sample_summary$Sample_Contamination_Metric <- NA
@@ -134,22 +134,22 @@ writeOutput <- function(object, dir_path=NULL) {
             sample_summary[sample_summary$Init_Sample_ID == sample_id, "Sample_Contamination_Metric_Numerator"] <- missing_edges
             sample_summary[sample_summary$Init_Sample_ID == sample_id, "Sample_Contamination_Metric_Denominator"] <- total_edges
             if (total_edges > 0) {
-                sample_summary[sample_summary$Init_Sample_ID == sample_id, "Sample_Contamination_Metric"] <- missing_edges / total_edges    
+                sample_summary[sample_summary$Init_Sample_ID == sample_id, "Sample_Contamination_Metric"] <- missing_edges / total_edges
             }
         }
     }
-    
+
     corrections_graph <- .generate_corrections_graph(object@.solve_state$relabel_data)
     corrections_components <- components(corrections_graph)
     Mislabeling_Event_ID_df <- data.frame
-    Mislabeling_Event_ID_df <- data.frame(Init_Sample_ID = names(corrections_components$membership), 
+    Mislabeling_Event_ID_df <- data.frame(Init_Sample_ID = names(corrections_components$membership),
                                     Mislabeling_Event_ID = corrections_components$membership)
-    sample_summary <- sample_summary %>% 
+    sample_summary <- sample_summary %>%
         dplyr::left_join(Mislabeling_Event_ID_df, by="Init_Sample_ID")
-    Mislabeling_Event_ID_renamer_df <- sample_summary %>% 
-        dplyr::filter(!is.na(Mislabeling_Event_ID)) %>% 
-        dplyr::select(Component_ID, Mislabeling_Event_ID) %>% 
-        dplyr::distinct() %>% 
+    Mislabeling_Event_ID_renamer_df <- sample_summary %>%
+        dplyr::filter(!is.na(Mislabeling_Event_ID)) %>%
+        dplyr::select(Component_ID, Mislabeling_Event_ID) %>%
+        dplyr::distinct() %>%
         dplyr::group_by(Component_ID) %>%
         dplyr::mutate(Event_Number = row_number()) %>%
         dplyr::ungroup() %>%
@@ -157,18 +157,18 @@ writeOutput <- function(object, dir_path=NULL) {
         dplyr::select(Mislabeling_Event_ID, Mislabeling_Event_ID_New)
     Mislabeling_Event_ID_renamer_map <- setNames(Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID_New, Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID)
     sample_summary$Mislabeling_Event_ID <- sapply(sample_summary$Mislabeling_Event_ID, \(x) ifelse(is.na(x), NA, Mislabeling_Event_ID_renamer_map[x]))
-    
-    sample_summary <- sample_summary %>% 
+
+    sample_summary <- sample_summary %>%
         dplyr::select(Connected_Component_ID = Component_ID, Genotype_Group_ID, SwapCat_ID, Is_Ghost = Ghost,
-                      Initial_Subject_ID = Init_Subject_ID, Initial_Sample_ID = Init_Sample_ID, 
-                      Selected_For_Review, Mislabeled, Mislabeling_Event_ID, Multiple_Valid_Solutions, All_Valid_Subject_IDs, All_Valid_Sample_IDs, 
-                      Inferred_Subject_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID, 
-                      Sample_Count_In_Genotype_Group, Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label, 
+                      Initial_Subject_ID = Init_Subject_ID, Initial_Sample_ID = Init_Sample_ID,
+                      Selected_For_Review, Mislabeled, Mislabeling_Event_ID, Multiple_Valid_Solutions, All_Valid_Subject_IDs, All_Valid_Sample_IDs,
+                      Inferred_Subject_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID,
+                      Sample_Count_In_Genotype_Group, Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label,
                       Sample_Contamination_Metric, Sample_Contamination_Metric_Denominator, Sample_Contamination_Metric_Numerator)
-    
+
     genotype_group_summary <- sample_summary %>%
         dplyr::group_by(Genotype_Group_ID, Inferred_Subject_ID) %>%
-        dplyr::filter(!is.na(Genotype_Group_ID)) %>% 
+        dplyr::filter(!is.na(Genotype_Group_ID)) %>%
         dplyr::summarize(
             # Majority_Subject_ID = names(sort(table(Proposed_Final_Subject_ID), decreasing = TRUE)[1]),
             n_Samples_no_review_needed = sum(Selected_For_Review == "no_review_needed"),
@@ -188,7 +188,7 @@ writeOutput <- function(object, dir_path=NULL) {
         ) %>%
         dplyr::ungroup() %>%
         dplyr::select(Genotype_Group_ID, n_Samples_total, Inferred_Subject_ID, Selected_For_Review, n_Samples_Initially_Matching_Inferred_Subject, everything())
-    
+
     genotype_group_summary$Genotype_Contamination_Metric <- NA
     genotype_group_summary$Genotype_Contamination_Metric_Denominator <- NA_integer_
     genotype_group_summary$Genotype_Contamination_Metric_Numerator <- NA_integer_
@@ -251,14 +251,14 @@ writeOutput <- function(object, dir_path=NULL) {
             n_Samples_singleton_no_inference = sum(Selected_For_Review == "singleton_no_inference"),
             n_Samples_not_relabeled_low_confidence = sum(Selected_For_Review == "not_relabeled_low_confidence")
         )
-    
+
     summary_list <- list(
         "Sample" = sample_summary,
         "Genotype_Group" = genotype_group_summary,
         "Component" = component_summary,
         "Dataset" = dataset_summary)
     return(summary_list)
-    
+
     excel_filename <- file.path(dir_path, "corrections_summary.xlsx")
     openxlsx::write.xlsx(summary_list, file=excel_filename)
     print(paste0("Output successfully written to ", excel_filename))

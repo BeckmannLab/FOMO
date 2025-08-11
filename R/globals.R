@@ -1,7 +1,7 @@
 # This is a workaround for the note "No visible binding for global variable"
 # https://stackoverflow.com/questions/8096313/no-visible-binding-for-global-variable-note-in-r-cmd-check
 #' @import utils
-#' 
+#'
 global_vars <- c("Sample_ID", "Subject_ID", "Genotype_Group_ID", "Component_ID",
                  "SwapCat_ID", "Permutation_ID", "n_genotype_deletions", "n_ghost_labels",
                  "n_in_genotype", "n_label_deletions", "n_labels", "n_samples_correct",
