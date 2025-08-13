@@ -9,11 +9,16 @@
 An R package to automatically detect and correct mislabeled samples in multi-omic datasets that have multiple samples per individual. Provides functions for solving, visualizing, and outputting sample mislabel information.
 }
 \author{
-\strong{Maintainer}: Thompson Ryan \email{ryan.thompson2@mssm.edu} (\href{https://orcid.org/0000-0002-0450-8181}{ORCID}) [copyright holder]
+\strong{Maintainer}: Thompson Ryan \email{ryan.thompson2@mssm.edu} (\href{https://orcid.org/0000-0002-0450-8181}{ORCID})
 
 Authors:
 \itemize{
   \item Deng Charles \email{charlesfanghuideng@gmail.com}
+}
+
+Other contributors:
+\itemize{
+  \item Icahn School of Medicine at Mount Sinai [copyright holder, funder]
 }
 
 }
