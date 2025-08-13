@@ -35,7 +35,8 @@ Imports:
     stats,
     tibble,
     rlang,
-    tidyselect
+    tidyselect,
+    utils
 Suggests: 
     BiocStyle, 
     knitr, 
