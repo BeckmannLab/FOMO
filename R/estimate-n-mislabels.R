@@ -40,11 +40,17 @@ normalize_sex <- function(
 #'   length and same order as `reported_sex`.
 #' @param return_fraction If TRUE, return the estimated fraction of mislabeled
 #'   samples instead of the estimated number.
+#' @param adjust_for_unevaluable If TRUE (the default), then the estimated
+#'   number of mislabels will include mislabels of samples with missing sex
+#'   information (i.e., NA values in `reported_sex` or `inferred_sex`. If FALSE,
+#'   then the estimate will only include mislabels of samples with fully known
+#'   sex information. Note: this argument has no effect if `return_fraction` is
+#'   TRUE.
 #'
 #' @returns The estimated number (or fraction) of mislabeled samples.
 #'
 #' @details If `reported_sex` or `inferred_sex` contains NAs, those samples will
-#' not be used to estimate the fraction of mislabeled samples
+#'   not be used to estimate the fraction of mislabeled samples
 #'
 #' @export
 #'
@@ -59,8 +65,12 @@ normalize_sex <- function(
 #' # Simulate mislabels
 #' inferred[1:20] <- sample(inferred[1:20])
 #' # Should give approximately 30
-#' estimate_n_mislabels_from_sex_mismatches(reported, inferred)
-estimate_n_mislabels <- function(reported_sex, inferred_sex, return_fraction = FALSE) {
+#' estimate_n_mislabels(reported, inferred)
+#' # Should give approximately 20
+#' estimate_n_mislabels(reported, inferred, adjust_for_unevaluable = FALSE)
+#' # Should give approximately 20% (0.2)
+#' estimate_n_mislabels(reported, inferred, return_fraction = TRUE)
+estimate_n_mislabels <- function(reported_sex, inferred_sex, return_fraction = FALSE, adjust_for_unevaluable = TRUE) {
     # Also allow sex to be passed as logical. We arbitrarily assign each boolean
     # to a sex, since it doesn't matter which is which for the purposes of this
     # calculation.
@@ -87,17 +97,17 @@ estimate_n_mislabels <- function(reported_sex, inferred_sex, return_fraction = F
     }
     n_samples <- nrow(x)
     n_evaluable <- sum(x$evaluable)
-    n_mismatch <- sum(x$evaluable & !x$matched)
+    n_wrong_sex <- sum(x$evaluable & !x$matched)
     n_male <- sum(x$evaluable & (x$reported_sex == "Male"))
-    frac_male <- n_male / n_evaluable
-    frac_mismatch <- n_mismatch / n_evaluable
-
-    est_frac_mislabel <- frac_mismatch / (2 * frac_male * (1 - frac_male))
+    n_female <- n_evaluable - n_male
+    est_n_evaluable_mislabels <- n_wrong_sex * n_evaluable * (n_evaluable - 1) /
+        (2 * n_male * n_female)
+    est_frac_mislabel <- est_n_evaluable_mislabels / n_evaluable
     if (return_fraction) {
         return(est_frac_mislabel)
+    } else {
+        # We multiply by the total number of samples, including non-evaluable
+        # ones excluded from the calculation of est_frac_mislabel.
+        return(est_frac_mislabel * n_samples)
     }
-    # We multiply by the total number of samples, including non-evaluable ones
-    # excluded from the calculation of est_frac_mislabel
-    est_n_mislabel <- n_samples * est_frac_mislabel
-    return(est_n_mislabel)
 }
