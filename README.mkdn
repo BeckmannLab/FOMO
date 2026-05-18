@@ -1,0 +1,35 @@
+# FOMO: Figuring Out Mislabeled Omics
+
+This is the R package for *Deng et al. 2026, A scalable framework for
+automated relabeling of mislabeled multi-omics samples*.
+
+## Abstract for *Deng et al. 2026*
+
+Mislabels, errors linking samples to incorrect identities, inevitably
+occur in large multi-omics datasets during collection and data
+generation. Mislabels dilute statistical power, bias results, and more
+importantly jeopardize participants’ informed consent by preventing
+correct removal of withdrawn individuals’ data from analysis and
+public release. While existing methods determine identity concordance
+from genetic data, no scalable, flexible tool exists that leverages
+this information to resolve mislabels. We present Figuring Out
+Mislabeled Omics (FOMO), which integrates genotype-derived matches and
+sample labels into mislabel networks to automatically relabel at
+scale. FOMO performed well in extensive simulations, demonstrating
+scalability up to 100,000 samples while maintaining near-perfect
+accuracy up to 20% mislabeling rate. In public multi-omics cohorts,
+FOMO achieved relabeling accuracy equal to or better than manual
+correction in a fraction of the time while identifying and correcting
+complex mislabeling events including some missed by manual review.
+FOMO is, to our knowledge, the first scalable and accurate
+computational solver that integrates label metadata with genotype
+information to detect and correct complex mislabeling in large
+multi-omics datasets.
+
+## Installation
+
+You can install the package from Github using:
+
+```R
+remotes::install_github("BeckmannLab/FOMO")
+```
