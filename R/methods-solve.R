@@ -407,30 +407,72 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 #' comprehensive search, and local search to identify and correct mislabels
 #'
 #' @param object A MislabelSolver object
+#' @param use_solvers (Default = `c("majority", "comprehensive", "local")`) A
+#'   character vector giving the subset of single-method solvers to run on
+#'   each iteration of the ensemble loop. Must be a non-empty subset of
+#'   `"majority"`, `"comprehensive"`, and `"local"`. Any solver left out of
+#'   `use_solvers` is skipped entirely. For example, setting `use_solvers`
+#'   to `c("comprehensive", "majority")` will skip local search.
+#' @param time_limit (Default = 7200, i.e. 2 hours) The maximum time, in
+#'   seconds, to let the solver run. Elapsed time is checked once per
+#'   iteration of the while loop; if `time_limit` is reached before the
+#'   solver has converged, the loop is stopped early, a warning is issued,
+#'   and the object is returned in its current, incompletely solved state.
+#' @param seed (Default = 1) The random seed, passed to `set.seed()`, used
+#'   for reproducibility.
 #'
 #' @return A MislabelSolver object
 #'
 #' @export
 #'
-solveEnsemble <- function(object) {
-    set.seed(1)
+solveEnsemble <- function(object, use_solvers=c("majority", "comprehensive", "local"), time_limit=2 * 60 * 60, seed=1) {
+    valid_solvers <- c("majority", "comprehensive", "local")
+    assertthat::assert_that(
+        is.character(use_solvers) && length(use_solvers) > 0,
+        msg = "'use_solvers' must be a non-empty character vector"
+    )
+    assertthat::assert_that(
+        all(use_solvers %in% valid_solvers),
+        msg = paste0("'use_solvers' must only contain values from: ", paste(valid_solvers, collapse=", "))
+    )
+    use_solvers <- unique(use_solvers)
+
+    assertthat::assert_that(
+        is.numeric(time_limit) && length(time_limit) == 1 && !is.na(time_limit) && time_limit >= 0,
+        msg = "'time_limit' must be a single non-negative number (of seconds)"
+    )
+
+    assertthat::assert_that(
+        is.numeric(seed) && length(seed) == 1 && !is.na(seed),
+        msg = "'seed' must be a single number"
+    )
+
+    set.seed(seed)
+    start_time <- Sys.time()
     while (TRUE) {
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             break
         }
+        if (as.numeric(difftime(Sys.time(), start_time, units="secs")) > time_limit) {
+            warning("solveEnsemble() reached 'time_limit' of ", time_limit,
+                   " second(s) before converging; returning the object in its current, incompletely solved state.")
+            break
+        }
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
-        object <- solveComprehensiveSearch(object)
-        object <- solveMajoritySearch(object)
-        object <- solveComprehensiveSearch(object)
+        if ("comprehensive" %in% use_solvers) object <- solveComprehensiveSearch(object)
+        if ("majority" %in% use_solvers) object <- solveMajoritySearch(object)
+        if ("comprehensive" %in% use_solvers) object <- solveComprehensiveSearch(object)
 
         comp_relabel_data <- object@.solve_state$unsolved_relabel_data
-        object <- solveLocalSearch(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=TRUE)
+        if ("local" %in% use_solvers) {
+            object <- solveLocalSearch(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=TRUE)
 
-        ## If local search found no swaps, try allowing concordant vertices
-        if (nrow(comp_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
-            if (identical(comp_relabel_data, object@.solve_state$unsolved_relabel_data)) {
-                object <- solveLocalSearch(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=FALSE)
+            ## If local search found no swaps, try allowing concordant vertices
+            if (nrow(comp_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
+                if (identical(comp_relabel_data, object@.solve_state$unsolved_relabel_data)) {
+                    object <- solveLocalSearch(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=FALSE)
+                }
             }
         }
 

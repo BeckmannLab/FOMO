@@ -4,10 +4,31 @@
 \alias{solveEnsemble}
 \title{Ensemble Sample Relabeling}
 \usage{
-solveEnsemble(object)
+solveEnsemble(
+  object,
+  use_solvers = c("majority", "comprehensive", "local"),
+  time_limit = 2 * 60 * 60,
+  seed = 1
+)
 }
 \arguments{
 \item{object}{A MislabelSolver object}
+
+\item{use_solvers}{(Default = \code{c("majority", "comprehensive", "local")}) A
+character vector giving the subset of single-method solvers to run on
+each iteration of the ensemble loop. Must be a non-empty subset of
+\code{"majority"}, \code{"comprehensive"}, and \code{"local"}. Any solver left out of
+\code{use_solvers} is skipped entirely. For example, setting \code{use_solvers}
+to \code{c("comprehensive", "majority")} will skip local search.}
+
+\item{time_limit}{(Default = 7200, i.e. 2 hours) The maximum time, in
+seconds, to let the solver run. Elapsed time is checked once per
+iteration of the while loop; if \code{time_limit} is reached before the
+solver has converged, the loop is stopped early, a warning is issued,
+and the object is returned in its current, incompletely solved state.}
+
+\item{seed}{(Default = 1) The random seed, passed to \code{set.seed()}, used
+for reproducibility.}
 }
 \value{
 A MislabelSolver object
