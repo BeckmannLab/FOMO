@@ -5,7 +5,9 @@
 #' @param x An object of class \code{MislabelSolver}.
 #' @param y Ignored (included for compatibility with generic \code{plot} function).
 #' @param unsolved If \code{TRUE}, plots only samples that are in unsolved components
-#' @param collapse_samples If \code{TRUE}, combines samples that are identical in both Subject_ID and Genotype_Group_ID
+#' @param collapse_samples If \code{TRUE}, combines samples that are identical in both Subject_ID and Genotype_Group_ID.
+#'   Ignored (with a warning) if \code{x} was built with a \code{genotype_matrix} rather than a \code{Genotype_Group_ID} column,
+#'   since collapsed samples can no longer be matched back to rows/columns of the matrix.
 #' @param query_by Specifies the field by which to query samples for plotting. Options are: "Init_Component_ID", "Component_ID", "Subject_ID", "Genotype_Group_ID", and "Sample_ID"
 #' @param query_val The value to query by. Must not be \code{NULL} if a value is provided in \code{query_by}
 #'
@@ -61,8 +63,23 @@ setMethod("plot", signature(x = "MislabelSolver"),
                           dplyr::filter(Component_ID == component_id)
                   }
               }
+              if (nrow(relabel_data) + nrow(ghost_data) == 0) {
+                  warning("Nothing to plot: no samples match the current filters ",
+                          "(e.g. all samples may already be solved; try unsolved = FALSE).")
+                  return(invisible(NULL))
+              }
               graph <- .generate_graph(relabel_data, graph_type = "combined", ghost_data, genotype_matrix=x@genotype_matrix,
                                        populate_plotting_attributes=TRUE, collapse_samples=collapse_samples)
+              if (igraph::ecount(graph) == 0) {
+                  ## visNetwork::visIgraph() cannot render a graph with zero edges
+                  ## (it errors internally with "undefined columns selected" while
+                  ## building the edge table), so guard against it explicitly. This
+                  ## can happen with a single remaining sample, or when
+                  ## 'collapse_samples' merges an entire group into one node.
+                  warning("Nothing to plot: the requested samples have no edges ",
+                          "connecting them, so there is nothing to draw.")
+                  return(invisible(NULL))
+              }
               with_seed(2, {
                   l_mds <- igraph::layout_with_mds(graph)
                   l_drl <- igraph::layout_with_drl(graph, use.seed=TRUE, seed=l_mds)
@@ -114,6 +131,12 @@ plotCorrections <- function(object,
     }
 
     corrections_graph <- .generate_corrections_graph(relabel_data)
+
+    if (igraph::vcount(corrections_graph) == 0 || igraph::ecount(corrections_graph) == 0) {
+        warning("Nothing to plot: no corrections match the current filters ",
+                "(e.g. no samples needed relabeling).")
+        return(invisible(NULL))
+    }
 
     with_seed(2, {
         l_mds <- igraph::layout_with_mds(corrections_graph)

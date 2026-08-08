@@ -22,7 +22,9 @@
 
 \item{unsolved}{If \code{TRUE}, plots only samples that are in unsolved components}
 
-\item{collapse_samples}{If \code{TRUE}, combines samples that are identical in both Subject_ID and Genotype_Group_ID}
+\item{collapse_samples}{If \code{TRUE}, combines samples that are identical in both Subject_ID and Genotype_Group_ID.
+Ignored (with a warning) if \code{x} was built with a \code{genotype_matrix} rather than a \code{Genotype_Group_ID} column,
+since collapsed samples can no longer be matched back to rows/columns of the matrix.}
 
 \item{query_by}{Specifies the field by which to query samples for plotting. Options are: "Init_Component_ID", "Component_ID", "Subject_ID", "Genotype_Group_ID", and "Sample_ID"}
 

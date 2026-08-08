@@ -148,6 +148,18 @@
         ghost_data <- NULL
     }
 
+    ## 'collapse_samples' renames grouped samples to synthetic vertex names
+    ## (e.g. "3 samples\nA\nRNA"), which cannot be matched back to any
+    ## rowname in 'genotype_matrix'. Rather than silently building a
+    ## genotype-half graph with mismatched or missing vertices, fall back to
+    ## not collapsing when a genotype_matrix is in play.
+    if (collapse_samples && !is.null(genotype_matrix)) {
+        warning("'collapse_samples' is not supported for a MislabelSolver built ",
+                "with a 'genotype_matrix' (as opposed to a 'Genotype_Group_ID' ",
+                "column); plotting without collapsing samples.")
+        collapse_samples <- FALSE
+    }
+
     if (collapse_samples) {
         relabel_data <- relabel_data |>
             dplyr::group_by(Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
@@ -156,7 +168,7 @@
                 vertex_size_scalar = sqrt(sum(vertex_size_scalar)),
                 Is_Ghost = FALSE,
                 Is_Anchor = any(Is_Anchor),
-                Sample_ID = ifelse(count == 1, Sample_ID, paste(paste(count, "samples"), Subject_ID, SwapCat_ID, sep="\n"))
+                Sample_ID = dplyr::if_else(count == 1, Sample_ID, paste(paste(count, "samples"), Subject_ID, SwapCat_ID, sep="\n"))
             ) |>
             dplyr::select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID, SwapCat_Shape, count, vertex_size_scalar, Is_Ghost, Is_Anchor) |>
             dplyr::distinct()
@@ -173,7 +185,7 @@
                     vertex_size_scalar = sqrt(sum(vertex_size_scalar)),
                     Is_Ghost = TRUE,
                     Is_Anchor = FALSE,
-                    Sample_ID = ifelse(count == 1, Sample_ID, paste(paste(count, "samples"), Subject_ID, SwapCat_ID, sep="\n"))
+                    Sample_ID = dplyr::if_else(count == 1, Sample_ID, paste(paste(count, "samples"), Subject_ID, SwapCat_ID, sep="\n"))
                 ) |>
                 dplyr::select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID, SwapCat_Shape, count, vertex_size_scalar, Is_Ghost, Is_Anchor) |>
                 dplyr::distinct()
@@ -193,6 +205,15 @@
     } else {
         if (graph_type == "genotype" & !is.null(genotype_matrix)) {
             vertices <- all_data[, "Sample_ID", drop=FALSE]
+            ## Restrict the genotype matrix to the samples actually present in
+            ## 'all_data' (e.g. the caller's 'unsolved'-only subset). Without
+            ## this, the genotype half of the graph always contains every
+            ## sample in the object, while the label half only contains the
+            ## requested subset, so the two halves end up with mismatched
+            ## vertex sets when unioned below.
+            genotype_matrix <- genotype_matrix[rownames(genotype_matrix) %in% vertices$Sample_ID,
+                                               colnames(genotype_matrix) %in% vertices$Sample_ID,
+                                               drop=FALSE]
             graph <- igraph::graph_from_adjacency_matrix(genotype_matrix, mode="undirected")
         } else {
             group_col <- graph_type_mapping[[graph_type]]
