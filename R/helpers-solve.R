@@ -796,6 +796,16 @@
         swap_cat_total <- cbind(n_samples_correct = total[, "n_samples_correct"], n_samples_to_relabel,
                                  n_samples_to_relabel_ghost = total[, "n_samples_to_relabel_ghost"],
                                  n_genotype_deletions, n_label_deletions = total[, "n_label_deletions"], perm_score)
+        ## When n_perms == 1 (a component with a single free genotype, so only
+        ## one arrangement is possible), R's `[` silently drops rownames on
+        ## every single-row extraction above (matrix[, "col"] returns an
+        ## unnamed scalar when the matrix has exactly one row, unlike the
+        ## multi-row case where rownames carry through as names) -- so
+        ## swap_cat_total ends up with no rownames at all despite having the
+        ## right values, and the reindex below then fails with "subscript out
+        ## of bounds". Row order is never changed by sweep()/cbind() above, so
+        ## it's always safe to relabel directly from permutation_ids.
+        rownames(swap_cat_total) <- permutation_ids
         permutation_stats <- permutation_stats + swap_cat_total[rownames(permutation_stats), colnames(permutation_stats)]
     }
 
