@@ -17,13 +17,14 @@ solveEnsemble(
 \item{use_solvers}{(Default = \code{c("majority", "comprehensive", "local")}) A
 character vector giving the subset of single-method solvers to run on
 each iteration of the ensemble loop. Must be a non-empty subset of
-\code{"majority"}, \code{"comprehensive"}, \code{"local"}, and \code{"local_fast"}. Any
-solver left out of \code{use_solvers} is skipped entirely. For example,
-setting \code{use_solvers} to \code{c("comprehensive", "majority")} will skip
-local search. \code{"local_fast"} is \code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}}, a numerically
-exact but faster alternative to \code{"local"} (\code{\link[=solveLocalSearch]{solveLocalSearch()}});
-\code{"local"} and \code{"local_fast"} are alternative implementations of the same
-step and cannot both be requested at once.}
+\code{"majority"}, \code{"comprehensive"}, \code{"comprehensive_fast"}, \code{"local"}, and
+\code{"local_fast"}. Any solver left out of \code{use_solvers} is skipped
+entirely. For example, setting \code{use_solvers} to \code{c("comprehensive", "majority")} will skip local search. \code{"local_fast"} is
+\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} and \code{"comprehensive_fast"} is
+\code{\link[=solveComprehensiveSearchFast]{solveComprehensiveSearchFast()}}, numerically exact but faster
+alternatives to \code{"local"} (\code{\link[=solveLocalSearch]{solveLocalSearch()}}) and \code{"comprehensive"}
+(\code{\link[=solveComprehensiveSearch]{solveComprehensiveSearch()}}) respectively; each pair are alternative
+implementations of the same step and cannot both be requested at once.}
 
 \item{time_limit}{(Default = 7200, i.e. 2 hours) The maximum time, in
 seconds, to let the solver run. Elapsed time is checked once per

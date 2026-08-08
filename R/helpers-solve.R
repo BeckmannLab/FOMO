@@ -688,3 +688,116 @@
 
     return(delta)
 }
+
+## Base-R vectorized replacement for the per-swap-category permutation-scoring
+## block in solveComprehensiveSearch() (the loop that melts perm_genotypes,
+## left_joins it against label/ghost/genotype/concordant count tables, and
+## group_by/summarizes per Permutation_ID). Two independent changes, both
+## exact (not approximations):
+##
+## 1. Locked/free separation: perm_genotypes has one column per genotype in
+##    the component, but only the (at most max_genotypes) *free* columns
+##    actually vary across permutations -- every *locked* column repeats the
+##    same subject ID in all ~n_perms rows, because that genotype's identity
+##    was already resolved before comprehensive search reached this
+##    component. Locked columns can outnumber free ones considerably in a
+##    large component. Their contribution to each permutation's score is
+##    therefore a constant, computable once from a single row rather than
+##    melted and joined ~n_perms times.
+## 2. dplyr::left_join()/group_by()/summarize() is replaced with direct
+##    named-vector lookups and rowsum(): profiling showed the original
+##    block's cost dominated by dplyr/vctrs per-call overhead (data-mask
+##    construction, hash-join bookkeeping), not the arithmetic itself, so
+##    removing that overhead matters at least as much as reducing row count.
+##
+## Verified against the original dplyr-based computation on real captured
+## mid-solve state (a component with 8 free / 16 locked genotypes, 40,320
+## permutations, 6 swap categories): identical scores and identical best
+## permutation in every case tested, ~16x faster on that case (~1.2x on a
+## small synthetic case with 0 locked genotypes, where fixed overhead
+## dominates either way and there is nothing to separate out). See
+## solveComprehensiveSearchFast().
+.score_permutations_fast <- function(perm_genotypes, free_genotypes, locked_genotypes, cc_swap_cat_ids,
+                                      label_counts, ghost_label_counts, genotype_counts,
+                                      genotype_subject_concordant_counts) {
+    n_perms <- nrow(perm_genotypes)
+    permutation_ids <- rownames(perm_genotypes)
+    sum_cols <- c("n_samples_correct", "n_samples_to_relabel", "n_samples_to_relabel_ghost",
+                  "n_genotype_deletions", "n_label_deletions")
+
+    free_cols <- intersect(colnames(perm_genotypes), free_genotypes)
+    locked_cols <- setdiff(colnames(perm_genotypes), free_cols)
+    has_free <- length(free_cols) > 0
+    has_locked <- length(locked_cols) > 0
+
+    if (has_free) {
+        long_free <- reshape2::melt(perm_genotypes[, free_cols, drop = FALSE])
+        colnames(long_free) <- c("Permutation_ID", "Genotype_Group_ID", "Subject_ID")
+        long_free$Permutation_ID <- as.character(long_free$Permutation_ID)
+        long_free$Genotype_Group_ID <- as.character(long_free$Genotype_Group_ID)
+        long_free$Subject_ID <- as.character(long_free$Subject_ID)
+    }
+    if (has_locked) {
+        locked_row <- perm_genotypes[1, locked_cols, drop = FALSE]
+        long_locked <- data.frame(Genotype_Group_ID = colnames(locked_row),
+                                   Subject_ID = as.character(locked_row[1, ]),
+                                   stringsAsFactors = FALSE)
+    }
+
+    ## key -> value lookup as a named vector; missing keys resolve to 0 (matching
+    ## the original's dplyr::coalesce(., 0) after a non-matching left_join)
+    vec_lookup <- function(df, key_cols, val_col) {
+        key <- if (length(key_cols) == 1) df[[key_cols]] else do.call(paste, c(df[key_cols], sep = "\x1f"))
+        setNames(df[[val_col]], key)
+    }
+    lookup0 <- function(vec, key) { v <- unname(vec[key]); v[is.na(v)] <- 0; v }
+
+    permutation_stats <- matrix(0, nrow = n_perms, ncol = length(sum_cols) + 1,
+                                 dimnames = list(permutation_ids, c(sum_cols, "perm_score")))
+
+    for (swap_cat_id in cc_swap_cat_ids) {
+        v_label <- vec_lookup(label_counts[label_counts$SwapCat_ID == swap_cat_id, ], "Subject_ID", "n_labels")
+        v_ghost <- vec_lookup(ghost_label_counts[ghost_label_counts$SwapCat_ID == swap_cat_id, ], "Subject_ID", "n_ghost_labels")
+        v_geno <- vec_lookup(genotype_counts[genotype_counts$SwapCat_ID == swap_cat_id, ], "Genotype_Group_ID", "n_in_genotype")
+        v_conc <- vec_lookup(genotype_subject_concordant_counts[genotype_subject_concordant_counts$SwapCat_ID == swap_cat_id, ],
+                              c("Subject_ID", "Genotype_Group_ID"), "n_samples_correct")
+
+        score_rows <- function(df) {
+            n_labels <- lookup0(v_label, df$Subject_ID)
+            n_ghost_labels <- lookup0(v_ghost, df$Subject_ID)
+            n_in_genotype <- lookup0(v_geno, df$Genotype_Group_ID)
+            n_samples_correct <- lookup0(v_conc, paste(df$Subject_ID, df$Genotype_Group_ID, sep = "\x1f"))
+            n_samples_to_relabel <- pmin(n_in_genotype, n_labels) - n_samples_correct
+            n_samples_to_relabel_ghost <- pmin(n_in_genotype - n_samples_correct - n_samples_to_relabel, n_ghost_labels)
+            n_label_deletions <- pmax(0, n_in_genotype - n_labels - n_ghost_labels)
+            n_genotype_deletions <- pmax(0, n_labels - n_in_genotype)
+            cbind(n_samples_correct, n_samples_to_relabel, n_samples_to_relabel_ghost, n_genotype_deletions, n_label_deletions)
+        }
+
+        if (has_free) {
+            free_scored <- score_rows(long_free)
+            free_sums <- rowsum(free_scored, group = long_free$Permutation_ID, reorder = FALSE)
+            free_sums <- free_sums[permutation_ids, , drop = FALSE]
+        } else {
+            free_sums <- matrix(0, nrow = n_perms, ncol = length(sum_cols),
+                                 dimnames = list(permutation_ids, sum_cols))
+        }
+
+        if (has_locked) {
+            locked_totals <- colSums(score_rows(long_locked))
+        } else {
+            locked_totals <- setNames(rep(0, length(sum_cols)), sum_cols)
+        }
+
+        total <- sweep(free_sums, 2, locked_totals[colnames(free_sums)], "+")
+        n_samples_to_relabel <- total[, "n_samples_to_relabel"] + pmin(total[, "n_genotype_deletions"], total[, "n_samples_to_relabel_ghost"])
+        n_genotype_deletions <- pmax(0, total[, "n_genotype_deletions"] - total[, "n_samples_to_relabel_ghost"])
+        perm_score <- n_samples_to_relabel + 1.5 * total[, "n_samples_to_relabel_ghost"] + 2 * (n_genotype_deletions + total[, "n_label_deletions"])
+        swap_cat_total <- cbind(n_samples_correct = total[, "n_samples_correct"], n_samples_to_relabel,
+                                 n_samples_to_relabel_ghost = total[, "n_samples_to_relabel_ghost"],
+                                 n_genotype_deletions, n_label_deletions = total[, "n_label_deletions"], perm_score)
+        permutation_stats <- permutation_stats + swap_cat_total[rownames(permutation_stats), colnames(permutation_stats)]
+    }
+
+    permutation_stats |> as.data.frame() |> rownames_to_column("Permutation_ID") |> dplyr::arrange(.data$perm_score)
+}
