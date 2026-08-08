@@ -168,7 +168,11 @@
                 vertex_size_scalar = sqrt(sum(vertex_size_scalar)),
                 Is_Ghost = FALSE,
                 Is_Anchor = any(Is_Anchor),
-                Sample_ID = dplyr::if_else(count == 1, Sample_ID, paste(paste(count, "samples"), Subject_ID, SwapCat_ID, sep="\n"))
+                ## Include Genotype_Group_ID in the synthetic label so that two
+                ## different groups that happen to share Subject_ID, SwapCat_ID,
+                ## and collapsed size don't collapse to the same vertex name
+                ## (which igraph rejects with "Duplicate vertex names").
+                Sample_ID = dplyr::if_else(count == 1, Sample_ID, paste(paste(count, "samples"), Subject_ID, Genotype_Group_ID, SwapCat_ID, sep="\n"))
             ) |>
             dplyr::select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID, SwapCat_Shape, count, vertex_size_scalar, Is_Ghost, Is_Anchor) |>
             dplyr::distinct()
