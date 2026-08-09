@@ -76,15 +76,30 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
 #' @param max_genotypes (Default = 8) The number of combinations scales in factorial
 #'                      with the number of genotypes in the largest connected component.
 #'                      The algorithm will skip over all components that exceed this size.
+#' @param ghost_penalty (Default = 1.5) The score charged, per sample, for relabeling
+#'                      to a ghost (placeholder) sample rather than a real one. The
+#'                      ordinary relabel penalty is fixed at 1, since all penalties are
+#'                      relative to it. Must be a single positive numeric value; a
+#'                      warning is issued if it is not strictly greater than 1, since
+#'                      otherwise the algorithm may prefer relabeling to a ghost sample
+#'                      even when a valid non-ghost sample swap is already available.
+#' @param deletion_penalty (Default = 2) The score charged, per sample, for a label or
+#'                      genotype deletion (giving up on reconciling that sample
+#'                      entirely). Must be a single positive numeric value; a warning
+#'                      is issued if it is less than twice the relabel penalty (i.e.
+#'                      less than 2), since otherwise the algorithm may prefer
+#'                      inserting/deleting samples even when a valid non-ghost sample
+#'                      swap is already available.
 #'
 #'
 #' @return A MislabelSolver object
 #'
 #' @export
 #'
-solveComprehensiveSearch <- function(object, max_genotypes=8) {
+solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
     set.seed(1)
     print("Starting comprehensive search")
+    .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         print("0 samples relabeled")
         return(object)
@@ -214,7 +229,7 @@ solveComprehensiveSearch <- function(object, max_genotypes=8) {
                     n_samples_to_relabel = n_samples_to_relabel + pmin(n_genotype_deletions, n_samples_to_relabel_ghost),
                     n_genotype_deletions = pmax(0, n_genotype_deletions - n_samples_to_relabel_ghost),
                     ## The weighting scheme is arbitrary right now
-                    perm_score = n_samples_to_relabel + 1.5 * n_samples_to_relabel_ghost + 2 * (n_genotype_deletions + n_label_deletions)
+                    perm_score = n_samples_to_relabel + ghost_penalty * n_samples_to_relabel_ghost + deletion_penalty * (n_genotype_deletions + n_label_deletions)
                 )
             rownames(swap_cat_perm_stats) <- swap_cat_perm_stats$Permutation_ID
             swap_cat_perm_stats <- swap_cat_perm_stats |> dplyr::select(-Permutation_ID)
@@ -429,9 +444,10 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 #'
 #' @export
 #'
-solveComprehensiveSearchFast <- function(object, max_genotypes=8) {
+solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
     set.seed(1)
     print("Starting comprehensive search (fast)")
+    .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         print("0 samples relabeled")
         return(object)
@@ -504,7 +520,8 @@ solveComprehensiveSearchFast <- function(object, max_genotypes=8) {
         ## Base-R vectorized locked/free-aware scoring; see .score_permutations_fast() in helpers-solve.R
         permutation_stats <- .score_permutations_fast(perm_genotypes, free_genotypes, locked_genotypes, cc_swap_cat_ids,
                                                         label_counts, ghost_label_counts, genotype_counts,
-                                                        genotype_subject_concordant_counts)
+                                                        genotype_subject_concordant_counts,
+                                                        ghost_penalty = ghost_penalty, deletion_penalty = deletion_penalty)
 
         best_permutation <- perm_genotypes[permutation_stats$Permutation_ID[1], , drop=FALSE]
 

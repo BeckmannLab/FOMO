@@ -4,7 +4,12 @@
 \alias{solveComprehensiveSearchFast}
 \title{Comprehensive Search Sample Relabeling (Fast)}
 \usage{
-solveComprehensiveSearchFast(object, max_genotypes = 8)
+solveComprehensiveSearchFast(
+  object,
+  max_genotypes = 8,
+  ghost_penalty = 1.5,
+  deletion_penalty = 2
+)
 }
 \arguments{
 \item{object}{A MislabelSolver object}
@@ -12,6 +17,22 @@ solveComprehensiveSearchFast(object, max_genotypes = 8)
 \item{max_genotypes}{(Default = 8) The number of combinations scales in factorial
 with the number of genotypes in the largest connected component.
 The algorithm will skip over all components that exceed this size.}
+
+\item{ghost_penalty}{(Default = 1.5) The score charged, per sample, for relabeling
+to a ghost (placeholder) sample rather than a real one. The
+ordinary relabel penalty is fixed at 1, since all penalties are
+relative to it. Must be a single positive numeric value; a
+warning is issued if it is not strictly greater than 1, since
+otherwise the algorithm may prefer relabeling to a ghost sample
+even when a valid non-ghost sample swap is already available.}
+
+\item{deletion_penalty}{(Default = 2) The score charged, per sample, for a label or
+genotype deletion (giving up on reconciling that sample
+entirely). Must be a single positive numeric value; a warning
+is issued if it is less than twice the relabel penalty (i.e.
+less than 2), since otherwise the algorithm may prefer
+inserting/deleting samples even when a valid non-ghost sample
+swap is already available.}
 }
 \value{
 A MislabelSolver object

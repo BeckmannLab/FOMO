@@ -1,3 +1,58 @@
+## Shared validation for the `ghost_penalty`/`deletion_penalty` arguments used
+## by solveComprehensiveSearch()/solveComprehensiveSearchFast(). The relabel
+## penalty is fixed at 1 (all three penalties are relative to each other, so
+## fixing one just sets the scale); `ghost_penalty` and `deletion_penalty`
+## default to the package's original weights (1.5 and 2) but can be
+## overridden.
+##
+## Recommended limits, and why: comprehensive search scores a candidate
+## permutation as 1 point per ordinary relabel, `ghost_penalty` points per
+## relabel to a ghost (placeholder) sample, and `deletion_penalty` points per
+## sample whose label or genotype it gives up on entirely. If `ghost_penalty`
+## is not strictly greater than the relabel penalty (1), or `deletion_penalty`
+## is not at least twice the relabel penalty, the algorithm can end up
+## preferring to invent a ghost-sample relabel or delete/insert a record even
+## when an ordinary, non-ghost sample swap would have resolved the same
+## ambiguity just as well -- because the "shortcut" would score as good as or
+## better than the honest fix. These two conditions are only warned about,
+## not enforced, since a user may have a considered reason to weight things
+## differently. Non-positive values are always rejected, since a
+## non-positive penalty would make the search prefer *more* ghost relabels or
+## deletions, the opposite of a penalty's purpose.
+.validate_search_penalties <- function(ghost_penalty, deletion_penalty) {
+    relabel_penalty <- 1
+
+    assertthat::assert_that(
+        rlang::is_bare_numeric(ghost_penalty, n = 1) && !is.na(ghost_penalty),
+        msg = "'ghost_penalty' must be a single (length-1) numeric value"
+    )
+    assertthat::assert_that(
+        rlang::is_bare_numeric(deletion_penalty, n = 1) && !is.na(deletion_penalty),
+        msg = "'deletion_penalty' must be a single (length-1) numeric value"
+    )
+    assertthat::assert_that(
+        ghost_penalty > 0,
+        msg = "'ghost_penalty' must be positive"
+    )
+    assertthat::assert_that(
+        deletion_penalty > 0,
+        msg = "'deletion_penalty' must be positive"
+    )
+
+    if (ghost_penalty <= relabel_penalty) {
+        warning("'ghost_penalty' (", ghost_penalty, ") is not greater than the relabel penalty (",
+                relabel_penalty, "); the algorithm may prefer relabeling to a ghost sample ",
+                "even when a valid non-ghost sample swap is already available.", call. = FALSE)
+    }
+    if (deletion_penalty < 2 * relabel_penalty) {
+        warning("'deletion_penalty' (", deletion_penalty, ") is less than twice the relabel penalty (",
+                relabel_penalty, "); the algorithm may prefer inserting/deleting samples ",
+                "even when a valid non-ghost sample swap is already available.", call. = FALSE)
+    }
+
+    invisible(NULL)
+}
+
 .update_solve_state <- function(object, initialization=FALSE) {
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         return(object)
@@ -719,7 +774,8 @@
 ## solveComprehensiveSearchFast().
 .score_permutations_fast <- function(perm_genotypes, free_genotypes, locked_genotypes, cc_swap_cat_ids,
                                       label_counts, ghost_label_counts, genotype_counts,
-                                      genotype_subject_concordant_counts) {
+                                      genotype_subject_concordant_counts,
+                                      ghost_penalty = 1.5, deletion_penalty = 2) {
     n_perms <- nrow(perm_genotypes)
     permutation_ids <- rownames(perm_genotypes)
     sum_cols <- c("n_samples_correct", "n_samples_to_relabel", "n_samples_to_relabel_ghost",
@@ -792,7 +848,7 @@
         total <- sweep(free_sums, 2, locked_totals[colnames(free_sums)], "+")
         n_samples_to_relabel <- total[, "n_samples_to_relabel"] + pmin(total[, "n_genotype_deletions"], total[, "n_samples_to_relabel_ghost"])
         n_genotype_deletions <- pmax(0, total[, "n_genotype_deletions"] - total[, "n_samples_to_relabel_ghost"])
-        perm_score <- n_samples_to_relabel + 1.5 * total[, "n_samples_to_relabel_ghost"] + 2 * (n_genotype_deletions + total[, "n_label_deletions"])
+        perm_score <- n_samples_to_relabel + ghost_penalty * total[, "n_samples_to_relabel_ghost"] + deletion_penalty * (n_genotype_deletions + total[, "n_label_deletions"])
         swap_cat_total <- cbind(n_samples_correct = total[, "n_samples_correct"], n_samples_to_relabel,
                                  n_samples_to_relabel_ghost = total[, "n_samples_to_relabel_ghost"],
                                  n_genotype_deletions, n_label_deletions = total[, "n_label_deletions"], perm_score)
