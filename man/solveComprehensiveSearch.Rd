@@ -8,7 +8,7 @@ solveComprehensiveSearch(
   object,
   max_genotypes = 8,
   ghost_penalty = 1.5,
-  deletion_penalty = 2
+  deletion_penalty = 4
 )
 }
 \arguments{
@@ -26,13 +26,20 @@ warning is issued if it is not strictly greater than 1, since
 otherwise the algorithm may prefer relabeling to a ghost sample
 even when a valid non-ghost sample swap is already available.}
 
-\item{deletion_penalty}{(Default = 2) The score charged, per sample, for a label or
+\item{deletion_penalty}{(Default = 4) The score charged, per sample, for a label or
 genotype deletion (giving up on reconciling that sample
 entirely). Must be a single positive numeric value; a warning
 is issued if it is less than twice the relabel penalty (i.e.
 less than 2), since otherwise the algorithm may prefer
 inserting/deleting samples even when a valid non-ghost sample
-swap is already available.}
+swap is already available. (This default was doubled from 2 to
+4 when a double-counting bug was fixed: a single orphaned
+sample -- e.g. one displaced by relabeling another sample to a
+duplicate of it -- was previously counted as both a genotype
+deletion and a label deletion and penalized for both, so the
+default was doubled to keep the effective per-sample deletion
+cost, and hence overall solver behavior, unchanged from earlier
+package versions in the common case.)}
 }
 \value{
 A MislabelSolver object

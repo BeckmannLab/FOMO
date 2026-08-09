@@ -2,8 +2,11 @@
 ## by solveGlobalSearch()/solveGlobalSearchFast(). The relabel
 ## penalty is fixed at 1 (all three penalties are relative to each other, so
 ## fixing one just sets the scale); `ghost_penalty` and `deletion_penalty`
-## default to the package's original weights (1.5 and 2) but can be
-## overridden.
+## default to the package's current weights (1.5 and 4) but can be
+## overridden. (The deletion default was doubled from 2 to 4 -- see
+## solveGlobalSearch()'s documentation -- when a double-counting bug in the
+## deletion-penalty scoring was fixed, to keep the effective per-sample
+## deletion cost unchanged from earlier package versions in the common case.)
 ##
 ## Recommended limits, and why: global search scores a candidate
 ## permutation as 1 point per ordinary relabel, `ghost_penalty` points per
@@ -815,7 +818,7 @@
 .score_permutations_fast <- function(perm_genotypes, free_genotypes, locked_genotypes, cc_swap_cat_ids,
                                       label_counts, ghost_label_counts, genotype_counts,
                                       genotype_subject_concordant_counts,
-                                      ghost_penalty = 1.5, deletion_penalty = 2) {
+                                      ghost_penalty = 1.5, deletion_penalty = 4) {
     n_perms <- nrow(perm_genotypes)
     permutation_ids <- rownames(perm_genotypes)
     sum_cols <- c("n_samples_correct", "n_samples_to_relabel", "n_samples_to_relabel_ghost",
@@ -888,7 +891,7 @@
         total <- sweep(free_sums, 2, locked_totals[colnames(free_sums)], "+")
         n_samples_to_relabel <- total[, "n_samples_to_relabel"] + pmin(total[, "n_genotype_deletions"], total[, "n_samples_to_relabel_ghost"])
         n_genotype_deletions <- pmax(0, total[, "n_genotype_deletions"] - total[, "n_samples_to_relabel_ghost"])
-        perm_score <- n_samples_to_relabel + ghost_penalty * total[, "n_samples_to_relabel_ghost"] + deletion_penalty * (n_genotype_deletions + total[, "n_label_deletions"])
+        perm_score <- n_samples_to_relabel + ghost_penalty * total[, "n_samples_to_relabel_ghost"] + deletion_penalty * pmax(n_genotype_deletions, total[, "n_label_deletions"])
         swap_cat_total <- cbind(n_samples_correct = total[, "n_samples_correct"], n_samples_to_relabel,
                                  n_samples_to_relabel_ghost = total[, "n_samples_to_relabel_ghost"],
                                  n_genotype_deletions, n_label_deletions = total[, "n_label_deletions"], perm_score)

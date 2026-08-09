@@ -85,20 +85,27 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
 #'                      warning is issued if it is not strictly greater than 1, since
 #'                      otherwise the algorithm may prefer relabeling to a ghost sample
 #'                      even when a valid non-ghost sample swap is already available.
-#' @param deletion_penalty (Default = 2) The score charged, per sample, for a label or
+#' @param deletion_penalty (Default = 4) The score charged, per sample, for a label or
 #'                      genotype deletion (giving up on reconciling that sample
 #'                      entirely). Must be a single positive numeric value; a warning
 #'                      is issued if it is less than twice the relabel penalty (i.e.
 #'                      less than 2), since otherwise the algorithm may prefer
 #'                      inserting/deleting samples even when a valid non-ghost sample
-#'                      swap is already available.
+#'                      swap is already available. (This default was doubled from 2 to
+#'                      4 when a double-counting bug was fixed: a single orphaned
+#'                      sample -- e.g. one displaced by relabeling another sample to a
+#'                      duplicate of it -- was previously counted as both a genotype
+#'                      deletion and a label deletion and penalized for both, so the
+#'                      default was doubled to keep the effective per-sample deletion
+#'                      cost, and hence overall solver behavior, unchanged from earlier
+#'                      package versions in the common case.)
 #'
 #'
 #' @return A MislabelSolver object
 #'
 #' @export
 #'
-solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
     set.seed(1)
     print("Starting global search")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
@@ -231,7 +238,7 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
                     n_samples_to_relabel = n_samples_to_relabel + pmin(n_genotype_deletions, n_samples_to_relabel_ghost),
                     n_genotype_deletions = pmax(0, n_genotype_deletions - n_samples_to_relabel_ghost),
                     ## The weighting scheme is arbitrary right now
-                    perm_score = n_samples_to_relabel + ghost_penalty * n_samples_to_relabel_ghost + deletion_penalty * (n_genotype_deletions + n_label_deletions)
+                    perm_score = n_samples_to_relabel + ghost_penalty * n_samples_to_relabel_ghost + deletion_penalty * pmax(n_genotype_deletions, n_label_deletions)
                 )
             rownames(swap_cat_perm_stats) <- swap_cat_perm_stats$Permutation_ID
             swap_cat_perm_stats <- swap_cat_perm_stats |> dplyr::select(-Permutation_ID)
@@ -317,7 +324,7 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
 #'
 #' @export
 #'
-solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
     .Deprecated("solveGlobalSearch", package = "fomo",
                 msg = paste0("'solveComprehensiveSearch()' was renamed to 'solveGlobalSearch()' ",
                             "and is now a deprecated alias for it."))
@@ -442,7 +449,7 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 #'
 #' @export
 #'
-solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
     set.seed(1)
     print("Starting global search (fast)")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
@@ -586,7 +593,7 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
 #'
 #' @export
 #'
-solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
     .Deprecated("solveGlobalSearchFast", package = "fomo",
                 msg = paste0("'solveComprehensiveSearchFast()' was renamed to 'solveGlobalSearchFast()' ",
                             "and is now a deprecated alias for it."))
