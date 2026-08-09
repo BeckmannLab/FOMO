@@ -321,13 +321,6 @@ solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5,
 solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_concordant_vertices=FALSE) {
     set.seed(1)
     print("Starting local search")
-    calc_scaled_entropy <- function(x) {
-        #n <- sum(x)
-        #return(-n*sum(x/n *log(x/n), na.rm=TRUE))
-        # n <- sum(x)
-        # return(n*sum(log(x/n), na.rm=TRUE))
-        return(sum(x*log(x/sum(x)), na.rm=TRUE))
-    }
 
     for (i in 1:n_iter) {
         print(paste("Local search iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
@@ -339,29 +332,7 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
         }
         votes <- table(object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
                        object@.solve_state$unsolved_relabel_data$Subject_ID)
-        base_entropies <- apply(votes, MARGIN=1, calc_scaled_entropy)
-
-        calc_swapped_delta_entropy <- function(swap_from_subject, swap_from_genotype,
-                                               swap_to_subject, swap_to_genotype) {
-            delta <- 0
-            if (!is.na(swap_from_genotype)) {
-                genotype_base_entropy <- base_entropies[swap_from_genotype]
-                genotype_votes_vec <- votes[swap_from_genotype, ]
-                genotype_votes_vec[swap_from_subject] <- genotype_votes_vec[swap_from_subject] - 1
-                genotype_votes_vec[swap_to_subject] <- genotype_votes_vec[swap_to_subject] + 1
-                genotype_new_entropy <- calc_scaled_entropy(genotype_votes_vec)
-                delta <- delta + genotype_new_entropy - genotype_base_entropy
-            }
-            if (!is.na(swap_to_genotype)) {
-                genotype_base_entropy <- base_entropies[swap_to_genotype]
-                genotype_votes_vec <- votes[swap_to_genotype, ]
-                genotype_votes_vec[swap_to_subject] <- genotype_votes_vec[swap_to_subject] - 1
-                genotype_votes_vec[swap_from_subject] <- genotype_votes_vec[swap_from_subject] + 1
-                genotype_new_entropy <- calc_scaled_entropy(genotype_votes_vec)
-                delta <- delta + genotype_new_entropy - genotype_base_entropy
-            }
-            return(delta)
-        }
+        base_entropies <- apply(votes, MARGIN=1, .calc_scaled_entropy)
 
         neighbors <- .find_neighbors(object, include_ghost, filter_concordant_vertices) |>
             dplyr::left_join(
@@ -388,11 +359,12 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
             if (nrow(cc_neighbors) == 0) {next}
             cc_neighbor_objectives <- cc_neighbors |>
                 dplyr::mutate(
-                    delta = mapply(calc_swapped_delta_entropy,
+                    delta = mapply(.calc_swapped_delta_entropy,
                                    swap_from_subject=Subject_A,
                                    swap_from_genotype=Genotype_Group_A,
                                    swap_to_subject=Subject_B,
-                                   swap_to_genotype=Genotype_Group_B)
+                                   swap_to_genotype=Genotype_Group_B,
+                                   MoreArgs=list(votes=votes, base_entropies=base_entropies))
                 )
             cc_relabels <- cc_neighbor_objectives |>
                 dplyr::filter(delta > 0, delta == max(delta))
@@ -634,7 +606,7 @@ solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_c
                 dplyr::filter(Component_ID == curr_component_id)
 
             if (nrow(cc_neighbors) == 0) {next}
-            ## Closed-form vectorized delta instead of mapply(calc_swapped_delta_entropy, ...);
+            ## Closed-form vectorized delta instead of mapply(.calc_swapped_delta_entropy, ...);
             ## see .calc_swapped_delta_entropy_fast() in helpers-solve.R for the derivation.
             cc_neighbor_objectives <- cc_neighbors |>
                 dplyr::mutate(

@@ -686,6 +686,46 @@
     return(unique_pairs)
 }
 
+## Extracted from solveLocalSearch()'s body (where both were previously
+## defined as inline closures) since neither needs access to solveLocalSearch()'s
+## other local variables beyond what's now passed explicitly as arguments.
+##
+## calc_scaled_entropy() only ever used its own argument `x`, so it moves out
+## unchanged. calc_swapped_delta_entropy() referenced `votes` and
+## `base_entropies` from solveLocalSearch()'s enclosing scope (recomputed
+## each outer iteration from the object's current state); it now takes both
+## as explicit arguments instead, matching the pattern already used by
+## .calc_swapped_delta_entropy_fast() below.
+.calc_scaled_entropy <- function(x) {
+    #n <- sum(x)
+    #return(-n*sum(x/n *log(x/n), na.rm=TRUE))
+    # n <- sum(x)
+    # return(n*sum(log(x/n), na.rm=TRUE))
+    return(sum(x*log(x/sum(x)), na.rm=TRUE))
+}
+
+.calc_swapped_delta_entropy <- function(votes, base_entropies, swap_from_subject, swap_from_genotype,
+                                         swap_to_subject, swap_to_genotype) {
+    delta <- 0
+    if (!is.na(swap_from_genotype)) {
+        genotype_base_entropy <- base_entropies[swap_from_genotype]
+        genotype_votes_vec <- votes[swap_from_genotype, ]
+        genotype_votes_vec[swap_from_subject] <- genotype_votes_vec[swap_from_subject] - 1
+        genotype_votes_vec[swap_to_subject] <- genotype_votes_vec[swap_to_subject] + 1
+        genotype_new_entropy <- .calc_scaled_entropy(genotype_votes_vec)
+        delta <- delta + genotype_new_entropy - genotype_base_entropy
+    }
+    if (!is.na(swap_to_genotype)) {
+        genotype_base_entropy <- base_entropies[swap_to_genotype]
+        genotype_votes_vec <- votes[swap_to_genotype, ]
+        genotype_votes_vec[swap_to_subject] <- genotype_votes_vec[swap_to_subject] - 1
+        genotype_votes_vec[swap_from_subject] <- genotype_votes_vec[swap_from_subject] + 1
+        genotype_new_entropy <- .calc_scaled_entropy(genotype_votes_vec)
+        delta <- delta + genotype_new_entropy - genotype_base_entropy
+    }
+    return(delta)
+}
+
 ## Closed-form, numerically exact replacement for the per-swap entropy delta
 ## used by solveLocalSearch()'s calc_scaled_entropy()-based computation.
 ##
