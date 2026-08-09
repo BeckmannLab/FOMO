@@ -189,9 +189,9 @@ plot(mislabel_solver)
 ### Solving
 
 FOMO provides four solver functions to find likely relabels: solveMajority, 
-solveComprehensiveSearch, solveLocalSearch, and solveEnsemble. In most cases,
+solveGlobalSearch, solveLocalSearch, and solveEnsemble. In most cases,
 researchers should use the function solveEnsemble, which runs the 
-solveComprehensiveSearch, solveMajority, and solveLocalSearch in a loop.
+solveGlobalSearch, solveMajority, and solveLocalSearch in a loop.
 
 ```{r}
 

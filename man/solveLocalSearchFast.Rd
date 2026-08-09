@@ -37,6 +37,6 @@ to 3,000 candidate subjects in testing, with byte-for-bit identical swap
 selections (and therefore identical output) in every case checked.
 }
 \details{
-Use via \code{solveEnsemble(object, use_solvers = c("majority", "comprehensive", "local_fast"))} rather than calling this directly, unless you are
+Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local_fast"))} rather than calling this directly, unless you are
 composing your own solver loop.
 }

@@ -1,11 +1,11 @@
 ## Shared validation for the `ghost_penalty`/`deletion_penalty` arguments used
-## by solveComprehensiveSearch()/solveComprehensiveSearchFast(). The relabel
+## by solveGlobalSearch()/solveGlobalSearchFast(). The relabel
 ## penalty is fixed at 1 (all three penalties are relative to each other, so
 ## fixing one just sets the scale); `ghost_penalty` and `deletion_penalty`
 ## default to the package's original weights (1.5 and 2) but can be
 ## overridden.
 ##
-## Recommended limits, and why: comprehensive search scores a candidate
+## Recommended limits, and why: global search scores a candidate
 ## permutation as 1 point per ordinary relabel, `ghost_penalty` points per
 ## relabel to a ghost (placeholder) sample, and `deletion_penalty` points per
 ## sample whose label or genotype it gives up on entirely. If `ghost_penalty`
@@ -785,7 +785,7 @@
 }
 
 ## Base-R vectorized replacement for the per-swap-category permutation-scoring
-## block in solveComprehensiveSearch() (the loop that melts perm_genotypes,
+## block in solveGlobalSearch() (the loop that melts perm_genotypes,
 ## left_joins it against label/ghost/genotype/concordant count tables, and
 ## group_by/summarizes per Permutation_ID). Two independent changes, both
 ## exact (not approximations):
@@ -794,7 +794,7 @@
 ##    the component, but only the (at most max_genotypes) *free* columns
 ##    actually vary across permutations -- every *locked* column repeats the
 ##    same subject ID in all ~n_perms rows, because that genotype's identity
-##    was already resolved before comprehensive search reached this
+##    was already resolved before global search reached this
 ##    component. Locked columns can outnumber free ones considerably in a
 ##    large component. Their contribution to each permutation's score is
 ##    therefore a constant, computable once from a single row rather than
@@ -811,7 +811,7 @@
 ## permutation in every case tested, ~16x faster on that case (~1.2x on a
 ## small synthetic case with 0 locked genotypes, where fixed overhead
 ## dominates either way and there is nothing to separate out). See
-## solveComprehensiveSearchFast().
+## solveGlobalSearchFast().
 .score_permutations_fast <- function(perm_genotypes, free_genotypes, locked_genotypes, cc_swap_cat_ids,
                                       label_counts, ghost_label_counts, genotype_counts,
                                       genotype_subject_concordant_counts,

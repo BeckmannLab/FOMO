@@ -6,7 +6,7 @@
 \usage{
 solveEnsemble(
   object,
-  use_solvers = c("majority", "comprehensive", "local"),
+  use_solvers = c("majority", "global", "local"),
   time_limit = 2 * 60 * 60,
   seed = 1
 )
@@ -14,17 +14,21 @@ solveEnsemble(
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{use_solvers}{(Default = \code{c("majority", "comprehensive", "local")}) A
+\item{use_solvers}{(Default = \code{c("majority", "global", "local")}) A
 character vector giving the subset of single-method solvers to run on
 each iteration of the ensemble loop. Must be a non-empty subset of
-\code{"majority"}, \code{"comprehensive"}, \code{"comprehensive_fast"}, \code{"local"}, and
+\code{"majority"}, \code{"global"}, \code{"global_fast"}, \code{"local"}, and
 \code{"local_fast"}. Any solver left out of \code{use_solvers} is skipped
-entirely. For example, setting \code{use_solvers} to \code{c("comprehensive", "majority")} will skip local search. \code{"local_fast"} is
-\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} and \code{"comprehensive_fast"} is
-\code{\link[=solveComprehensiveSearchFast]{solveComprehensiveSearchFast()}}, numerically exact but faster
-alternatives to \code{"local"} (\code{\link[=solveLocalSearch]{solveLocalSearch()}}) and \code{"comprehensive"}
-(\code{\link[=solveComprehensiveSearch]{solveComprehensiveSearch()}}) respectively; each pair are alternative
-implementations of the same step and cannot both be requested at once.}
+entirely. For example, setting \code{use_solvers} to \code{c("global", "majority")} will skip local search. \code{"local_fast"} is
+\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} and \code{"global_fast"} is
+\code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}}, numerically exact but faster
+alternatives to \code{"local"} (\code{\link[=solveLocalSearch]{solveLocalSearch()}}) and \code{"global"}
+(\code{\link[=solveGlobalSearch]{solveGlobalSearch()}}) respectively; each pair are alternative
+implementations of the same step and cannot both be requested at once.
+\code{"comprehensive"} and \code{"comprehensive_fast"} are accepted as deprecated
+aliases for \code{"global"} and \code{"global_fast"} (global search was
+previously called "comprehensive search"); using either issues a
+deprecation warning.}
 
 \item{time_limit}{(Default = 7200, i.e. 2 hours) The maximum time, in
 seconds, to let the solver run. Elapsed time is checked once per
@@ -40,5 +44,5 @@ A MislabelSolver object
 }
 \description{
 This ensemble solver uses a combination of majority-search heuristic,
-comprehensive search, and local search to identify and correct mislabels
+global search, and local search to identify and correct mislabels
 }

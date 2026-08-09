@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods-solve.R
 \name{solveComprehensiveSearch}
 \alias{solveComprehensiveSearch}
-\title{Comprehensive-based Sample Relabeling}
+\title{Comprehensive-based Sample Relabeling (deprecated)}
 \usage{
 solveComprehensiveSearch(
   object,
@@ -38,7 +38,8 @@ swap is already available.}
 A MislabelSolver object
 }
 \description{
-This comprehensive function permutes over all combinations of assigning a
-Subject_ID to a Genotype_Group_ID, then picks the assignment that implies the
-fewest number of sample mislabels and deletions.
+\strong{Deprecated.} Comprehensive search was renamed to "global search"
+for clarity. This function is a deprecated alias that issues a warning
+and calls \code{\link[=solveGlobalSearch]{solveGlobalSearch()}}; update calling code to use
+\code{\link[=solveGlobalSearch]{solveGlobalSearch()}} directly.
 }

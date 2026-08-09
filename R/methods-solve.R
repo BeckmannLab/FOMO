@@ -66,11 +66,13 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
     return(object)
 }
 
-#' Comprehensive-based Sample Relabeling
+#' Global Search Sample Relabeling
 #'
-#' This comprehensive function permutes over all combinations of assigning a
+#' This global search function permutes over all combinations of assigning a
 #' Subject_ID to a Genotype_Group_ID, then picks the assignment that implies the
-#' fewest number of sample mislabels and deletions.
+#' fewest number of sample mislabels and deletions. Formerly (and still
+#' commonly) known as "comprehensive search"; see [solveComprehensiveSearch()]
+#' for the deprecated alias.
 #'
 #' @param object A MislabelSolver object
 #' @param max_genotypes (Default = 8) The number of combinations scales in factorial
@@ -96,9 +98,9 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
 #'
 #' @export
 #'
-solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
     set.seed(1)
-    print("Starting comprehensive search")
+    print("Starting global search")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         print("0 samples relabeled")
@@ -302,6 +304,27 @@ solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5,
     return(object)
 }
 
+#' Comprehensive-based Sample Relabeling (deprecated)
+#'
+#' \strong{Deprecated.} Comprehensive search was renamed to "global search"
+#' for clarity. This function is a deprecated alias that issues a warning
+#' and calls [solveGlobalSearch()]; update calling code to use
+#' [solveGlobalSearch()] directly.
+#'
+#' @inheritParams solveGlobalSearch
+#'
+#' @return A MislabelSolver object
+#'
+#' @export
+#'
+solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+    .Deprecated("solveGlobalSearch", package = "fomo",
+                msg = paste0("'solveComprehensiveSearch()' was renamed to 'solveGlobalSearch()' ",
+                            "and is now a deprecated alias for it."))
+    solveGlobalSearch(object, max_genotypes = max_genotypes,
+                      ghost_penalty = ghost_penalty, deletion_penalty = deletion_penalty)
+}
+
 #' Local Search Sample Relabeling
 #'
 #' This search function looks through all possible swaps of 2 samples, and selects
@@ -388,37 +411,40 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
     return(object)
 }
 
-#' Comprehensive Search Sample Relabeling (Fast)
+#' Global Search Sample Relabeling (Fast)
 #'
-#' A drop-in, numerically exact replacement for [solveComprehensiveSearch()]
+#' A drop-in, numerically exact replacement for [solveGlobalSearch()]
 #' that scores permutations without [reshape2::melt()]/`dplyr` joins on the
 #' full genotype-by-permutation table. Two independent changes: (1) a
-#' component's *locked* genotype columns (already resolved before
-#' comprehensive search reached this component) are constant across every
+#' component's *locked* genotype columns (already resolved before global
+#' search reached this component) are constant across every
 #' permutation, so their score contribution is computed once from a single
 #' row instead of melted and joined on every one of up to 8! = 40,320
 #' permutation rows; (2) the per-swap-category scoring itself is done with
 #' named-vector lookups and `rowsum()` instead of
 #' `dplyr::left_join()`/`group_by()`/`summarize()`, since profiling showed
 #' the original's cost dominated by join/data-mask overhead rather than the
-#' arithmetic. Verified against [solveComprehensiveSearch()] on real
+#' arithmetic. Verified against [solveGlobalSearch()] on real
 #' mid-solve state (8 free / 16 locked genotypes, 40,320 permutations, 6
 #' swap categories): identical scores and identical best permutation, ~16x
 #' faster on that case.
 #'
+#' Formerly (and still commonly) known as "comprehensive search (fast)";
+#' see [solveComprehensiveSearchFast()] for the deprecated alias.
+#'
 #' Use via `solveEnsemble(object, use_solvers = c("majority",
-#' "comprehensive_fast", "local"))` rather than calling this directly,
+#' "global_fast", "local"))` rather than calling this directly,
 #' unless you are composing your own solver loop.
 #'
-#' @inheritParams solveComprehensiveSearch
+#' @inheritParams solveGlobalSearch
 #'
 #' @return A MislabelSolver object
 #'
 #' @export
 #'
-solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
     set.seed(1)
-    print("Starting comprehensive search (fast)")
+    print("Starting global search (fast)")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         print("0 samples relabeled")
@@ -547,6 +573,27 @@ solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=
     return(object)
 }
 
+#' Comprehensive Search Sample Relabeling (Fast, deprecated)
+#'
+#' \strong{Deprecated.} Comprehensive search was renamed to "global search"
+#' for clarity. This function is a deprecated alias that issues a warning
+#' and calls [solveGlobalSearchFast()]; update calling code to use
+#' [solveGlobalSearchFast()] directly.
+#'
+#' @inheritParams solveGlobalSearch
+#'
+#' @return A MislabelSolver object
+#'
+#' @export
+#'
+solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=2) {
+    .Deprecated("solveGlobalSearchFast", package = "fomo",
+                msg = paste0("'solveComprehensiveSearchFast()' was renamed to 'solveGlobalSearchFast()' ",
+                            "and is now a deprecated alias for it."))
+    solveGlobalSearchFast(object, max_genotypes = max_genotypes,
+                          ghost_penalty = ghost_penalty, deletion_penalty = deletion_penalty)
+}
+
 #' Local Search Sample Relabeling (Fast)
 #'
 #' A drop-in, numerically exact replacement for [solveLocalSearch()] that
@@ -560,7 +607,7 @@ solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=
 #' to 3,000 candidate subjects in testing, with byte-for-bit identical swap
 #' selections (and therefore identical output) in every case checked.
 #'
-#' Use via `solveEnsemble(object, use_solvers = c("majority", "comprehensive",
+#' Use via `solveEnsemble(object, use_solvers = c("majority", "global",
 #' "local_fast"))` rather than calling this directly, unless you are
 #' composing your own solver loop.
 #'
@@ -637,21 +684,25 @@ solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_c
 #' Ensemble Sample Relabeling
 #'
 #' This ensemble solver uses a combination of majority-search heuristic,
-#' comprehensive search, and local search to identify and correct mislabels
+#' global search, and local search to identify and correct mislabels
 #'
 #' @param object A MislabelSolver object
-#' @param use_solvers (Default = `c("majority", "comprehensive", "local")`) A
+#' @param use_solvers (Default = `c("majority", "global", "local")`) A
 #'   character vector giving the subset of single-method solvers to run on
 #'   each iteration of the ensemble loop. Must be a non-empty subset of
-#'   `"majority"`, `"comprehensive"`, `"comprehensive_fast"`, `"local"`, and
+#'   `"majority"`, `"global"`, `"global_fast"`, `"local"`, and
 #'   `"local_fast"`. Any solver left out of `use_solvers` is skipped
-#'   entirely. For example, setting `use_solvers` to `c("comprehensive",
+#'   entirely. For example, setting `use_solvers` to `c("global",
 #'   "majority")` will skip local search. `"local_fast"` is
-#'   [solveLocalSearchFast()] and `"comprehensive_fast"` is
-#'   [solveComprehensiveSearchFast()], numerically exact but faster
-#'   alternatives to `"local"` ([solveLocalSearch()]) and `"comprehensive"`
-#'   ([solveComprehensiveSearch()]) respectively; each pair are alternative
+#'   [solveLocalSearchFast()] and `"global_fast"` is
+#'   [solveGlobalSearchFast()], numerically exact but faster
+#'   alternatives to `"local"` ([solveLocalSearch()]) and `"global"`
+#'   ([solveGlobalSearch()]) respectively; each pair are alternative
 #'   implementations of the same step and cannot both be requested at once.
+#'   `"comprehensive"` and `"comprehensive_fast"` are accepted as deprecated
+#'   aliases for `"global"` and `"global_fast"` (global search was
+#'   previously called "comprehensive search"); using either issues a
+#'   deprecation warning.
 #' @param time_limit (Default = 7200, i.e. 2 hours) The maximum time, in
 #'   seconds, to let the solver run. Elapsed time is checked once per
 #'   iteration of the while loop; if `time_limit` is reached before the
@@ -664,8 +715,9 @@ solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_c
 #'
 #' @export
 #'
-solveEnsemble <- function(object, use_solvers=c("majority", "comprehensive", "local"), time_limit=2 * 60 * 60, seed=1) {
-    valid_solvers <- c("majority", "comprehensive", "comprehensive_fast", "local", "local_fast")
+solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), time_limit=2 * 60 * 60, seed=1) {
+    valid_solvers <- c("majority", "global", "global_fast", "local", "local_fast",
+                       "comprehensive", "comprehensive_fast")
     assertthat::assert_that(
         is.character(use_solvers) && length(use_solvers) > 0,
         msg = "'use_solvers' must be a non-empty character vector"
@@ -674,15 +726,31 @@ solveEnsemble <- function(object, use_solvers=c("majority", "comprehensive", "lo
         all(use_solvers %in% valid_solvers),
         msg = paste0("'use_solvers' must only contain values from: ", paste(valid_solvers, collapse=", "))
     )
+
+    ## "comprehensive"/"comprehensive_fast" are deprecated aliases for
+    ## "global"/"global_fast" (global search was previously called
+    ## "comprehensive search"). Translate them to their canonical name
+    ## before any further validation or dispatch, so the rest of this
+    ## function only ever has to deal with the current names.
+    deprecated_used <- intersect(use_solvers, c("comprehensive", "comprehensive_fast"))
+    if (length(deprecated_used) > 0) {
+        replacement_names <- sub("^comprehensive", "global", deprecated_used)
+        warning("'", paste(deprecated_used, collapse="', '"), "' in 'use_solvers' ",
+               "is deprecated: comprehensive search has been renamed to global search. ",
+               "Use '", paste(replacement_names, collapse="', '"), "' instead.", call. = FALSE)
+        use_solvers[use_solvers == "comprehensive"] <- "global"
+        use_solvers[use_solvers == "comprehensive_fast"] <- "global_fast"
+    }
+    use_solvers <- unique(use_solvers)
+
     assertthat::assert_that(
         !all(c("local", "local_fast") %in% use_solvers),
         msg = "'use_solvers' cannot contain both 'local' and 'local_fast' -- they are alternative implementations of the same step"
     )
     assertthat::assert_that(
-        !all(c("comprehensive", "comprehensive_fast") %in% use_solvers),
-        msg = "'use_solvers' cannot contain both 'comprehensive' and 'comprehensive_fast' -- they are alternative implementations of the same step"
+        !all(c("global", "global_fast") %in% use_solvers),
+        msg = "'use_solvers' cannot contain both 'global' and 'global_fast' -- they are alternative implementations of the same step"
     )
-    use_solvers <- unique(use_solvers)
 
     assertthat::assert_that(
         is.numeric(time_limit) && length(time_limit) == 1 && !is.na(time_limit) && time_limit >= 0,
@@ -707,20 +775,20 @@ solveEnsemble <- function(object, use_solvers=c("majority", "comprehensive", "lo
         }
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
-        comprehensive_solver <- if ("comprehensive_fast" %in% use_solvers) solveComprehensiveSearchFast else solveComprehensiveSearch
-        run_comprehensive <- "comprehensive" %in% use_solvers || "comprehensive_fast" %in% use_solvers
-        if (run_comprehensive) object <- comprehensive_solver(object)
+        global_solver <- if ("global_fast" %in% use_solvers) solveGlobalSearchFast else solveGlobalSearch
+        run_global <- "global" %in% use_solvers || "global_fast" %in% use_solvers
+        if (run_global) object <- global_solver(object)
         if ("majority" %in% use_solvers) object <- solveMajoritySearch(object)
-        if (run_comprehensive) object <- comprehensive_solver(object)
+        if (run_global) object <- global_solver(object)
 
-        comp_relabel_data <- object@.solve_state$unsolved_relabel_data
+        global_relabel_data <- object@.solve_state$unsolved_relabel_data
         if ("local" %in% use_solvers || "local_fast" %in% use_solvers) {
             local_solver <- if ("local_fast" %in% use_solvers) solveLocalSearchFast else solveLocalSearch
             object <- local_solver(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=TRUE)
 
             ## If local search found no swaps, try allowing concordant vertices
-            if (nrow(comp_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
-                if (identical(comp_relabel_data, object@.solve_state$unsolved_relabel_data)) {
+            if (nrow(global_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
+                if (identical(global_relabel_data, object@.solve_state$unsolved_relabel_data)) {
                     object <- local_solver(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=FALSE)
                 }
             }
