@@ -926,6 +926,19 @@
         ## right values, and the reindex below then fails with "subscript out
         ## of bounds". Row order is never changed by sweep()/cbind() above, so
         ## it's always safe to relabel directly from permutation_ids.
+        ##
+        ## Considered using `drop = FALSE` on the six `total[, "col"]`
+        ## extractions above instead of patching rownames here, but that
+        ## turns out to be *more* fragile, not less: `pmax()`/`pmin()` silently
+        ## drop matrix-ness (and with it, dimnames) whenever one argument is a
+        ## bare scalar -- e.g. `pmax(0, total[, "x", drop = FALSE])` returns a
+        ## plain unnamed vector, not a 1-column matrix, even though the input
+        ## was explicitly kept 2-D -- and both `n_samples_to_relabel` and
+        ## `n_genotype_deletions` above are combined with a bare `0` via
+        ## `pmax()`. Getting drop=FALSE to actually work end-to-end here would
+        ## require rewriting those pmax()/pmin() calls too, for no benefit
+        ## over just reasserting the (known-correct) rownames once, in one
+        ## place, right before they matter.
         rownames(swap_cat_total) <- permutation_ids
         permutation_stats <- permutation_stats + swap_cat_total[rownames(permutation_stats), colnames(permutation_stats)]
     }

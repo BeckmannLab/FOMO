@@ -121,7 +121,15 @@ writeOutput <- function(object, dir_path=NULL) {
         genotyped_sample_ids <- sample_summary |> dplyr::filter(!Ghost) |> dplyr::pull(Init_Sample_ID)
         for (sample_id in genotyped_sample_ids) {
             neighbor_samples <- names(which(object@genotype_matrix[sample_id, ] == 1))
-            neighbor_matrix <- object@genotype_matrix[neighbor_samples, neighbor_samples]
+            ## drop = FALSE: if sample_id has exactly one neighbor, a plain
+            ## `[` here would silently collapse this to a bare scalar (both
+            ## dimensions have extent 1); upper.tri() below happens to treat
+            ## that scalar like a 1x1 matrix and still return the right
+            ## (empty) answer, but only by coincidence. Forcing a real 1x1
+            ## matrix here makes that explicit and correct by construction
+            ## rather than by accident, with no change in the actual numbers
+            ## (verified for 0, 1, and 2+ neighbors).
+            neighbor_matrix <- object@genotype_matrix[neighbor_samples, neighbor_samples, drop = FALSE]
             existing_edges <- sum(neighbor_matrix[upper.tri(neighbor_matrix)])
             total_edges <- length(neighbor_matrix[upper.tri(neighbor_matrix)])
             missing_edges <- total_edges - existing_edges
@@ -194,7 +202,11 @@ writeOutput <- function(object, dir_path=NULL) {
             genotype_group_init_samples <- sample_summary |>
                 filter(Genotype_Group_ID == genotype_group_id) |>
                 pull(Initial_Sample_ID)
-            genotype_group_matrix <- object@genotype_matrix[genotype_group_init_samples, genotype_group_init_samples]
+            ## drop = FALSE: see the identical reasoning in the per-sample
+            ## contamination metric loop above (this is the same pattern, one
+            ## element short of matrix-ness when a genotype group has exactly
+            ## one member).
+            genotype_group_matrix <- object@genotype_matrix[genotype_group_init_samples, genotype_group_init_samples, drop = FALSE]
             existing_edges <- sum(genotype_group_matrix[upper.tri(genotype_group_matrix)])
             total_edges <- length(genotype_group_matrix[upper.tri(genotype_group_matrix)])
             missing_edges <- total_edges - existing_edges
