@@ -15,9 +15,9 @@
 #'
 solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
     set.seed(1)
-    print("Starting majority search")
+    message("Starting majority search")
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-        print("0 samples relabeled")
+        message("0 samples relabeled")
         return(object)
     }
 
@@ -107,10 +107,10 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
 #'
 solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
     set.seed(1)
-    print("Starting global search")
+    message("Starting global search")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-        print("0 samples relabeled")
+        message("0 samples relabeled")
         return(object)
     }
 
@@ -350,14 +350,14 @@ solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5,
 #'
 solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_concordant_vertices=FALSE) {
     set.seed(1)
-    print("Starting local search")
+    message("Starting local search")
 
     for (i in 1:n_iter) {
-        print(paste("Local search iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
+        message(paste("Local search iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
         unsolved_all_data <- rbind(object@.solve_state$unsolved_relabel_data,
                                    object@.solve_state$unsolved_ghost_data)
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            print("0 samples relabeled")
+            message("0 samples relabeled")
             return(object)
         }
         votes <- table(object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
@@ -376,7 +376,7 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
             ) |>
             dplyr::rename(Subject_B = Subject_ID, Genotype_Group_B = Genotype_Group_ID)
 
-        print(paste(nrow(neighbors), "candidate swaps being evaluated..."))
+        message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
         all_component_ids <- sort(unique(object@.solve_state$unsolved_relabel_data$Component_ID))
         relabels <- data.frame(matrix(data=NA, nrow=length(all_component_ids), ncol=2, dimnames=list(c(), c("relabel_from", "relabel_to"))))
         curr_idx <- 1
@@ -451,10 +451,10 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 #'
 solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
     set.seed(1)
-    print("Starting global search (fast)")
+    message("Starting global search (fast)")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-        print("0 samples relabeled")
+        message("0 samples relabeled")
         return(object)
     }
 
@@ -626,14 +626,14 @@ solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=
 #'
 solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_concordant_vertices=FALSE) {
     set.seed(1)
-    print("Starting local search (fast)")
+    message("Starting local search (fast)")
 
     for (i in 1:n_iter) {
-        print(paste("Local search (fast) iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
+        message(paste("Local search (fast) iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
         unsolved_all_data <- rbind(object@.solve_state$unsolved_relabel_data,
                                    object@.solve_state$unsolved_ghost_data)
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            print("0 samples relabeled")
+            message("0 samples relabeled")
             return(object)
         }
         votes <- table(object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
@@ -651,7 +651,7 @@ solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_c
             ) |>
             dplyr::rename(Subject_B = Subject_ID, Genotype_Group_B = Genotype_Group_ID)
 
-        print(paste(nrow(neighbors), "candidate swaps being evaluated..."))
+        message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
         all_component_ids <- sort(unique(object@.solve_state$unsolved_relabel_data$Component_ID))
         relabels <- data.frame(matrix(data=NA, nrow=length(all_component_ids), ncol=2, dimnames=list(c(), c("relabel_from", "relabel_to"))))
         curr_idx <- 1

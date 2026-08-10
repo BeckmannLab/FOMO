@@ -18,9 +18,9 @@ writeOutput <- function(object, dir_path=NULL) {
     if (!dir.exists(dir_path)) {
         dir.create(dir_path, recursive=FALSE)
         if (dir.exists(dir_path)) {
-            print(paste0("Created new directory ", dir_path))
+            message(paste0("Created new directory ", dir_path))
         } else {
-            print(paste0("Failed to create new directory ", dir_path, ". Please check if parent directory for the provided path exists."))
+            message(paste0("Failed to create new directory ", dir_path, ". Please check if parent directory for the provided path exists."))
         }
     }
 
@@ -255,6 +255,6 @@ writeOutput <- function(object, dir_path=NULL) {
 
     excel_filename <- file.path(dir_path, "corrections_summary.xlsx")
     openxlsx::write.xlsx(summary_list, file=excel_filename)
-    print(paste0("Output successfully written to ", excel_filename))
+    message(paste0("Output successfully written to ", excel_filename))
 }
 

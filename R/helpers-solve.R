@@ -384,7 +384,7 @@
         dplyr::filter(Is_Ghost)
     object <- .update_solve_state(object)
 
-    print(paste(nrow(relabels), "samples relabeled"))
+    message(paste(nrow(relabels), "samples relabeled"))
 
     return(object)
 }
