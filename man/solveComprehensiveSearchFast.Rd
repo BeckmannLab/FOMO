@@ -50,3 +50,7 @@ for clarity. This function is a deprecated alias that issues a warning
 and calls \code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}}; update calling code to use
 \code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}} directly.
 }
+\seealso{
+\code{\link[=solveComprehensiveSearch]{solveComprehensiveSearch()}}, the corresponding regular
+(non-fast) deprecated alias.
+}

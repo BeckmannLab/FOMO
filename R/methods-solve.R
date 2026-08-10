@@ -447,6 +447,9 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 #'
 #' @return A MislabelSolver object
 #'
+#' @seealso [solveGlobalSearch()], the regular (non-fast) version this
+#'   function is a drop-in replacement for.
+#'
 #' @export
 #'
 solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
@@ -591,6 +594,9 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
 #'
 #' @return A MislabelSolver object
 #'
+#' @seealso [solveComprehensiveSearch()], the corresponding regular
+#'   (non-fast) deprecated alias.
+#'
 #' @export
 #'
 solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
@@ -621,6 +627,9 @@ solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=
 #' @inheritParams solveLocalSearch
 #'
 #' @return A MislabelSolver object
+#'
+#' @seealso [solveLocalSearch()], the regular (non-fast) version this
+#'   function is a drop-in replacement for.
 #'
 #' @export
 #'

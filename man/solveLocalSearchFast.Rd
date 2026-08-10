@@ -40,3 +40,7 @@ selections (and therefore identical output) in every case checked.
 Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local_fast"))} rather than calling this directly, unless you are
 composing your own solver loop.
 }
+\seealso{
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}, the regular (non-fast) version this
+function is a drop-in replacement for.
+}

@@ -68,3 +68,7 @@ see \code{\link[=solveComprehensiveSearchFast]{solveComprehensiveSearchFast()}} 
 Use via \code{solveEnsemble(object, use_solvers = c("majority", "global_fast", "local"))} rather than calling this directly,
 unless you are composing your own solver loop.
 }
+\seealso{
+\code{\link[=solveGlobalSearch]{solveGlobalSearch()}}, the regular (non-fast) version this
+function is a drop-in replacement for.
+}
