@@ -280,10 +280,11 @@ writeOutput <- function(object, dir_path=NULL) {
         "Genotype_Group" = genotype_group_summary,
         "Component" = component_summary,
         "Dataset" = dataset_summary)
-    return(summary_list)
 
     excel_filename <- file.path(dir_path, "corrections_summary.xlsx")
     write.xlsx(summary_list, file=excel_filename)
     message(paste0("Output successfully written to ", excel_filename))
+
+    return(summary_list)
 }
 
