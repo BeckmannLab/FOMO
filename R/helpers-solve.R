@@ -93,10 +93,20 @@
     invisible(NULL)
 }
 
-.update_solve_state <- function(object, initialization=FALSE) {
+## solver_name attributes newly-solved samples to whoever solved them, for
+## the "Solved_By" column surfaced in writeOutput()'s Sample/Component
+## sheets (see solveEnsemble()'s call sites for the actual solver names
+## used: "majority", "global"/"global_fast", "local"/"local_fast"). Not
+## meaningful when initialization=TRUE (no solver has run yet); any sample
+## that comes out solved at construction time -- e.g. because its whole
+## component was already internally consistent, or anchor_samples pinned it
+## -- is attributed to "initial" instead, regardless of what (if anything)
+## solver_name was passed.
+.update_solve_state <- function(object, initialization=FALSE, solver_name=NA_character_) {
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         return(object)
     }
+    effective_solver_name <- if (initialization) {"initial"} else {solver_name}
 
     ## 1. Assign a Component_ID for each unsolved Sample_ID
     combined_graph <- .generate_graph(object@.solve_state$unsolved_relabel_data,
@@ -127,9 +137,15 @@
         pull(Component_ID)
 
     unsolved_relabel_data <- unsolved_relabel_data |>
-        mutate(Solved = Component_ID %in% solved_components)
+        mutate(
+            Solved = Component_ID %in% solved_components,
+            Solved_By = if_else(Solved, effective_solver_name, NA_character_)
+        )
     unsolved_ghost_data <- unsolved_ghost_data |>
-        mutate(Solved = Component_ID %in% solved_components)
+        mutate(
+            Solved = Component_ID %in% solved_components,
+            Solved_By = if_else(Solved, effective_solver_name, NA_character_)
+        )
 
     ## 3. Re-rank Component_ID(s) in order of size (so that Component1 is the largest unsolved component)
     # component_data <- component_data |> filter(!Solved)
@@ -174,7 +190,7 @@
     ## 5. Update relabel_data, and unsolved_relabel_data
     if (initialization) {
         col_order <- c("Init_Sample_ID", "Init_Subject_ID", "Genotype_Group_ID", "Component_ID",
-                       "Sample_ID", "Subject_ID", "Solved", "Is_Ghost", "Is_Anchor", "SwapCat_ID",
+                       "Sample_ID", "Subject_ID", "Solved", "Solved_By", "Is_Ghost", "Is_Anchor", "SwapCat_ID",
                        "SwapCat_Shape", "vertex_size_scalar", "Placeholder_ID")
         unsolved_relabel_data <- unsolved_relabel_data |>
             select(all_of(col_order)) |>
@@ -388,7 +404,7 @@
     return(graph)
 }
 
-.relabel_samples <- function(object, relabels) {
+.relabel_samples <- function(object, relabels, solver_name=NA_character_) {
     if (nrow(relabels) == 0) {
         return(object)
     }
@@ -429,7 +445,7 @@
         filter(!Is_Ghost)
     object@.solve_state$unsolved_ghost_data <- unsolved_all_data |>
         filter(Is_Ghost)
-    object <- .update_solve_state(object)
+    object <- .update_solve_state(object, solver_name=solver_name)
 
     message(paste(nrow(relabels), "samples relabeled"))
 

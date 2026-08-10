@@ -56,6 +56,13 @@ writeOutput <- function(object, dir_path=NULL) {
             Sample_Count_In_Genotype_Group = if_else(!Ghost, Sample_Count_In_Genotype_Group, NA_integer_),
             Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label = if_else(!Ghost, n_agree, NA_integer_),
             Mislabeled = Init_Sample_ID != Proposed_Final_Sample_ID,
+            ## Which solver step resolved this sample: "majority", "global"/
+            ## "global_fast", "local"/"local_fast", or "initial" if it was
+            ## already resolved at construction time (e.g. a singleton
+            ## component, or anchor_samples), before any solver ran. NA if
+            ## still unsolved (only possible if solveEnsemble() hit its
+            ## time_limit before converging).
+            Solved_By,
             Selected_For_Review = case_when(
                 Ghost & Mislabeled ~ "ghost_relabeled",
                 Ghost ~ "ghost",
@@ -166,7 +173,7 @@ writeOutput <- function(object, dir_path=NULL) {
     sample_summary <- sample_summary |>
         select(Connected_Component_ID = Component_ID, Genotype_Group_ID, SwapCat_ID, Is_Ghost = Ghost,
                       Initial_Subject_ID = Init_Subject_ID, Initial_Sample_ID = Init_Sample_ID,
-                      Selected_For_Review, Mislabeled, Mislabeling_Event_ID, Multiple_Valid_Solutions, All_Valid_Subject_IDs, All_Valid_Sample_IDs,
+                      Selected_For_Review, Mislabeled, Solved_By, Mislabeling_Event_ID, Multiple_Valid_Solutions, All_Valid_Subject_IDs, All_Valid_Sample_IDs,
                       Inferred_Subject_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID,
                       Sample_Count_In_Genotype_Group, Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label,
                       Sample_Contamination_Metric, Sample_Contamination_Metric_Denominator, Sample_Contamination_Metric_Numerator)
@@ -237,6 +244,13 @@ writeOutput <- function(object, dir_path=NULL) {
             n_Samples_relabel_high_confidence = sum(Selected_For_Review == "relabel_high_confidence"),
             n_Samples_singleton_no_inference = sum(Selected_For_Review == "singleton_no_inference"),
             n_Samples_not_relabeled_low_confidence = sum(Selected_For_Review == "not_relabeled_low_confidence"),
+            ## Which solver(s) contributed to resolving this component's
+            ## samples -- e.g. "global" if a single solver step resolved
+            ## everything in it, "local, majority" if resolving it took a
+            ## combination. Excludes any still-unsolved samples (Solved_By
+            ## NA); those are already visible via the n_Samples_* columns
+            ## above and Same_Number_of_Genotypes_And_Subjects.
+            Solved_By = str_c(sort(unique(Solved_By[!is.na(Solved_By)])), collapse=", "),
             Selected_For_Review = case_when(
                 n_Samples_total == n_Samples_no_review_needed ~ "no_review_needed",
                 n_Samples_total == n_Samples_singleton_no_inference ~ "singleton_no_inference",

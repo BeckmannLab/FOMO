@@ -61,7 +61,7 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
                                                             allow_unknowns=FALSE)
 
     ## 3. Relabel samples and update solve state
-    object <- .relabel_samples(object, relabels)
+    object <- .relabel_samples(object, relabels, solver_name="majority")
     # print(paste(nrow(relabels), "samples relabeled"))
     return(object)
 }
@@ -314,7 +314,7 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
 
 
     ## Relabel samples and update solve state
-    object <- .relabel_samples(object, relabels)
+    object <- .relabel_samples(object, relabels, solver_name="global")
     # print(paste(nrow(relabels), "samples relabeled"))
     return(object)
 }
@@ -419,7 +419,7 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 
         relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
         relabels <- rbind(relabels, data.frame(relabel_from=relabels$relabel_to, relabel_to=relabels$relabel_from))
-        object <- .relabel_samples(object, relabels)
+        object <- .relabel_samples(object, relabels, solver_name="local")
         # print(paste(nrow(relabels), "samples relabeled"))
     }
 
@@ -587,7 +587,7 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
     relabels <- .find_relabel_cycles_from_putative_subjects(unsolved_relabel_data, putative_subjects,
                                                             unsolved_ghost_data, allow_unknowns=TRUE)
 
-    object <- .relabel_samples(object, relabels)
+    object <- .relabel_samples(object, relabels, solver_name="global_fast")
     return(object)
 }
 
@@ -713,7 +713,7 @@ solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_c
 
         relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
         relabels <- rbind(relabels, data.frame(relabel_from=relabels$relabel_to, relabel_to=relabels$relabel_from))
-        object <- .relabel_samples(object, relabels)
+        object <- .relabel_samples(object, relabels, solver_name="local_fast")
         # print(paste(nrow(relabels), "samples relabeled"))
     }
 
