@@ -785,15 +785,29 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
         }
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
-        global_solver <- if ("global_fast" %in% use_solvers) solveGlobalSearchFast else solveGlobalSearch
+        global_solver <- if ("global_fast" %in% use_solvers) {
+            solveGlobalSearchFast
+        } else {
+            solveGlobalSearch
+        }
         run_global <- "global" %in% use_solvers || "global_fast" %in% use_solvers
-        if (run_global) object <- global_solver(object)
-        if ("majority" %in% use_solvers) object <- solveMajoritySearch(object)
-        if (run_global) object <- global_solver(object)
+        if (run_global) {
+            object <- global_solver(object)
+        }
+        if ("majority" %in% use_solvers) {
+            object <- solveMajoritySearch(object)
+        }
+        if (run_global) {
+            object <- global_solver(object)
+        }
 
         global_relabel_data <- object@.solve_state$unsolved_relabel_data
         if ("local" %in% use_solvers || "local_fast" %in% use_solvers) {
-            local_solver <- if ("local_fast" %in% use_solvers) solveLocalSearchFast else solveLocalSearch
+            local_solver <- if ("local_fast" %in% use_solvers) {
+                solveLocalSearchFast
+            } else {
+                solveLocalSearch
+            }
             object <- local_solver(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=TRUE)
 
             ## If local search found no swaps, try allowing concordant vertices

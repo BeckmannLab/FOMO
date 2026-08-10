@@ -1,5 +1,6 @@
-if (!methods::isGeneric("plot"))
+if (!methods::isGeneric("plot")) {
     methods::setGeneric("plot", function(x, y, ...) standardGeneric("plot"))
+}
 
 #' methods::setGeneric("solveMajoritySearch", function(object, ...)
 #'     standardGeneric("solveMajoritySearch"))

@@ -100,7 +100,11 @@
     component_data <- component_data |>
         dplyr::arrange(Solved, dplyr::desc(n_Sample_ID)) |>
         dplyr::mutate(
-            new_Component_ID = if (n_components != 0) seq_len(n_components) else character(0),
+            new_Component_ID = if (n_components != 0) {
+                seq_len(n_components)
+            } else {
+                character(0)
+            },
             new_Component_ID = paste0("Component_", formatC(new_Component_ID, width=nchar(n_components), format="d", flag="0"))
         )
     unsolved_relabel_data <- unsolved_relabel_data |>
@@ -163,7 +167,9 @@
 .update_putative_subjects <- function(object, proposed_putative_subjects) {
     Subject_ID <- Genotype_Group_ID <- NULL
 
-    if (nrow(proposed_putative_subjects) == 0) return(object)
+    if (nrow(proposed_putative_subjects) == 0) {
+        return(object)
+    }
     ## Only add Genotype_Group_ID/Subject_ID combinations if neither the
     ## Genotype_Group_ID nor the Subject_ID are already in putative_subjects
     existing_genotypes <- stats::na.omit(object@.solve_state$putative_subjects$Genotype_Group_ID)
@@ -346,7 +352,9 @@
 }
 
 .relabel_samples <- function(object, relabels) {
-    if (nrow(relabels) == 0) return(object)
+    if (nrow(relabels) == 0) {
+        return(object)
+    }
 
     relabels <- relabels |>
         dplyr::rename("Sample_ID" = "relabel_to") |>
@@ -856,7 +864,11 @@
     ## key -> value lookup as a named vector; missing keys resolve to 0 (matching
     ## the original's dplyr::coalesce(., 0) after a non-matching left_join)
     vec_lookup <- function(df, key_cols, val_col) {
-        key <- if (length(key_cols) == 1) df[[key_cols]] else do.call(paste, c(df[key_cols], sep = "\x1f"))
+        key <- if (length(key_cols) == 1) {
+            df[[key_cols]]
+        } else {
+            do.call(paste, c(df[key_cols], sep = "\x1f"))
+        }
         setNames(df[[val_col]], key)
     }
     lookup0 <- function(vec, key) { v <- unname(vec[key]); v[is.na(v)] <- 0; v }
