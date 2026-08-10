@@ -48,19 +48,19 @@ writeOutput <- function(object, dir_path=NULL) {
             Inferred_Subject_ID = Subject_ID_putative,
             All_Valid_Subject_IDs = sapply(Genotype_Group_ID, function(x) {
                 if (x %in% names(object@.solve_state$ambiguous_subjects)) {
-                    paste(object@.solve_state$ambiguous_subjects[[x]], collapse=", ")
+                    str_c(object@.solve_state$ambiguous_subjects[[x]], collapse=", ")
                 } else {
                     NA_character_
                 }
             }),
-            Sample_Count_In_Genotype_Group = ifelse(!Ghost, Sample_Count_In_Genotype_Group, NA_integer_),
-            Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label = ifelse(!Ghost, n_agree, NA_integer_),
+            Sample_Count_In_Genotype_Group = if_else(!Ghost, Sample_Count_In_Genotype_Group, NA_integer_),
+            Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label = if_else(!Ghost, n_agree, NA_integer_),
             Mislabeled = Init_Sample_ID != Proposed_Final_Sample_ID,
             Selected_For_Review = case_when(
                 Ghost & Mislabeled ~ "ghost_relabeled",
                 Ghost ~ "ghost",
                 is.na(Inferred_Subject_ID) ~ "inconsistent_genotype",
-                grepl(LABEL_NOT_FOUND, Proposed_Final_Sample_ID) ~ "deletion_or_duplication",
+                str_detect(Proposed_Final_Sample_ID, LABEL_NOT_FOUND) ~ "deletion_or_duplication",
                 Mislabeled & (Proposed_Final_Subject_ID != Inferred_Subject_ID | Sample_Count_In_Genotype_Group == 1) ~ "relabel_low_confidence",
                 Mislabeled ~ "relabel_high_confidence",
                 Sample_Count_In_Genotype_Group == 1 ~ "singleton_no_inference",
@@ -77,7 +77,7 @@ writeOutput <- function(object, dir_path=NULL) {
         filter(Init_Subject_ID != Inferred_Subject_ID) |>
         group_by(Genotype_Group_ID, SwapCat_ID) |>
         mutate(
-            n_LABELNOTFOUND = sum(grepl(LABEL_NOT_FOUND, Proposed_Final_Sample_ID)),
+            n_LABELNOTFOUND = sum(str_detect(Proposed_Final_Sample_ID, LABEL_NOT_FOUND)),
             has_Ghost_Solution = any(Ghost),
             has_LABELNOTFOUND_Solution = .data$n_LABELNOTFOUND > 0
         ) |>
@@ -96,10 +96,10 @@ writeOutput <- function(object, dir_path=NULL) {
             ) |>
             pull(Init_Sample_ID)
         if (has_LABELNOTFOUND) {
-            sample_ambiguities <- c(sample_ambiguities, paste0(LABEL_NOT_FOUND, inferred_subject_id, swap_cat_id, collapse="#"))
+            sample_ambiguities <- c(sample_ambiguities, str_c(LABEL_NOT_FOUND, inferred_subject_id, swap_cat_id, collapse="#"))
         }
         if (length(sample_ambiguities) > 1) {
-            ambiguity_summary[i, "All_Valid_Sample_IDs"] <- paste(sample_ambiguities, collapse=", ")
+            ambiguity_summary[i, "All_Valid_Sample_IDs"] <- str_c(sample_ambiguities, collapse=", ")
         }
     }
     ambiguity_summary <- ambiguity_summary |>
@@ -155,10 +155,13 @@ writeOutput <- function(object, dir_path=NULL) {
         group_by(Component_ID) |>
         mutate(Event_Number = row_number()) |>
         ungroup() |>
-        mutate(Mislabeling_Event_ID_New = paste0(Component_ID, "_Mislabeling_Event_", Event_Number)) |>
+        mutate(Mislabeling_Event_ID_New = str_c(Component_ID, "_Mislabeling_Event_", Event_Number)) |>
         select(Mislabeling_Event_ID, Mislabeling_Event_ID_New)
     Mislabeling_Event_ID_renamer_map <- setNames(Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID_New, Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID)
-    sample_summary$Mislabeling_Event_ID <- sapply(sample_summary$Mislabeling_Event_ID, \(x) ifelse(is.na(x), NA, Mislabeling_Event_ID_renamer_map[x]))
+    ## Mislabeling_Event_ID_renamer_map's values are character (built via
+    ## str_c() below), so the "missing" branch needs a typed NA_character_
+    ## rather than a bare (logical) NA for if_else()'s stricter type check.
+    sample_summary$Mislabeling_Event_ID <- sapply(sample_summary$Mislabeling_Event_ID, \(x) if_else(is.na(x), NA_character_, Mislabeling_Event_ID_renamer_map[x]))
 
     sample_summary <- sample_summary |>
         select(Connected_Component_ID = Component_ID, Genotype_Group_ID, SwapCat_ID, Is_Ghost = Ghost,

@@ -28,7 +28,7 @@ Imports:
     Matrix,
     visNetwork,
     tidyr,
-    stringr,
+    stringr (>= 1.5.0),
     withr,
     gtools,
     reshape2,

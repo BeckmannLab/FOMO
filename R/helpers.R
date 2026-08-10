@@ -6,7 +6,7 @@
 ## datasets. Truncated to 7 hex digits (a 28-bit non-negative integer) to
 ## stay safely within set.seed()'s accepted range on any platform.
 .hash_to_seed <- function(x) {
-    strtoi(substr(digest(x, algo="md5"), 1, 7), base=16L)
+    strtoi(str_sub(digest(x, algo="md5"), 1, 7), base=16L)
 }
 
 ## Generate n random, UUID-v4-*shaped* placeholder IDs using R's own seeded
@@ -19,9 +19,9 @@
 ## uuid::UUIDgenerate() output they replace.
 .generate_placeholder_ids <- function(n) {
     hex_digits <- c(0:9, letters[1:6])
-    hex <- function(k) paste(sample(hex_digits, k, replace=TRUE), collapse="")
+    hex <- function(k) str_c(sample(hex_digits, k, replace=TRUE), collapse="")
     vapply(seq_len(n), function(i) {
-        paste(hex(8), hex(4), paste0("4", hex(3)), paste0(sample(c("8", "9", "a", "b"), 1), hex(3)), hex(12), sep="-")
+        str_c(hex(8), hex(4), str_c("4", hex(3)), str_c(sample(c("8", "9", "a", "b"), 1), hex(3)), hex(12), sep="-")
     }, character(1))
 }
 
@@ -30,7 +30,7 @@
     genotype_group_ids <- components(genotype_graph)$membership
     n_genotype_groups <- length(unique(genotype_group_ids))
     n_digits <- floor(log10(n_genotype_groups)) + 1
-    genotype_group_ids <- vapply(genotype_group_ids, \(x) paste0("Genotype_Group", formatC(x, width = n_digits, format = "d", flag = "0")), "character")
+    genotype_group_ids <- vapply(genotype_group_ids, \(x) str_c("Genotype_Group", formatC(x, width = n_digits, format = "d", flag = "0")), "character")
     genotype_df <- data.frame(
         Sample_ID = names(genotype_group_ids),
         Genotype_Group_ID = genotype_group_ids

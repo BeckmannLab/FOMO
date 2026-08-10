@@ -163,7 +163,7 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
         }
         perm_genotypes <- as.matrix(perm_genotypes, dimnames=c("Permutation_ID", "Genotype_Group_ID"))
         n_perms <- nrow(perm_genotypes)
-        permutation_ids <- paste0("Permutation", formatC(seq_len(n_perms), width=nchar(n_perms), format="d", flag="0"))
+        permutation_ids <- str_c("Permutation", formatC(seq_len(n_perms), width=str_length(n_perms), format="d", flag="0"))
         rownames(perm_genotypes) <- permutation_ids
 
         ## For each Genotype_Group_ID/Subject_ID permutation, determine
@@ -505,7 +505,7 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
         }
         perm_genotypes <- as.matrix(perm_genotypes, dimnames=c("Permutation_ID", "Genotype_Group_ID"))
         n_perms <- nrow(perm_genotypes)
-        permutation_ids <- paste0("Permutation", formatC(seq_len(n_perms), width=nchar(n_perms), format="d", flag="0"))
+        permutation_ids <- str_c("Permutation", formatC(seq_len(n_perms), width=str_length(n_perms), format="d", flag="0"))
         rownames(perm_genotypes) <- permutation_ids
 
         label_counts <- cc_unsolved_relabel_data |>
@@ -750,7 +750,7 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
     ## function only ever has to deal with the current names.
     deprecated_used <- intersect(use_solvers, c("comprehensive", "comprehensive_fast"))
     if (length(deprecated_used) > 0) {
-        replacement_names <- sub("^comprehensive", "global", deprecated_used)
+        replacement_names <- str_replace(deprecated_used, "^comprehensive", "global")
         warning("'", paste(deprecated_used, collapse="', '"), "' in 'use_solvers' ",
                "is deprecated: comprehensive search has been renamed to global search. ",
                "Use '", paste(replacement_names, collapse="', '"), "' instead.", call. = FALSE)

@@ -1,3 +1,13 @@
+## This file builds error messages for assertthat::assert_that() with base
+## paste()/paste0() rather than stringr::str_c(), deliberately: these
+## messages exist specifically to describe *malformed input* (missing
+## columns, non-unique IDs, and so on) to the person calling the package,
+## and paste0()'s NA -> "NA" coercion keeps that description informative
+## even when the malformed value itself is NA (e.g. "... check Sample_ID(s)
+## NA"). str_c() would instead make the *entire* message NA, silently
+## discarding everything else the message was trying to say right when a
+## user most needs it -- the one case where base R's looser behavior is the
+## better fit than stringr's stricter one.
 .validate_sample_metadata <- function(sample_metadata, has_genotype_matrix=FALSE) {
     required_columns <- c("Sample_ID", "Subject_ID")
     if (!has_genotype_matrix) {

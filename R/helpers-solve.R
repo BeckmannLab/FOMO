@@ -105,7 +105,7 @@
             } else {
                 character(0)
             },
-            new_Component_ID = paste0("Component_", formatC(new_Component_ID, width=nchar(n_components), format="d", flag="0"))
+            new_Component_ID = str_c("Component_", formatC(new_Component_ID, width=str_length(n_components), format="d", flag="0"))
         )
     unsolved_relabel_data <- unsolved_relabel_data |>
         left_join(component_data[, c("Component_ID", "new_Component_ID")], by="Component_ID") |>
@@ -336,9 +336,9 @@
     V(graph)[ghost_samples]$color <- "lightgrey"
 
     if (graph_type == "combined") {
-        E(graph)$color <- ifelse(
+        E(graph)$color <- if_else(
             E(graph)$concordant, "forestgreen",
-            ifelse(E(graph)$genotypes, "orange", "cornflowerblue"))
+            if_else(E(graph)$genotypes, "orange", "cornflowerblue"))
         E(graph)[.from(ghost_samples)]$color <- "lightgrey"
     } else if (graph_type == "label") {
         E(graph)$color <- "cornflowerblue"
@@ -363,12 +363,12 @@
             by="Sample_ID"
         ) |>
         mutate(
-            Subject_ID = ifelse(
+            Subject_ID = if_else(
                 is.na(Subject_ID),
-                vapply(Sample_ID, \(x) unlist(strsplit(x, split="#"))[2], character(1)),
+                vapply(Sample_ID, \(x) str_split_1(x, "#")[2], character(1)),
                 Subject_ID
             ),
-            Deleted_relabel_from = grepl(LABEL_NOT_FOUND, relabel_from)
+            Deleted_relabel_from = str_detect(relabel_from, LABEL_NOT_FOUND)
         ) |>
         filter(!Deleted_relabel_from) |>
         select(-Deleted_relabel_from)
@@ -381,8 +381,10 @@
             relabels, by=c("Sample_ID"="relabel_from"), suffix=c(".x", ".y")
         ) |>
         mutate(
-            Sample_ID = ifelse(!is.na(Sample_ID.y), Sample_ID.y, Sample_ID),
-            Subject_ID = ifelse(!is.na(Subject_ID.y), Subject_ID.y, Subject_ID.x)
+            ## coalesce(a, b): a if it's not NA, else b -- exactly what these
+            ## two ifelse(!is.na(a), a, b) calls were doing.
+            Sample_ID = coalesce(Sample_ID.y, Sample_ID),
+            Subject_ID = coalesce(Subject_ID.y, Subject_ID.x)
         ) |>
         select(-ends_with(".x"), -ends_with(".y"))
 
@@ -538,7 +540,7 @@
                 arrange(Sample_ID) |>
                 pull(Placeholder_ID) |>
                 head(n_label_deficit)
-            unknown_labels <- paste0(LABEL_NOT_FOUND, "#", subject_id, "#", swap_cat_id, "#", chosen_placeholder_ids)
+            unknown_labels <- str_c(LABEL_NOT_FOUND, "#", subject_id, "#", swap_cat_id, "#", chosen_placeholder_ids)
             n_unknown_labels <- length(unknown_labels)
         }
 
@@ -777,7 +779,7 @@
 ## to 3,000 candidate subjects: identical results (all.equal tolerance 1e-9)
 ## in every case tested, 9-380x faster, with the gap widening as the subject
 ## pool grows. See solveLocalSearchFast().
-.xlogx <- function(v) ifelse(v <= 0, 0, v * log(v))
+.xlogx <- function(v) if_else(v <= 0, 0, v * log(v))
 
 .calc_swapped_delta_entropy_fast <- function(votes_mat, swap_from_subject, swap_from_genotype,
                                               swap_to_subject, swap_to_genotype) {
@@ -887,7 +889,7 @@
             n_labels <- lookup0(v_label, df$Subject_ID)
             n_ghost_labels <- lookup0(v_ghost, df$Subject_ID)
             n_in_genotype <- lookup0(v_geno, df$Genotype_Group_ID)
-            n_samples_correct <- lookup0(v_conc, paste(df$Subject_ID, df$Genotype_Group_ID, sep = "\x1f"))
+            n_samples_correct <- lookup0(v_conc, str_c(df$Subject_ID, df$Genotype_Group_ID, sep = "\x1f"))
             n_samples_to_relabel <- pmin(n_in_genotype, n_labels) - n_samples_correct
             n_samples_to_relabel_ghost <- pmin(n_in_genotype - n_samples_correct - n_samples_to_relabel, n_ghost_labels)
             n_label_deletions <- pmax(0, n_in_genotype - n_labels - n_ghost_labels)
