@@ -6,12 +6,12 @@
 ## datasets. Truncated to 7 hex digits (a 28-bit non-negative integer) to
 ## stay safely within set.seed()'s accepted range on any platform.
 .hash_to_seed <- function(x) {
-    strtoi(substr(digest::digest(x, algo="md5"), 1, 7), base=16L)
+    strtoi(substr(digest(x, algo="md5"), 1, 7), base=16L)
 }
 
 ## Generate n random, UUID-v4-*shaped* placeholder IDs using R's own seeded
 ## RNG (sample()). Deliberately NOT uuid::UUIDgenerate(): that function draws
-## from system entropy and does not respond to set.seed()/withr::with_seed()
+## from system entropy and does not respond to set.seed()/with_seed()
 ## at all (confirmed empirically), so results from it can never be made
 ## reproducible that way. The UUID v4 shape (8-4-4-4-12 hex digits, version
 ## nibble fixed at "4", variant nibble drawn from {8,9,a,b}) is purely
@@ -26,8 +26,8 @@
 }
 
 .genotype_matrix_to_genotype_df <- function(genotype_matrix) {
-    genotype_graph <- igraph::graph_from_adjacency_matrix(genotype_matrix)
-    genotype_group_ids <- igraph::components(genotype_graph)$membership
+    genotype_graph <- graph_from_adjacency_matrix(genotype_matrix)
+    genotype_group_ids <- components(genotype_graph)$membership
     n_genotype_groups <- length(unique(genotype_group_ids))
     n_digits <- floor(log10(n_genotype_groups)) + 1
     genotype_group_ids <- vapply(genotype_group_ids, \(x) paste0("Genotype_Group", formatC(x, width = n_digits, format = "d", flag = "0")), "character")
@@ -41,15 +41,15 @@
 .generate_corrections_graph <- function(
         relabel_data) {
     sample_corrections_df <- relabel_data |>
-        dplyr::filter(Init_Sample_ID != Sample_ID)
+        filter(Init_Sample_ID != Sample_ID)
     corrections_edges <- sample_corrections_df |>
-        dplyr::select(Init_Sample_ID, Sample_ID)
+        select(Init_Sample_ID, Sample_ID)
 
     corrections_vertices <- data.frame(
         Sample_ID = unique(c(sample_corrections_df[, "Init_Sample_ID"],
                              sample_corrections_df[, "Sample_ID"]))
     ) |>
-        dplyr::left_join(
+        left_join(
             sample_corrections_df |> select(Sample_ID=Init_Sample_ID,
                                              Init_Component_ID,
                                              Component_ID,
@@ -64,13 +64,13 @@
     ## For samples that don't appear in the Init_Sample_ID column (LABELNOTFOUND samples)
     ## need to manually populate fields Is_Ghost, SwapCat_ID, and SwapCat_Shape
     corrections_vertices_split <- corrections_vertices |>
-        dplyr::filter(!is.na(Is_Ghost)) |>
-        dplyr::mutate(Is_LABELNOTFOUND = FALSE)
+        filter(!is.na(Is_Ghost)) |>
+        mutate(Is_LABELNOTFOUND = FALSE)
     corrections_vertices_label_not_found <- corrections_vertices |>
-        dplyr::filter(is.na(Is_Ghost)) |>
-        dplyr::mutate(Is_LABELNOTFOUND = TRUE) |>
-        dplyr::select("Sample_ID", "Is_LABELNOTFOUND") |>
-        dplyr::left_join(
+        filter(is.na(Is_Ghost)) |>
+        mutate(Is_LABELNOTFOUND = TRUE) |>
+        select("Sample_ID", "Is_LABELNOTFOUND") |>
+        left_join(
             sample_corrections_df |> select(Sample_ID,
                                              Init_Component_ID,
                                              Component_ID,
@@ -81,10 +81,10 @@
                                              vertex_size_scalar),
             by = "Sample_ID"
         ) |>
-        dplyr::mutate(Is_Ghost=FALSE)
+        mutate(Is_Ghost=FALSE)
     corrections_vertices <- rbind(corrections_vertices_split,
                                   corrections_vertices_label_not_found) |>
-        dplyr::mutate(
+        mutate(
             shape = SwapCat_Shape,
             color = case_when(
                 Is_LABELNOTFOUND ~ "firebrick",
@@ -95,9 +95,9 @@
             label.cex = 0.5
         )
 
-    corrections_graph <- igraph::graph_from_data_frame(corrections_edges, vertices=corrections_vertices, directed=TRUE)
-    igraph::E(corrections_graph)$color <- "black"
-    igraph::E(corrections_graph)$width <- 6
+    corrections_graph <- graph_from_data_frame(corrections_edges, vertices=corrections_vertices, directed=TRUE)
+    E(corrections_graph)$color <- "black"
+    E(corrections_graph)$width <- 6
 
     return(corrections_graph)
 }

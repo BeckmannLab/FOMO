@@ -101,7 +101,7 @@ MislabelSolver <- function(sample_metadata, genotype_matrix=NULL, swap_cats=NULL
     anchor_samples <- unique(as.character(anchor_samples))
     .validate_anchor_samples(sample_metadata, anchor_samples)
 
-    return(methods::new("MislabelSolver", sample_metadata, genotype_matrix, swap_cats, anchor_samples))
+    return(new("MislabelSolver", sample_metadata, genotype_matrix, swap_cats, anchor_samples))
 }
 
 setMethod("initialize", "MislabelSolver",
@@ -128,14 +128,14 @@ setMethod("initialize", "MislabelSolver",
               ## ends up needed is simply never referenced again.
               ##
               ## Seeded from a hash of this (now sorted) input via a dedicated RNG
-              ## stream (withr::with_seed(), which restores the prior RNG state
+              ## stream (with_seed(), which restores the prior RNG state
               ## afterward), so that: (a) the same input always yields the same
               ## placeholder IDs, (b) different input yields different ones rather
               ## than colliding on one fixed global seed, and (c) this doesn't
               ## consume from or interfere with the RNG stream solveMajoritySearch()/
               ## solveGlobalSearch()/solveLocalSearch() use for their own purposes.
               input_seed <- .hash_to_seed(list(sample_metadata=sample_metadata, swap_cats=swap_cats))
-              placeholder_ids <- withr::with_seed(input_seed, .generate_placeholder_ids(nrow(sample_metadata)))
+              placeholder_ids <- with_seed(input_seed, .generate_placeholder_ids(nrow(sample_metadata)))
               names(placeholder_ids) <- sample_metadata$Sample_ID
 
               ## Provided there are enough shapes, assign a unique shape to each SwapCat_ID
@@ -149,11 +149,11 @@ setMethod("initialize", "MislabelSolver",
                   swap_cat_shapes$SwapCat_Shape <- VISNETWORK_SWAPCAT_SHAPES[seq_along(all_swap_cat_ids)]
               }
               swap_cats <- swap_cats |>
-                  dplyr::left_join(swap_cat_shapes, by="SwapCat_ID")
+                  left_join(swap_cat_shapes, by="SwapCat_ID")
 
               ## Initialize object 'solve_state'
               relabel_data <- sample_metadata |>
-                  dplyr::mutate(
+                  mutate(
                       Init_Sample_ID = Sample_ID,
                       Init_Subject_ID = Subject_ID,
                       Is_Ghost = is.na(Genotype_Group_ID),
@@ -161,11 +161,11 @@ setMethod("initialize", "MislabelSolver",
                       Solved = FALSE,
                       Placeholder_ID = placeholder_ids[Sample_ID]
                   ) |>
-                  dplyr::left_join(swap_cats, by="Sample_ID")
+                  left_join(swap_cats, by="Sample_ID")
               unsolved_relabel_data <- relabel_data |>
-                  dplyr::filter(!is.na(Genotype_Group_ID))
+                  filter(!is.na(Genotype_Group_ID))
               unsolved_ghost_data <- relabel_data |>
-                  dplyr::filter(is.na(Genotype_Group_ID))
+                  filter(is.na(Genotype_Group_ID))
               putative_subjects <- data.frame(Genotype_Group_ID = character(0),
                                               Subject_ID = character(0))
               lnf_counts <- data.frame(Subject_ID = character(0),

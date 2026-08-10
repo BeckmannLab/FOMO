@@ -25,18 +25,18 @@ writeOutput <- function(object, dir_path=NULL) {
     }
 
     sample_summary <- object@.solve_state$relabel_data |>
-        dplyr::group_by(Genotype_Group_ID, Init_Subject_ID) |>
-        dplyr::mutate(n_agree=n()) |>
-        dplyr::ungroup(Init_Subject_ID) |>
-        dplyr::mutate(Sample_Count_In_Genotype_Group=n()) |>
-        dplyr::ungroup(Genotype_Group_ID) |>
-        dplyr::left_join(
+        group_by(Genotype_Group_ID, Init_Subject_ID) |>
+        mutate(n_agree=n()) |>
+        ungroup(Init_Subject_ID) |>
+        mutate(Sample_Count_In_Genotype_Group=n()) |>
+        ungroup(Genotype_Group_ID) |>
+        left_join(
             object@.solve_state$putative_subjects |>
                 filter(!is.na(Genotype_Group_ID)),
             by = "Genotype_Group_ID",
             suffix = c("", "_putative")
         ) |>
-        dplyr::transmute(
+        transmute(
             Component_ID = Init_Component_ID,
             Genotype_Group_ID,
             SwapCat_ID,
@@ -68,20 +68,20 @@ writeOutput <- function(object, dir_path=NULL) {
                 TRUE ~ "no_review_needed"
             )
         ) |>
-        dplyr::arrange(Component_ID, Genotype_Group_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID)
+        arrange(Component_ID, Genotype_Group_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID)
 
     ## Mislabeled samples in the same genotype group
     ## with identical swappable categories are
     ## are ambiguities for one another
     ambiguity_summary <- sample_summary |>
-        dplyr::filter(Init_Subject_ID != Inferred_Subject_ID) |>
-        dplyr::group_by(Genotype_Group_ID, SwapCat_ID) |>
-        dplyr::mutate(
+        filter(Init_Subject_ID != Inferred_Subject_ID) |>
+        group_by(Genotype_Group_ID, SwapCat_ID) |>
+        mutate(
             n_LABELNOTFOUND = sum(grepl(LABEL_NOT_FOUND, Proposed_Final_Sample_ID)),
             has_Ghost_Solution = any(Ghost),
             has_LABELNOTFOUND_Solution = .data$n_LABELNOTFOUND > 0
         ) |>
-        dplyr::ungroup()
+        ungroup()
     ambiguity_summary$All_Valid_Sample_IDs <- NA_character_
     for (i in seq_len(nrow(ambiguity_summary))) {
         genotype_group_id <- ambiguity_summary$Genotype_Group_ID[i]
@@ -103,11 +103,11 @@ writeOutput <- function(object, dir_path=NULL) {
         }
     }
     ambiguity_summary <- ambiguity_summary |>
-        dplyr::select(Init_Sample_ID, All_Valid_Sample_IDs)
+        select(Init_Sample_ID, All_Valid_Sample_IDs)
 
     sample_summary <- sample_summary |>
-        dplyr::left_join(ambiguity_summary, by="Init_Sample_ID") |>
-        dplyr::mutate(Multiple_Valid_Solutions = case_when(
+        left_join(ambiguity_summary, by="Init_Sample_ID") |>
+        mutate(Multiple_Valid_Solutions = case_when(
             !is.na(All_Valid_Subject_IDs) > 0 ~ "multiple_valid_subjects",
             !is.na(All_Valid_Sample_IDs) > 0 ~ "one_valid_subject_multiple_valid_samples"))
 
@@ -118,7 +118,7 @@ writeOutput <- function(object, dir_path=NULL) {
         sample_summary$Sample_Contamination_Metric_Numerator <- NA_integer_
         sample_summary$Sample_Contamination_Metric_Denominator <- NA_integer_
         sample_summary$Sample_Contamination_Metric <- NA
-        genotyped_sample_ids <- sample_summary |> dplyr::filter(!Ghost) |> dplyr::pull(Init_Sample_ID)
+        genotyped_sample_ids <- sample_summary |> filter(!Ghost) |> pull(Init_Sample_ID)
         for (sample_id in genotyped_sample_ids) {
             neighbor_samples <- names(which(object@genotype_matrix[sample_id, ] == 1))
             ## drop = FALSE: if sample_id has exactly one neighbor, a plain
@@ -147,21 +147,21 @@ writeOutput <- function(object, dir_path=NULL) {
     Mislabeling_Event_ID_df <- data.frame(Init_Sample_ID = names(corrections_components$membership),
                                     Mislabeling_Event_ID = corrections_components$membership)
     sample_summary <- sample_summary |>
-        dplyr::left_join(Mislabeling_Event_ID_df, by="Init_Sample_ID")
+        left_join(Mislabeling_Event_ID_df, by="Init_Sample_ID")
     Mislabeling_Event_ID_renamer_df <- sample_summary |>
-        dplyr::filter(!is.na(Mislabeling_Event_ID)) |>
-        dplyr::select(Component_ID, Mislabeling_Event_ID) |>
-        dplyr::distinct() |>
-        dplyr::group_by(Component_ID) |>
-        dplyr::mutate(Event_Number = row_number()) |>
-        dplyr::ungroup() |>
-        dplyr::mutate(Mislabeling_Event_ID_New = paste0(Component_ID, "_Mislabeling_Event_", Event_Number)) |>
-        dplyr::select(Mislabeling_Event_ID, Mislabeling_Event_ID_New)
+        filter(!is.na(Mislabeling_Event_ID)) |>
+        select(Component_ID, Mislabeling_Event_ID) |>
+        distinct() |>
+        group_by(Component_ID) |>
+        mutate(Event_Number = row_number()) |>
+        ungroup() |>
+        mutate(Mislabeling_Event_ID_New = paste0(Component_ID, "_Mislabeling_Event_", Event_Number)) |>
+        select(Mislabeling_Event_ID, Mislabeling_Event_ID_New)
     Mislabeling_Event_ID_renamer_map <- setNames(Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID_New, Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID)
     sample_summary$Mislabeling_Event_ID <- sapply(sample_summary$Mislabeling_Event_ID, \(x) ifelse(is.na(x), NA, Mislabeling_Event_ID_renamer_map[x]))
 
     sample_summary <- sample_summary |>
-        dplyr::select(Connected_Component_ID = Component_ID, Genotype_Group_ID, SwapCat_ID, Is_Ghost = Ghost,
+        select(Connected_Component_ID = Component_ID, Genotype_Group_ID, SwapCat_ID, Is_Ghost = Ghost,
                       Initial_Subject_ID = Init_Subject_ID, Initial_Sample_ID = Init_Sample_ID,
                       Selected_For_Review, Mislabeled, Mislabeling_Event_ID, Multiple_Valid_Solutions, All_Valid_Subject_IDs, All_Valid_Sample_IDs,
                       Inferred_Subject_ID, Proposed_Final_Subject_ID, Proposed_Final_Sample_ID,
@@ -169,9 +169,9 @@ writeOutput <- function(object, dir_path=NULL) {
                       Sample_Contamination_Metric, Sample_Contamination_Metric_Denominator, Sample_Contamination_Metric_Numerator)
 
     genotype_group_summary <- sample_summary |>
-        dplyr::group_by(Genotype_Group_ID, Inferred_Subject_ID) |>
-        dplyr::filter(!is.na(Genotype_Group_ID)) |>
-        dplyr::summarize(
+        group_by(Genotype_Group_ID, Inferred_Subject_ID) |>
+        filter(!is.na(Genotype_Group_ID)) |>
+        summarize(
             # Majority_Subject_ID = names(sort(table(Proposed_Final_Subject_ID), decreasing = TRUE)[1]),
             n_Samples_no_review_needed = sum(Selected_For_Review == "no_review_needed"),
             n_Samples_inconsistent_genotype = sum(Selected_For_Review == "inconsistent_genotype"),
@@ -188,8 +188,8 @@ writeOutput <- function(object, dir_path=NULL) {
                 TRUE ~ "check_sample_table"
             )
         ) |>
-        dplyr::ungroup() |>
-        dplyr::select(Genotype_Group_ID, n_Samples_total, Inferred_Subject_ID, Selected_For_Review, n_Samples_Initially_Matching_Inferred_Subject, everything())
+        ungroup() |>
+        select(Genotype_Group_ID, n_Samples_total, Inferred_Subject_ID, Selected_For_Review, n_Samples_Initially_Matching_Inferred_Subject, everything())
 
     genotype_group_summary$Genotype_Contamination_Metric <- NA
     genotype_group_summary$Genotype_Contamination_Metric_Denominator <- NA_integer_
@@ -219,8 +219,8 @@ writeOutput <- function(object, dir_path=NULL) {
     }
 
     component_summary <- sample_summary |>
-        dplyr::group_by(Connected_Component_ID) |>
-        dplyr::summarize(
+        group_by(Connected_Component_ID) |>
+        summarize(
             n_Genotype_Groups = length(unique(Genotype_Group_ID)),
             n_Subjects = length(unique(Initial_Subject_ID)),
             n_Samples_total = n(),
@@ -242,7 +242,7 @@ writeOutput <- function(object, dir_path=NULL) {
         )
 
     dataset_summary <- sample_summary |>
-        dplyr::summarize(
+        summarize(
             n_Components = length(unique(Connected_Component_ID)),
             n_Genotype_Groups = length(unique(Genotype_Group_ID)),
             n_Subjects = length(unique(Initial_Subject_ID)),
@@ -266,7 +266,7 @@ writeOutput <- function(object, dir_path=NULL) {
     return(summary_list)
 
     excel_filename <- file.path(dir_path, "corrections_summary.xlsx")
-    openxlsx::write.xlsx(summary_list, file=excel_filename)
+    write.xlsx(summary_list, file=excel_filename)
     message(paste0("Output successfully written to ", excel_filename))
 }
 

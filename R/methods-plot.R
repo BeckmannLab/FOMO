@@ -28,22 +28,22 @@ setMethod("plot", signature(x = "MislabelSolver"),
                   ghost_data <- x@.solve_state$unsolved_ghost_data
               } else {
                   relabel_data <- x@.solve_state$relabel_data |>
-                      dplyr::filter(!Is_Ghost)
+                      filter(!Is_Ghost)
                   ghost_data <- x@.solve_state$relabel_data |>
-                      dplyr::filter(Is_Ghost)
+                      filter(Is_Ghost)
               }
               if (!is.null(query_val)) {
                   query_by <- as.character(query_by)
                   query_by <- match.arg(query_by)
                   if (query_by == "Init_Component_ID") {
                       component_id <- rbind(relabel_data, ghost_data) |>
-                          dplyr::filter(!!sym(query_by) == query_val) |>
-                          dplyr::pull(Init_Component_ID) |>
+                          filter(!!sym(query_by) == query_val) |>
+                          pull(Init_Component_ID) |>
                           unique()
                   } else {
                       component_id <- rbind(relabel_data, ghost_data) |>
-                          dplyr::filter(!!sym(query_by) == query_val) |>
-                          dplyr::pull(Component_ID) |>
+                          filter(!!sym(query_by) == query_val) |>
+                          pull(Component_ID) |>
                           unique()
                   }
                   if (length(component_id) == 0) {
@@ -53,14 +53,14 @@ setMethod("plot", signature(x = "MislabelSolver"),
                   component_id <- component_id[[1]]
                   if (query_by == "Init_Component_ID") {
                       relabel_data <- relabel_data |>
-                          dplyr::filter(Init_Component_ID == component_id)
+                          filter(Init_Component_ID == component_id)
                       ghost_data <- ghost_data |>
-                          dplyr::filter(Init_Component_ID == component_id)
+                          filter(Init_Component_ID == component_id)
                   } else {
                       relabel_data <- relabel_data |>
-                          dplyr::filter(Component_ID == component_id)
+                          filter(Component_ID == component_id)
                       ghost_data <- ghost_data |>
-                          dplyr::filter(Component_ID == component_id)
+                          filter(Component_ID == component_id)
                   }
               }
               if (nrow(relabel_data) + nrow(ghost_data) == 0) {
@@ -70,8 +70,8 @@ setMethod("plot", signature(x = "MislabelSolver"),
               }
               graph <- .generate_graph(relabel_data, graph_type = "combined", ghost_data, genotype_matrix=x@genotype_matrix,
                                        populate_plotting_attributes=TRUE, collapse_samples=collapse_samples)
-              if (igraph::ecount(graph) == 0) {
-                  ## visNetwork::visIgraph() cannot render a graph with zero edges
+              if (ecount(graph) == 0) {
+                  ## visIgraph() cannot render a graph with zero edges
                   ## (it errors internally with "undefined columns selected" while
                   ## building the edge table), so guard against it explicitly. This
                   ## can happen with a single remaining sample, or when
@@ -81,9 +81,9 @@ setMethod("plot", signature(x = "MislabelSolver"),
                   return(invisible(NULL))
               }
               with_seed(2, {
-                  l_mds <- igraph::layout_with_mds(graph)
-                  l_drl <- igraph::layout_with_drl(graph, use.seed=TRUE, seed=l_mds)
-                  visNetwork::visIgraph(graph, layout = "layout_with_graphopt", start=l_drl)
+                  l_mds <- layout_with_mds(graph)
+                  l_drl <- layout_with_drl(graph, use.seed=TRUE, seed=l_mds)
+                  visIgraph(graph, layout = "layout_with_graphopt", start=l_drl)
               })
           }
 )
@@ -115,11 +115,11 @@ plotCorrections <- function(object,
         query_by <- match.arg(query_by)
         if (query_by %in% c("Init_Component_ID", "Component_ID")) {
             relabel_data <- relabel_data |>
-                dplyr::filter(!!sym(query_by) == query_val)
+                filter(!!sym(query_by) == query_val)
         } else {
             component_id <- relabel_data |>
-                dplyr::filter(!!sym(query_by) == query_val) |>
-                dplyr::pull(Init_Component_ID) |>
+                filter(!!sym(query_by) == query_val) |>
+                pull(Init_Component_ID) |>
                 unique()
             if (length(component_id) == 0) {
                 warning(paste("No samples found for 'query_by'", paste0("'", query_by, "'"), "and 'query_val'", paste0("'", query_val, "'")))
@@ -132,16 +132,16 @@ plotCorrections <- function(object,
 
     corrections_graph <- .generate_corrections_graph(relabel_data)
 
-    if (igraph::vcount(corrections_graph) == 0 || igraph::ecount(corrections_graph) == 0) {
+    if (vcount(corrections_graph) == 0 || ecount(corrections_graph) == 0) {
         warning("Nothing to plot: no corrections match the current filters ",
                 "(e.g. no samples needed relabeling).")
         return(invisible(NULL))
     }
 
     with_seed(2, {
-        l_mds <- igraph::layout_with_mds(corrections_graph)
-        l_drl <- igraph::layout_with_drl(corrections_graph, use.seed=TRUE, seed=l_mds)
-        visNetwork::visIgraph(corrections_graph, layout = "layout_with_graphopt", start=l_drl)
+        l_mds <- layout_with_mds(corrections_graph)
+        l_drl <- layout_with_drl(corrections_graph, use.seed=TRUE, seed=l_mds)
+        visIgraph(corrections_graph, layout = "layout_with_graphopt", start=l_drl)
     })
 }
 

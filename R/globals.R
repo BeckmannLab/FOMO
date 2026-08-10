@@ -21,4 +21,4 @@
 #                  "n_Genotype_Group", "n_Genotype_Group_ID", "n_Genotype_Groups",
 #                  "n_Sample_ID", "n_Samples_ignored", "n_Samples_total", "n_Samples_validated",
 #                  "n_Subject_ID", "n_Subjects", "n_agree", "new_Component_ID")
-# utils::globalVariables(global_vars)
+# globalVariables(global_vars)
