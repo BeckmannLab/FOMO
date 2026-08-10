@@ -21,10 +21,13 @@ each iteration of the ensemble loop. Must be a non-empty subset of
 \code{"local_fast"}. Any solver left out of \code{use_solvers} is skipped
 entirely. For example, setting \code{use_solvers} to \code{c("global", "majority")} will skip local search. \code{"local_fast"} is
 \code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} and \code{"global_fast"} is
-\code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}}, numerically exact but faster
-alternatives to \code{"local"} (\code{\link[=solveLocalSearch]{solveLocalSearch()}}) and \code{"global"}
-(\code{\link[=solveGlobalSearch]{solveGlobalSearch()}}) respectively; each pair are alternative
-implementations of the same step and cannot both be requested at once.
+\code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}}, faster alternatives to \code{"local"}
+(\code{\link[=solveLocalSearch]{solveLocalSearch()}}) and \code{"global"} (\code{\link[=solveGlobalSearch]{solveGlobalSearch()}})
+respectively; each pair are alternative implementations of the same
+step and cannot both be requested at once. \code{"global_fast"} is a
+bit-exact replacement for \code{"global"}; \code{"local_fast"} is only extremely
+close (not bit-exact) to \code{"local"} -- see \code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}} and
+\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} for why that distinction exists.
 \code{"comprehensive"} and \code{"comprehensive_fast"} are accepted as deprecated
 aliases for \code{"global"} and \code{"global_fast"} (global search was
 previously called "comprehensive search"); using either issues a

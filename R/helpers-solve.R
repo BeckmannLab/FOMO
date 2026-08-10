@@ -749,8 +749,10 @@
     return(delta)
 }
 
-## Closed-form, numerically exact replacement for the per-swap entropy delta
+## Closed-form, algebraically exact replacement for the per-swap entropy delta
 ## used by solveLocalSearch()'s calc_scaled_entropy()-based computation.
+## "Algebraically" is an important qualifier here, not a hedge -- see the
+## floating-point note below, and solveLocalSearchFast()'s documentation.
 ##
 ## For a genotype's vote vector x, calc_scaled_entropy(x) = sum_i x_i*log(x_i/n)
 ## = sum_i x_i*log(x_i) - n*log(n), where n = sum(x). A candidate swap moves
@@ -771,6 +773,24 @@
 ## to the same value); applying the two-cell formula naively there would
 ## treat one cell as two and give a nonzero answer, so that side's
 ## contribution is forced to 0 instead.
+##
+## Floating point: this is exact algebra (true for any real n, a, b under
+## infinite precision) but NOT a bit-exact re-derivation of the original
+## computation, because it evaluates log() on different arguments. The
+## original computes log(x_i/n) for every bucket in the row and subtracts two
+## full row-sums; this closed form computes log(a-1), log(a), log(b+1), log(b)
+## directly and never materializes n at all (it cancels symbolically before
+## any log() call happens, not numerically after). log(x/n) and
+## log(x) - log(n) round differently in general, so the two paths can and do
+## disagree in their last few bits -- confirmed empirically (candidate swaps
+## built from real per-sample records, as .find_neighbors() would produce):
+## about 3 in 5 evaluations differ from the original at the ~1e-14 to 1e-15
+## (relative) level. That is normally inconsequential, but because
+## solveLocalSearch() picks the single best swap via `delta == max(delta)`
+## within a component, a difference this small can occasionally flip which
+## swap wins a near-tie, which is why solveLocalSearchFast() is documented as
+## a close-but-not-bit-exact replacement rather than an exact one. See that
+## function's documentation for the practical implications.
 ##
 ## Verified against the original mapply(calc_swapped_delta_entropy, ...)
 ## computation on realistic synthetic data (candidate swaps derived from
@@ -827,6 +847,30 @@
 ##    block's cost dominated by dplyr/vctrs per-call overhead (data-mask
 ##    construction, hash-join bookkeeping), not the arithmetic itself, so
 ##    removing that overhead matters at least as much as reducing row count.
+##
+## Unlike .calc_swapped_delta_entropy_fast() (see its own floating-point note
+## above), this one really is bit-exact, not merely close, and that is
+## provable rather than just empirically observed: every quantity summed here
+## (n_labels, n_ghost_labels, n_in_genotype, n_samples_correct, and everything
+## pmin()/pmax()/subtraction-derived from them) is a small non-negative
+## integer count, and IEEE-754 addition/subtraction of integers is exact
+## (no rounding at all) as long as the running total stays under 2^53 --
+## utterly unremarkable for realistic sample sizes. With no rounding ever
+## occurring in the count arithmetic, it does not matter that this function
+## sums free and locked genotypes' contributions separately (rowsum() then
+## sweep()) where solveGlobalSearch() sums them together in one pass:
+## reordering exact values changes nothing. The only non-integer quantities
+## are the final `ghost_penalty * n_samples_to_relabel_ghost` and
+## `deletion_penalty * pmax(n_genotype_deletions, n_label_deletions)` terms,
+## but those multiply the *same* exact integer by the *same* penalty value
+## passed to both functions, combined via the identical left-to-right
+## `a + b + c` expression and the identical across-swap-category accumulation
+## order (both loop over cc_swap_cat_ids, derived the same way from the same
+## input, and accumulate via `permutation_stats <- permutation_stats + ...`)
+## -- so there is no step anywhere in either function where the same
+## arithmetic operation is ever applied to different operands, or the same
+## operands combined in a different order. That holds for *any* valid
+## ghost_penalty/deletion_penalty, not just the package defaults.
 ##
 ## Verified against the original dplyr-based computation on real captured
 ## mid-solve state (a component with 8 free / 16 locked genotypes, 40,320

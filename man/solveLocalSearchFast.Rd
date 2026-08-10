@@ -25,18 +25,33 @@ with at least one concordant edge}
 A MislabelSolver object
 }
 \description{
-A drop-in, numerically exact replacement for \code{\link[=solveLocalSearch]{solveLocalSearch()}} that
-evaluates each candidate swap's entropy delta with a closed-form update
-instead of rebuilding and rescanning the full vote vector for the
-affected genotype(s). \code{\link[=solveLocalSearch]{solveLocalSearch()}}'s cost scales with the width
-of the votes table -- one column per distinct \code{Subject_ID} across the
-\emph{whole} unsolved dataset, not just the candidate swap's own component --
-so the speedup from avoiding that rescan grows with dataset size: 9-380x
-faster than \code{\link[=solveLocalSearch]{solveLocalSearch()}} on synthetic components ranging from 60
-to 3,000 candidate subjects in testing, with byte-for-bit identical swap
-selections (and therefore identical output) in every case checked.
+A drop-in replacement for \code{\link[=solveLocalSearch]{solveLocalSearch()}} that evaluates each
+candidate swap's entropy delta with a closed-form update instead of
+rebuilding and rescanning the full vote vector for the affected
+genotype(s). \code{\link[=solveLocalSearch]{solveLocalSearch()}}'s cost scales with the width of the
+votes table -- one column per distinct \code{Subject_ID} across the \emph{whole}
+unsolved dataset, not just the candidate swap's own component -- so the
+speedup from avoiding that rescan grows with dataset size: 9-380x faster
+than \code{\link[=solveLocalSearch]{solveLocalSearch()}} on synthetic components ranging from 60 to
+3,000 candidate subjects in testing.
 }
 \details{
+The closed-form update is algebraically exact (an exact rearrangement of
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}'s entropy formula, true under infinite-precision
+arithmetic), but it is not a bit-exact re-derivation of it, because it
+evaluates \code{log()} on different arguments than the original (see the
+comment above \code{.calc_swapped_delta_entropy_fast()} in \code{helpers-solve.R}
+for the full explanation). In practice this means entropy deltas from the
+two functions typically agree to about 1e-9 or tighter, not to the last
+bit. That is inconsequential on its own, but because \code{\link[=solveLocalSearch]{solveLocalSearch()}}
+selects a single best swap per component via \code{delta == max(delta)}, a
+difference this small can occasionally change which swap wins a near-tie
+-- so on rare inputs, this function's swap selections (and hence its
+output) can differ slightly from \code{\link[=solveLocalSearch]{solveLocalSearch()}}'s, even though both
+are picking from among equally-good (or all but indistinguishably good)
+options. If you need the two to match exactly for some downstream
+purpose, use \code{\link[=solveLocalSearch]{solveLocalSearch()}} instead.
+
 Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local_fast"))} rather than calling this directly, unless you are
 composing your own solver loop.
 }
