@@ -773,11 +773,14 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
     start_time <- Sys.time()
     while (TRUE) {
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+            ## Everything has already been resolved; nothing left to solve.
             break
         }
         if (as.numeric(difftime(Sys.time(), start_time, units="secs")) > time_limit) {
             warning("solveEnsemble() reached 'time_limit' of ", time_limit,
                    " second(s) before converging; returning the object in its current, incompletely solved state.")
+            ## Out of time; stop looping and return the best-effort partial
+            ## result computed so far instead of continuing indefinitely.
             break
         }
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
@@ -803,6 +806,10 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
 
         if (nrow(prev_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
             if (identical(prev_relabel_data, object@.solve_state$unsolved_relabel_data)) {
+                ## This pass made no further progress at all (the unsolved
+                ## data is byte-for-byte unchanged from before this
+                ## iteration ran), so further iterations would loop forever
+                ## without converging any further; stop here.
                 break
             }
         }
