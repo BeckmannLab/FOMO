@@ -63,6 +63,18 @@ setClass("MislabelSolver",
 #'                  can be used to categorize Sample_ID(s) into SwapCat_ID(s)
 #' @param anchor_samples (Optional) A character vector of Sample_ID(s) where the label is known to be correct
 #'
+#' @details
+#' \code{sample_metadata} and \code{swap_cats} are sorted by \code{Sample_ID}
+#' internally, so the constructed object (and everything later solved from
+#' it) does not depend on the row order they happen to be provided in. One
+#' consequence of this: when a sample's mislabel can only be resolved by
+#' treating it as a duplicate of a sample that isn't actually present in the
+#' data, the placeholder ID generated for it is deterministic given the same
+#' input -- constructing a MislabelSolver on the same data twice always
+#' generates the same placeholder ID(s), while constructing one on different
+#' data generates different ones (rather than, say, either changing on every
+#' run regardless of input, or always being the same regardless of input).
+#'
 #' @return A MislabelSolver object
 #'
 #' @export
@@ -97,6 +109,35 @@ setMethod("initialize", "MislabelSolver",
               # Hack to get around the NOTE "no visible binding for global variable"
               Genotype_Group_ID <- Subject_ID <- Sample_ID <- Init_Sample_ID <- NULL
 
+              ## Sort deterministically by Sample_ID, so that construction (and
+              ## everything derived from it -- relabel_data's row order, and the
+              ## placeholder IDs generated just below) does not depend on the row
+              ## order 'sample_metadata'/'swap_cats' happened to be provided in.
+              sample_metadata <- sample_metadata[order(sample_metadata$Sample_ID), , drop=FALSE]
+              rownames(sample_metadata) <- NULL
+              swap_cats <- swap_cats[order(swap_cats$Sample_ID), , drop=FALSE]
+              rownames(swap_cats) <- NULL
+
+              ## Pre-generate a random placeholder Sample_ID for every sample, once,
+              ## up front, for .find_relabel_cycles_from_putative_subjects() to use
+              ## later if (and only if) that specific sample is determined to need
+              ## one -- i.e. no real or ghost sample is available to relabel it to,
+              ## so its mislabel can only be resolved by treating it as a duplicate
+              ## of a sample that doesn't actually exist ("unknown"/LABELNOTFOUND
+              ## labels; see helpers-solve.R). A sample whose pre-generated ID never
+              ## ends up needed is simply never referenced again.
+              ##
+              ## Seeded from a hash of this (now sorted) input via a dedicated RNG
+              ## stream (withr::with_seed(), which restores the prior RNG state
+              ## afterward), so that: (a) the same input always yields the same
+              ## placeholder IDs, (b) different input yields different ones rather
+              ## than colliding on one fixed global seed, and (c) this doesn't
+              ## consume from or interfere with the RNG stream solveMajoritySearch()/
+              ## solveGlobalSearch()/solveLocalSearch() use for their own purposes.
+              input_seed <- .hash_to_seed(list(sample_metadata=sample_metadata, swap_cats=swap_cats))
+              placeholder_ids <- withr::with_seed(input_seed, .generate_placeholder_ids(nrow(sample_metadata)))
+              names(placeholder_ids) <- sample_metadata$Sample_ID
+
               ## Provided there are enough shapes, assign a unique shape to each SwapCat_ID
               all_swap_cat_ids <- names(sort(table(swap_cats$SwapCat_ID), decreasing=TRUE))
               swap_cat_shapes <- data.frame(
@@ -117,7 +158,8 @@ setMethod("initialize", "MislabelSolver",
                       Init_Subject_ID = Subject_ID,
                       Is_Ghost = is.na(Genotype_Group_ID),
                       Is_Anchor = Init_Sample_ID %in% anchor_samples,
-                      Solved = FALSE
+                      Solved = FALSE,
+                      Placeholder_ID = placeholder_ids[Sample_ID]
                   ) |>
                   dplyr::left_join(swap_cats, by="Sample_ID")
               unsolved_relabel_data <- relabel_data |>

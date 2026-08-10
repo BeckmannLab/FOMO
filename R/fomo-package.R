@@ -3,6 +3,7 @@
 
 ## usethis namespace: start
 #' @importFrom assertthat assert_that
+#' @importFrom digest digest
 #' @importFrom dplyr arrange
 #' @importFrom dplyr case_when
 #' @importFrom dplyr count
@@ -32,7 +33,6 @@
 #' @importFrom tidyselect all_of
 #' @importFrom tidyselect everything
 #' @importFrom utils head
-#' @importFrom uuid UUIDgenerate
 #' @importFrom withr with_seed
 ## usethis namespace: end
 NULL

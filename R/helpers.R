@@ -1,3 +1,30 @@
+## Deterministically turn an arbitrary R object into a non-negative integer
+## seed, via a hash of its serialized content. Used to seed a dedicated RNG
+## stream from a MislabelSolver()'s (sorted) input -- see
+## .generate_placeholder_ids() -- so that randomly-generated placeholder IDs
+## are reproducible for a given dataset without being fixed across all
+## datasets. Truncated to 7 hex digits (a 28-bit non-negative integer) to
+## stay safely within set.seed()'s accepted range on any platform.
+.hash_to_seed <- function(x) {
+    strtoi(substr(digest::digest(x, algo="md5"), 1, 7), base=16L)
+}
+
+## Generate n random, UUID-v4-*shaped* placeholder IDs using R's own seeded
+## RNG (sample()). Deliberately NOT uuid::UUIDgenerate(): that function draws
+## from system entropy and does not respond to set.seed()/withr::with_seed()
+## at all (confirmed empirically), so results from it can never be made
+## reproducible that way. The UUID v4 shape (8-4-4-4-12 hex digits, version
+## nibble fixed at "4", variant nibble drawn from {8,9,a,b}) is purely
+## cosmetic, kept only so these placeholder IDs look like the
+## uuid::UUIDgenerate() output they replace.
+.generate_placeholder_ids <- function(n) {
+    hex_digits <- c(0:9, letters[1:6])
+    hex <- function(k) paste(sample(hex_digits, k, replace=TRUE), collapse="")
+    vapply(seq_len(n), function(i) {
+        paste(hex(8), hex(4), paste0("4", hex(3)), paste0(sample(c("8", "9", "a", "b"), 1), hex(3)), hex(12), sep="-")
+    }, character(1))
+}
+
 .genotype_matrix_to_genotype_df <- function(genotype_matrix) {
     genotype_graph <- igraph::graph_from_adjacency_matrix(genotype_matrix)
     genotype_group_ids <- igraph::components(genotype_graph)$membership

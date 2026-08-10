@@ -33,3 +33,15 @@ A MislabelSolver object
 \description{
 Constructor for the MislabelSolver class
 }
+\details{
+\code{sample_metadata} and \code{swap_cats} are sorted by \code{Sample_ID}
+internally, so the constructed object (and everything later solved from
+it) does not depend on the row order they happen to be provided in. One
+consequence of this: when a sample's mislabel can only be resolved by
+treating it as a duplicate of a sample that isn't actually present in the
+data, the placeholder ID generated for it is deterministic given the same
+input -- constructing a MislabelSolver on the same data twice always
+generates the same placeholder ID(s), while constructing one on different
+data generates different ones (rather than, say, either changing on every
+run regardless of input, or always being the same regardless of input).
+}

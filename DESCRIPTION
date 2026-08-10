@@ -21,6 +21,7 @@ Depends:
     R (>= 4.1.0)
 Imports: 
     assertthat,
+    digest,
     dplyr,
     igraph,
     methods,
@@ -32,7 +33,6 @@ Imports:
     gtools,
     reshape2,
     graphics,
-    uuid,
     openxlsx,
     stats,
     tibble,

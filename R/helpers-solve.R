@@ -134,7 +134,7 @@
     if (initialization) {
         col_order <- c("Init_Sample_ID", "Init_Subject_ID", "Genotype_Group_ID", "Component_ID",
                        "Sample_ID", "Subject_ID", "Solved", "Is_Ghost", "Is_Anchor", "SwapCat_ID",
-                       "SwapCat_Shape", "vertex_size_scalar")
+                       "SwapCat_Shape", "vertex_size_scalar", "Placeholder_ID")
         unsolved_relabel_data <- unsolved_relabel_data |>
             dplyr::select(all_of(col_order)) |>
             dplyr::mutate(Init_Component_ID = Component_ID) |>
@@ -485,9 +485,9 @@
         subject_id <- mislabeled_genotype_swapcats[i, "Subject_ID"]
 
         ## These are all the mislabeled samples for a SwapCat_ID/Genotype_Group_ID pair
-        mislabeled_samples <- mislabel_data |>
-            dplyr::filter(SwapCat_ID == swap_cat_id, Genotype_Group_ID == genotype_group_id) |>
-            dplyr::pull(Sample_ID)
+        mislabeled_subset <- mislabel_data |>
+            dplyr::filter(SwapCat_ID == swap_cat_id, Genotype_Group_ID == genotype_group_id)
+        mislabeled_samples <- mislabeled_subset |> dplyr::pull(Sample_ID)
         n_mislabeled_samples <- length(mislabeled_samples)
 
         ## The eligible relabels have the putative Subject_ID but are in a different Genotype_Group
@@ -518,9 +518,19 @@
 
         unknown_labels <- character(0)
         n_unknown_labels <- 0
-        ## If there still aren't enough eligible labels, resort to plugging the gap with unknowns
+        ## If there still aren't enough eligible labels, resort to plugging the gap with
+        ## unknowns. Reuse the Placeholder_ID(s) pre-generated at MislabelSolver()
+        ## construction time (see MislabelSolver.R/.generate_placeholder_ids()) for a
+        ## deterministic, Sample_ID-sorted subset of this group's own mislabeled samples,
+        ## rather than minting new ones now -- so the resulting label is reproducible given
+        ## the same input. Every mislabeled sample already has its own pre-generated
+        ## Placeholder_ID regardless of whether it ends up used here.
         if (allow_unknowns && n_label_deficit > 0) {
-            unknown_labels <- paste0(LABEL_NOT_FOUND, "#", subject_id, "#", swap_cat_id, "#", UUIDgenerate(n=n_label_deficit))
+            chosen_placeholder_ids <- mislabeled_subset |>
+                dplyr::arrange(Sample_ID) |>
+                dplyr::pull(Placeholder_ID) |>
+                head(n_label_deficit)
+            unknown_labels <- paste0(LABEL_NOT_FOUND, "#", subject_id, "#", swap_cat_id, "#", chosen_placeholder_ids)
             n_unknown_labels <- length(unknown_labels)
         }
 
