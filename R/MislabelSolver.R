@@ -1,12 +1,12 @@
 ## TODOs
 ## Output which part of solver (global or majority or ensemble) was able to solve each component on the first path
 ## If given a genotype_matrix, plot the graph derived directly from the matrix rather than the factor
-## Make the colors used in plotting global variables
 ## In global search, handle the case where there are more genotype groups than subjects
 ## Collapse cycles in the relabel graph if a single cycle involves 2 samples from the same genotype group (we specifically avoid this case in majority and global search, but this can still occur from a swap applied in local search)
 ## Nice features to have::
 ## Add a feature where researcher provides samples known to be mislabeled ahead of time, so relabeling them isn't penalized
 ## Add a feature where researcher groups samples together that can be mislabeled together (for example samples from the same blood draw), so they aren't penalized as separate sample relabels
+## (Done -- see R/constants.R's PLOT_COLOR_* constants: "Make the colors used in plotting global variables")
 
 #' The MislabelSolver class
 #'

@@ -87,16 +87,16 @@
         mutate(
             shape = SwapCat_Shape,
             color = case_when(
-                Is_LABELNOTFOUND ~ "firebrick",
-                Is_Ghost ~ "lightgrey",
-                TRUE ~ "orange"
+                Is_LABELNOTFOUND ~ PLOT_COLOR_LABEL_NOT_FOUND,
+                Is_Ghost ~ PLOT_COLOR_GHOST,
+                TRUE ~ PLOT_COLOR_REGULAR_SAMPLE
             ),
             size = 12 * vertex_size_scalar,
             label.cex = 0.5
         )
 
     corrections_graph <- graph_from_data_frame(corrections_edges, vertices=corrections_vertices, directed=TRUE)
-    E(corrections_graph)$color <- "black"
+    E(corrections_graph)$color <- PLOT_COLOR_DEFAULT_EDGE
     E(corrections_graph)$width <- 6
 
     return(corrections_graph)

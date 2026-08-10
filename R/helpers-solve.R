@@ -367,21 +367,21 @@
         ghost_samples <- ghost_data |> pull(Sample_ID)
         ghost_samples <- intersect(ghost_samples, V(graph)$name)
     }
-    V(graph)$color <- "orange"
-    V(graph)[anchor_samples]$color <- "forestgreen"
-    V(graph)[label_not_found_samples]$color <- "firebrick"
-    V(graph)[ghost_samples]$color <- "lightgrey"
+    V(graph)$color <- PLOT_COLOR_REGULAR_SAMPLE
+    V(graph)[anchor_samples]$color <- PLOT_COLOR_ANCHOR_SAMPLE
+    V(graph)[label_not_found_samples]$color <- PLOT_COLOR_LABEL_NOT_FOUND
+    V(graph)[ghost_samples]$color <- PLOT_COLOR_GHOST
 
     if (graph_type == "combined") {
         E(graph)$color <- if_else(
-            E(graph)$concordant, "forestgreen",
-            if_else(E(graph)$genotypes, "orange", "cornflowerblue"))
-        E(graph)[.from(ghost_samples)]$color <- "lightgrey"
+            E(graph)$concordant, PLOT_COLOR_CONCORDANT_EDGE,
+            if_else(E(graph)$genotypes, PLOT_COLOR_GENOTYPE_EDGE, PLOT_COLOR_NON_GENOTYPE_EDGE))
+        E(graph)[.from(ghost_samples)]$color <- PLOT_COLOR_GHOST
     } else if (graph_type == "label") {
-        E(graph)$color <- "cornflowerblue"
-        E(graph)[.from(ghost_samples)]$color <- "lightgrey"
+        E(graph)$color <- PLOT_COLOR_NON_GENOTYPE_EDGE
+        E(graph)[.from(ghost_samples)]$color <- PLOT_COLOR_GHOST
     } else {
-        E(graph)$color <- "orange"
+        E(graph)$color <- PLOT_COLOR_GENOTYPE_EDGE
     }
     E(graph)$width <- 6
 
