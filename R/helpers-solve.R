@@ -8,20 +8,55 @@
 ## deletion-penalty scoring was fixed, to keep the effective per-sample
 ## deletion cost unchanged from earlier package versions in the common case.)
 ##
-## Recommended limits, and why: global search scores a candidate
-## permutation as 1 point per ordinary relabel, `ghost_penalty` points per
-## relabel to a ghost (placeholder) sample, and `deletion_penalty` points per
-## sample whose label or genotype it gives up on entirely. If `ghost_penalty`
-## is not strictly greater than the relabel penalty (1), or `deletion_penalty`
-## is not at least twice the relabel penalty, the algorithm can end up
-## preferring to invent a ghost-sample relabel or delete/insert a record even
-## when an ordinary, non-ghost sample swap would have resolved the same
-## ambiguity just as well -- because the "shortcut" would score as good as or
-## better than the honest fix. These two conditions are only warned about,
-## not enforced, since a user may have a considered reason to weight things
-## differently. Non-positive values are always rejected, since a
-## non-positive penalty would make the search prefer *more* ghost relabels or
-## deletions, the opposite of a penalty's purpose.
+## Recommended limits, and why: global search scores a candidate permutation
+## as 1 point per ordinary relabel, `ghost_penalty` points per relabel to a
+## ghost (placeholder) sample, and `deletion_penalty` points per sample whose
+## label or genotype it gives up on entirely. `ghost_penalty` must be
+## strictly greater than the relabel penalty (1), or the algorithm may prefer
+## inventing a ghost-sample relabel even when a real, non-ghost sample swap
+## is already available.
+##
+## `deletion_penalty` needs to clear two *separate* bars, both derived from
+## minimal worked examples (and confirmed against the real scoring code, not
+## just argued abstractly -- see the git history of this comment for the
+## analysis): it must be strictly greater than 2*relabel_penalty (not just
+## "at least" -- at exactly 2 the two options below are an exact tie, decided
+## only by incidental permutation-enumeration order, which is not a real
+## guarantee of anything), AND strictly greater than `ghost_penalty`.
+##
+##   1. > 2*relabel_penalty: with two samples that simply need to swap
+##      identities with each other (the textbook case -- see
+##      toy_swap_scenario() in tests/testthat/helper-toy-scenarios.R, also
+##      the scenario that first surfaced the double-counting bug above), the
+##      honest fix costs 2 (one relabel each way) while treating the pair as
+##      one deletion instead costs exactly `deletion_penalty`. At
+##      deletion_penalty <= 2, giving up scores as good as or better than the
+##      honest fix.
+##   2. > ghost_penalty: separately, when a leftover sample could be
+##      resolved either by relabeling it to an available ghost (cost
+##      `ghost_penalty`) or by counting it as a deletion (cost
+##      `deletion_penalty`), deletion_penalty <= ghost_penalty makes the
+##      algorithm prefer giving up over using a ghost that was right there.
+##      This can happen even when deletion_penalty already clears the "> 2"
+##      bar above -- the two conditions are independent, and both are needed;
+##      confirmed with a small hand-built scenario (one real conflicting
+##      pair plus one available ghost) where deletion_penalty = 2.5 (> 2) and
+##      ghost_penalty = 3 (> 1) still made the algorithm delete rather than
+##      use the ghost, purely because 2.5 < 3.
+##
+## Neither bar is a hard guarantee of always preferring the honest fix in
+## *every* possible component, for every combination of component size and
+## shape -- stress-testing this scoring formula against randomly generated
+## components found configurations (larger, more lopsided ones, beyond the
+## two-samples-and-a-neighbor minimal case above) that need a considerably
+## higher deletion_penalty than max(2, ghost_penalty) to still prefer the
+## fewer-deletion reading, and no fixed constant works for every component
+## shape and size. What's checked here is the necessary bar cleared by the
+## simplest, most common cases (matching the spirit of the pre-existing
+## ghost_penalty check, which has the same "warn, don't enforce" limitation).
+## Non-positive values are always rejected, since a non-positive penalty
+## would make the search prefer *more* ghost relabels or deletions, the
+## opposite of a penalty's purpose.
 .validate_search_penalties <- function(ghost_penalty, deletion_penalty) {
     relabel_penalty <- 1
 
@@ -47,10 +82,12 @@
                 relabel_penalty, "); the algorithm may prefer relabeling to a ghost sample ",
                 "even when a valid non-ghost sample swap is already available.", call. = FALSE)
     }
-    if (deletion_penalty < 2 * relabel_penalty) {
-        warning("'deletion_penalty' (", deletion_penalty, ") is less than twice the relabel penalty (",
-                relabel_penalty, "); the algorithm may prefer inserting/deleting samples ",
-                "even when a valid non-ghost sample swap is already available.", call. = FALSE)
+    min_deletion_penalty <- max(2 * relabel_penalty, ghost_penalty)
+    if (deletion_penalty <= min_deletion_penalty) {
+        warning("'deletion_penalty' (", deletion_penalty, ") is not greater than max(twice the ",
+                "relabel penalty, ghost_penalty) = ", min_deletion_penalty, "; the algorithm may ",
+                "prefer inserting/deleting samples even when a valid non-ghost sample swap or an ",
+                "available ghost sample already exists.", call. = FALSE)
     }
 
     invisible(NULL)

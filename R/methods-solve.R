@@ -88,17 +88,25 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
 #' @param deletion_penalty (Default = 4) The score charged, per sample, for a label or
 #'                      genotype deletion (giving up on reconciling that sample
 #'                      entirely). Must be a single positive numeric value; a warning
-#'                      is issued if it is less than twice the relabel penalty (i.e.
-#'                      less than 2), since otherwise the algorithm may prefer
-#'                      inserting/deleting samples even when a valid non-ghost sample
-#'                      swap is already available. (This default was doubled from 2 to
-#'                      4 when a double-counting bug was fixed: a single orphaned
-#'                      sample -- e.g. one displaced by relabeling another sample to a
-#'                      duplicate of it -- was previously counted as both a genotype
-#'                      deletion and a label deletion and penalized for both, so the
-#'                      default was doubled to keep the effective per-sample deletion
-#'                      cost, and hence overall solver behavior, unchanged from earlier
-#'                      package versions in the common case.)
+#'                      is issued if it is not strictly greater than *both* twice the
+#'                      relabel penalty (i.e. 2) and `ghost_penalty`, since otherwise
+#'                      the algorithm may prefer inserting/deleting samples even when a
+#'                      valid non-ghost sample swap, or an available ghost sample, is
+#'                      already available -- these are two independent comparisons
+#'                      (against a plain swap, and against an available ghost) and
+#'                      `deletion_penalty` needs to clear both; see the comment above
+#'                      `.validate_search_penalties()` in `helpers-solve.R` for the
+#'                      worked examples behind both bars, and why neither -- nor their
+#'                      combination -- is a hard guarantee for every possible
+#'                      component, just the bar cleared by the simplest, most common
+#'                      cases. (This default was doubled from 2 to 4 when a
+#'                      double-counting bug was fixed: a single orphaned sample -- e.g.
+#'                      one displaced by relabeling another sample to a duplicate of it
+#'                      -- was previously counted as both a genotype deletion and a
+#'                      label deletion and penalized for both, so the default was
+#'                      doubled to keep the effective per-sample deletion cost, and
+#'                      hence overall solver behavior, unchanged from earlier package
+#'                      versions in the common case.)
 #'
 #'
 #' @return A MislabelSolver object
