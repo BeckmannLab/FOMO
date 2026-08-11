@@ -18,84 +18,104 @@ exportMethods(plot)
 importFrom(Matrix,Matrix)
 importFrom(assertthat,assert_that)
 importFrom(digest,digest)
-importFrom(dplyr,anti_join)
-importFrom(dplyr,arrange)
-importFrom(dplyr,case_when)
-importFrom(dplyr,coalesce)
-importFrom(dplyr,count)
-importFrom(dplyr,desc)
-importFrom(dplyr,distinct)
-importFrom(dplyr,ends_with)
-importFrom(dplyr,filter)
-importFrom(dplyr,group_by)
-importFrom(dplyr,group_by_at)
-importFrom(dplyr,if_else)
-importFrom(dplyr,inner_join)
-importFrom(dplyr,left_join)
-importFrom(dplyr,mutate)
-importFrom(dplyr,mutate_at)
-importFrom(dplyr,n)
-importFrom(dplyr,n_distinct)
-importFrom(dplyr,pull)
-importFrom(dplyr,relocate)
-importFrom(dplyr,rename)
-importFrom(dplyr,row_number)
-importFrom(dplyr,rows_update)
-importFrom(dplyr,sample_n)
-importFrom(dplyr,select)
-importFrom(dplyr,summarise)
-importFrom(dplyr,summarize)
-importFrom(dplyr,transmute)
-importFrom(dplyr,ungroup)
-importFrom(dplyr,vars)
+importFrom(dplyr,
+  anti_join,
+  arrange,
+  case_when,
+  coalesce,
+  count,
+  desc,
+  distinct,
+  ends_with,
+  filter,
+  group_by,
+  group_by_at,
+  if_else,
+  inner_join,
+  left_join,
+  mutate,
+  mutate_at,
+  n,
+  n_distinct,
+  pull,
+  relocate,
+  rename,
+  row_number,
+  rows_update,
+  sample_n,
+  select,
+  summarise,
+  summarize,
+  transmute,
+  ungroup,
+  vars
+)
 importFrom(graphics,plot)
 importFrom(gtools,permutations)
-importFrom(igraph,"E<-")
-importFrom(igraph,"V<-")
-importFrom(igraph,E)
-importFrom(igraph,V)
-importFrom(igraph,all_simple_paths)
-importFrom(igraph,components)
-importFrom(igraph,degree)
-importFrom(igraph,delete_vertices)
-importFrom(igraph,ecount)
-importFrom(igraph,ends)
-importFrom(igraph,get.adjacency)
-importFrom(igraph,graph.union)
-importFrom(igraph,graph_from_adjacency_matrix)
-importFrom(igraph,graph_from_data_frame)
-importFrom(igraph,is_directed)
-importFrom(igraph,layout_with_drl)
-importFrom(igraph,layout_with_mds)
-importFrom(igraph,neighbors)
-importFrom(igraph,subgraph)
-importFrom(igraph,vcount)
-importFrom(methods,isGeneric)
-importFrom(methods,new)
-importFrom(methods,setGeneric)
+importFrom(igraph,
+  "E<-",
+  "V<-",
+  E,
+  V,
+  all_simple_paths,
+  components,
+  degree,
+  delete_vertices,
+  ecount,
+  ends,
+  get.adjacency,
+  graph.union,
+  graph_from_adjacency_matrix,
+  graph_from_data_frame,
+  is_directed,
+  layout_with_drl,
+  layout_with_mds,
+  neighbors,
+  subgraph,
+  vcount
+)
+importFrom(methods,
+  isGeneric,
+  new,
+  setGeneric
+)
 importFrom(openxlsx,write.xlsx)
 importFrom(reshape2,melt)
-importFrom(rlang,.data)
-importFrom(rlang,is_bare_numeric)
-importFrom(rlang,is_character)
-importFrom(rlang,is_logical)
-importFrom(rlang,sym)
-importFrom(stats,na.omit)
-importFrom(stats,setNames)
-importFrom(stringr,str_c)
-importFrom(stringr,str_detect)
-importFrom(stringr,str_length)
-importFrom(stringr,str_replace)
-importFrom(stringr,str_split_1)
-importFrom(stringr,str_sub)
-importFrom(stringr,str_to_lower)
-importFrom(tibble,rownames_to_column)
-importFrom(tibble,tibble)
-importFrom(tidyr,drop_na)
-importFrom(tidyr,unnest)
-importFrom(tidyselect,all_of)
-importFrom(tidyselect,everything)
-importFrom(utils,globalVariables)
-importFrom(utils,head)
+importFrom(rlang,
+  .data,
+  is_bare_numeric,
+  is_character,
+  is_logical,
+  sym
+)
+importFrom(stats,
+  na.omit,
+  setNames
+)
+importFrom(stringr,
+  str_c,
+  str_detect,
+  str_length,
+  str_replace,
+  str_split_1,
+  str_sub,
+  str_to_lower
+)
+importFrom(tibble,
+  rownames_to_column,
+  tibble
+)
+importFrom(tidyr,
+  drop_na,
+  unnest
+)
+importFrom(tidyselect,
+  all_of,
+  everything
+)
+importFrom(utils,
+  globalVariables,
+  head
+)
 importFrom(visNetwork,visIgraph)
 importFrom(withr,with_seed)

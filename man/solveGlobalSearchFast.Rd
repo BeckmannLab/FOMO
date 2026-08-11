@@ -54,7 +54,7 @@ A MislabelSolver object
 }
 \description{
 A drop-in, numerically exact replacement for \code{\link[=solveGlobalSearch]{solveGlobalSearch()}}
-that scores permutations without \code{\link[reshape2:melt]{reshape2::melt()}}/\code{dplyr} joins on the
+that scores permutations without \code{\link[reshape2:melt]{melt()}}/\code{dplyr} joins on the
 full genotype-by-permutation table. Two independent changes: (1) a
 component's \emph{locked} genotype columns (already resolved before global
 search reached this component) are constant across every
@@ -62,7 +62,7 @@ permutation, so their score contribution is computed once from a single
 row instead of melted and joined on every one of up to 8! = 40,320
 permutation rows; (2) the per-swap-category scoring itself is done with
 named-vector lookups and \code{rowsum()} instead of
-\code{dplyr::left_join()}/\code{group_by()}/\code{summarize()}, since profiling showed
+\code{left_join()}/\code{group_by()}/\code{summarize()}, since profiling showed
 the original's cost dominated by join/data-mask overhead rather than the
 arithmetic. Verified against \code{\link[=solveGlobalSearch]{solveGlobalSearch()}} on real
 mid-solve state (8 free / 16 locked genotypes, 40,320 permutations, 6
