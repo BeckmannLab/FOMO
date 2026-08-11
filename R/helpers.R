@@ -6,7 +6,7 @@
 ## datasets. Truncated to 7 hex digits (a 28-bit non-negative integer) to
 ## stay safely within set.seed()'s accepted range on any platform.
 .hash_to_seed <- function(x) {
-    strtoi(str_sub(digest(x, algo="md5"), 1, 7), base=16L)
+    strtoi(str_sub(digest(x, algo = "md5"), 1, 7), base = 16L)
 }
 
 ## Generate n random, UUID-v4-*shaped* placeholder IDs using R's own seeded
@@ -19,10 +19,23 @@
 ## uuid::UUIDgenerate() output they replace.
 .generate_placeholder_ids <- function(n) {
     hex_digits <- c(0:9, letters[1:6])
-    hex <- function(k) str_c(sample(hex_digits, k, replace=TRUE), collapse="")
-    vapply(seq_len(n), function(i) {
-        str_c(hex(8), hex(4), str_c("4", hex(3)), str_c(sample(c("8", "9", "a", "b"), 1), hex(3)), hex(12), sep="-")
-    }, character(1))
+    hex <- function(k) {
+        str_c(sample(hex_digits, k, replace = TRUE), collapse = "")
+    }
+    vapply(
+        seq_len(n),
+        function(i) {
+            str_c(
+                hex(8),
+                hex(4),
+                str_c("4", hex(3)),
+                str_c(sample(c("8", "9", "a", "b"), 1), hex(3)),
+                hex(12),
+                sep = "-"
+            )
+        },
+        character(1)
+    )
 }
 
 .genotype_matrix_to_genotype_df <- function(genotype_matrix) {
@@ -30,7 +43,16 @@
     genotype_group_ids <- components(genotype_graph)$membership
     n_genotype_groups <- length(unique(genotype_group_ids))
     n_digits <- floor(log10(n_genotype_groups)) + 1
-    genotype_group_ids <- vapply(genotype_group_ids, \(x) str_c("Genotype_Group", formatC(x, width = n_digits, format = "d", flag = "0")), "character")
+    genotype_group_ids <- vapply(
+        genotype_group_ids,
+        \(x) {
+            str_c(
+                "Genotype_Group",
+                formatC(x, width = n_digits, format = "d", flag = "0")
+            )
+        },
+        "character"
+    )
     genotype_df <- data.frame(
         Sample_ID = names(genotype_group_ids),
         Genotype_Group_ID = genotype_group_ids
@@ -39,26 +61,32 @@
 }
 
 .generate_corrections_graph <- function(
-        relabel_data) {
+    relabel_data
+) {
     sample_corrections_df <- relabel_data |>
         filter(Init_Sample_ID != Sample_ID)
     corrections_edges <- sample_corrections_df |>
         select(Init_Sample_ID, Sample_ID)
 
     corrections_vertices <- data.frame(
-        Sample_ID = unique(c(sample_corrections_df[, "Init_Sample_ID"],
-                             sample_corrections_df[, "Sample_ID"]))
+        Sample_ID = unique(c(
+            sample_corrections_df[, "Init_Sample_ID"],
+            sample_corrections_df[, "Sample_ID"]
+        ))
     ) |>
         left_join(
-            sample_corrections_df |> select(Sample_ID=Init_Sample_ID,
-                                             Init_Component_ID,
-                                             Component_ID,
-                                             Subject_ID,
-                                             Genotype_Group_ID,
-                                             Is_Ghost,
-                                             SwapCat_ID,
-                                             SwapCat_Shape,
-                                             vertex_size_scalar),
+            sample_corrections_df |>
+                select(
+                    Sample_ID = Init_Sample_ID,
+                    Init_Component_ID,
+                    Component_ID,
+                    Subject_ID,
+                    Genotype_Group_ID,
+                    Is_Ghost,
+                    SwapCat_ID,
+                    SwapCat_Shape,
+                    vertex_size_scalar
+                ),
             by = "Sample_ID"
         )
     ## For samples that don't appear in the Init_Sample_ID column (LABELNOTFOUND samples)
@@ -71,19 +99,24 @@
         mutate(Is_LABELNOTFOUND = TRUE) |>
         select("Sample_ID", "Is_LABELNOTFOUND") |>
         left_join(
-            sample_corrections_df |> select(Sample_ID,
-                                             Init_Component_ID,
-                                             Component_ID,
-                                             Subject_ID,
-                                             Genotype_Group_ID,
-                                             SwapCat_ID,
-                                             SwapCat_Shape,
-                                             vertex_size_scalar),
+            sample_corrections_df |>
+                select(
+                    Sample_ID,
+                    Init_Component_ID,
+                    Component_ID,
+                    Subject_ID,
+                    Genotype_Group_ID,
+                    SwapCat_ID,
+                    SwapCat_Shape,
+                    vertex_size_scalar
+                ),
             by = "Sample_ID"
         ) |>
-        mutate(Is_Ghost=FALSE)
-    corrections_vertices <- rbind(corrections_vertices_split,
-                                  corrections_vertices_label_not_found) |>
+        mutate(Is_Ghost = FALSE)
+    corrections_vertices <- rbind(
+        corrections_vertices_split,
+        corrections_vertices_label_not_found
+    ) |>
         mutate(
             shape = SwapCat_Shape,
             color = case_when(
@@ -95,7 +128,11 @@
             label.cex = 0.5
         )
 
-    corrections_graph <- graph_from_data_frame(corrections_edges, vertices=corrections_vertices, directed=TRUE)
+    corrections_graph <- graph_from_data_frame(
+        corrections_edges,
+        vertices = corrections_vertices,
+        directed = TRUE
+    )
     E(corrections_graph)$color <- PLOT_COLOR_DEFAULT_EDGE
     E(corrections_graph)$width <- 6
 
@@ -105,4 +142,3 @@
 # .diagnose_contaminated_genotype_groups <- function(genotype_matrix) {
 #
 # }
-

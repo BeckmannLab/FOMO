@@ -5,3 +5,5 @@ fomo_package_creation.Rmd
 ^doc$
 ^Meta$
 ^README.mkdn$
+^[.]?air[.]toml$
+^\.vscode$

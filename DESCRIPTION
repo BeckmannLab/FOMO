@@ -38,7 +38,7 @@ Imports:
     rlang,
     tidyselect,
     utils
-Suggests: 
+Suggests:
     BiocStyle, 
     knitr, 
     rmarkdown,

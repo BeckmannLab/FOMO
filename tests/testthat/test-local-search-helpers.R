@@ -16,9 +16,12 @@ test_that(".calc_swapped_delta_entropy is 0 for a swap that changes nothing", {
     votes <- matrix(c(3, 0), nrow = 1, dimnames = list("G1", c("A", "B")))
     base_entropies <- c(G1 = .calc_scaled_entropy(votes["G1", ]))
     d <- .calc_swapped_delta_entropy(
-        votes, base_entropies,
-        swap_from_subject = "A", swap_from_genotype = "G1",
-        swap_to_subject = "A", swap_to_genotype = NA
+        votes,
+        base_entropies,
+        swap_from_subject = "A",
+        swap_from_genotype = "G1",
+        swap_to_subject = "A",
+        swap_to_genotype = NA
     )
     ## d comes back named "G1" (inherited from indexing base_entropies
     ## internally); compare on value only.
@@ -27,15 +30,22 @@ test_that(".calc_swapped_delta_entropy is 0 for a swap that changes nothing", {
 
 test_that(".calc_swapped_delta_entropy matches a manual before/after entropy calculation", {
     ## Two genotypes, two subjects: move one vote from (G1, A) to (G1, B).
-    votes <- matrix(c(3, 1, 1, 2), nrow = 2, dimnames = list(c("G1", "G2"), c("A", "B")))
+    votes <- matrix(
+        c(3, 1, 1, 2),
+        nrow = 2,
+        dimnames = list(c("G1", "G2"), c("A", "B"))
+    )
     base_entropies <- c(
         G1 = .calc_scaled_entropy(votes["G1", ]),
         G2 = .calc_scaled_entropy(votes["G2", ])
     )
     d <- .calc_swapped_delta_entropy(
-        votes, base_entropies,
-        swap_from_subject = "A", swap_from_genotype = "G1",
-        swap_to_subject = "B", swap_to_genotype = NA
+        votes,
+        base_entropies,
+        swap_from_subject = "A",
+        swap_from_genotype = "G1",
+        swap_to_subject = "B",
+        swap_to_genotype = NA
     )
 
     ## d comes back named "G1" (inherited from indexing base_entropies

@@ -4,10 +4,22 @@ test_that("ghost_penalty and deletion_penalty accept valid scalar numerics", {
 })
 
 test_that("ghost_penalty and deletion_penalty reject non-scalar or non-numeric values", {
-    expect_error(.validate_search_penalties(c(1.5, 2), 4), "single \\(length-1\\) numeric")
-    expect_error(.validate_search_penalties(1.5, c(4, 5)), "single \\(length-1\\) numeric")
-    expect_error(.validate_search_penalties("1.5", 4), "single \\(length-1\\) numeric")
-    expect_error(.validate_search_penalties(1.5, NA_real_), "single \\(length-1\\) numeric")
+    expect_error(
+        .validate_search_penalties(c(1.5, 2), 4),
+        "single \\(length-1\\) numeric"
+    )
+    expect_error(
+        .validate_search_penalties(1.5, c(4, 5)),
+        "single \\(length-1\\) numeric"
+    )
+    expect_error(
+        .validate_search_penalties("1.5", 4),
+        "single \\(length-1\\) numeric"
+    )
+    expect_error(
+        .validate_search_penalties(1.5, NA_real_),
+        "single \\(length-1\\) numeric"
+    )
 })
 
 test_that("non-positive penalties are always rejected (even if otherwise valid scalars)", {
@@ -41,7 +53,7 @@ test_that("deletion_penalty must also be strictly greater than ghost_penalty", {
     ## deleting a sample over relabeling it to an available ghost (a second,
     ## independent failure mode from the plain-swap-vs-deletion one above).
     expect_warning(.validate_search_penalties(3, 2.5), "deletion_penalty") # 2.5 > 2, but <= ghost_penalty (3)
-    expect_warning(.validate_search_penalties(3, 3), "deletion_penalty")   # exact tie with ghost_penalty
+    expect_warning(.validate_search_penalties(3, 3), "deletion_penalty") # exact tie with ghost_penalty
     expect_silent(.validate_search_penalties(3, 3.01))
 })
 

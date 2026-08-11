@@ -15,9 +15,9 @@
 #' print(s)
 #' table(s)
 normalize_sex <- function(
-        x,
-        male_synonyms = c("male", "m"),
-        female_synonyms = c("female", "f")
+    x,
+    male_synonyms = c("male", "m"),
+    female_synonyms = c("female", "f")
 ) {
     x <- str_to_lower(x)
     male_synonyms <- str_to_lower(male_synonyms)
@@ -29,7 +29,13 @@ normalize_sex <- function(
         is.na(x) ~ NA_character_,
         .default = "INVALID"
     )
-    assert_that(!any(na.omit(result) == "INVALID"), msg = str_c("Invalid sex value(s): ", deparse1(head(unique(x[result == "INVALID"])))))
+    assert_that(
+        !any(na.omit(result) == "INVALID"),
+        msg = str_c(
+            "Invalid sex value(s): ",
+            deparse1(head(unique(x[result == "INVALID"])))
+        )
+    )
     factor(result, levels = c("Female", "Male"))
 }
 
@@ -70,7 +76,12 @@ normalize_sex <- function(
 #' estimate_n_mislabels(reported, inferred, adjust_for_unevaluable = FALSE)
 #' # Should give approximately 20% (0.2)
 #' estimate_n_mislabels(reported, inferred, return_fraction = TRUE)
-estimate_n_mislabels <- function(reported_sex, inferred_sex, return_fraction = FALSE, adjust_for_unevaluable = TRUE) {
+estimate_n_mislabels <- function(
+    reported_sex,
+    inferred_sex,
+    return_fraction = FALSE,
+    adjust_for_unevaluable = TRUE
+) {
     # Also allow sex to be passed as logical. We arbitrarily assign each boolean
     # to a sex, since it doesn't matter which is which for the purposes of this
     # calculation.
@@ -100,7 +111,9 @@ estimate_n_mislabels <- function(reported_sex, inferred_sex, return_fraction = F
     n_wrong_sex <- sum(x$evaluable & !x$matched)
     n_male <- sum(x$evaluable & (x$reported_sex == "Male"))
     n_female <- n_evaluable - n_male
-    est_n_evaluable_mislabels <- n_wrong_sex * n_evaluable * (n_evaluable - 1) /
+    est_n_evaluable_mislabels <- n_wrong_sex *
+        n_evaluable *
+        (n_evaluable - 1) /
         (2 * n_male * n_female)
     est_frac_mislabel <- est_n_evaluable_mislabels / n_evaluable
     if (return_fraction) {

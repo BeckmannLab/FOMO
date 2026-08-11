@@ -13,7 +13,7 @@
 #'
 #' @export
 #'
-solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
+solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
     set.seed(1)
     message("Starting majority search")
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
@@ -22,8 +22,10 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
     }
 
     ## 1. Update putative subjects
-    votes <- table(object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
-                   object@.solve_state$unsolved_relabel_data$Subject_ID)
+    votes <- table(
+        object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
+        object@.solve_state$unsolved_relabel_data$Subject_ID
+    )
     votes_by_genotype <- data.frame(
         Genotype_Group_ID = rownames(votes),
         Max_Subject_ID = colnames(votes)[apply(votes, 1, which.max)],
@@ -32,7 +34,7 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
     ) |>
         filter(
             n_Max_Subject_ID >= 2,
-            n_Max_Subject_ID > n/2
+            n_Max_Subject_ID > n / 2
         ) |>
         rename(Subject_ID = Max_Subject_ID) |>
         select(Genotype_Group_ID, Subject_ID)
@@ -44,24 +46,33 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
     ) |>
         filter(
             n_Max_Genotype_Group_ID >= 2,
-            n_Max_Genotype_Group_ID > n/2
+            n_Max_Genotype_Group_ID > n / 2
         ) |>
         rename(Genotype_Group_ID = Max_Genotype_Group_ID) |>
         select(Subject_ID, Genotype_Group_ID)
-    new_putative_subjects <- inner_join(votes_by_subject, votes_by_genotype, by=c("Genotype_Group_ID", "Subject_ID")) |>
-        anti_join(object@.solve_state$putative_subjects, by=c("Genotype_Group_ID", "Subject_ID"))
+    new_putative_subjects <- inner_join(
+        votes_by_subject,
+        votes_by_genotype,
+        by = c("Genotype_Group_ID", "Subject_ID")
+    ) |>
+        anti_join(
+            object@.solve_state$putative_subjects,
+            by = c("Genotype_Group_ID", "Subject_ID")
+        )
     object <- .update_putative_subjects(object, new_putative_subjects)
 
     ## 2. Find relabel cycles
     unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
     putative_subjects <- object@.solve_state$putative_subjects
-    relabels <- .find_relabel_cycles_from_putative_subjects(unsolved_relabel_data,
-                                                            putative_subjects,
-                                                            unambiguous_only=unambiguous_only,
-                                                            allow_unknowns=FALSE)
+    relabels <- .find_relabel_cycles_from_putative_subjects(
+        unsolved_relabel_data,
+        putative_subjects,
+        unambiguous_only = unambiguous_only,
+        allow_unknowns = FALSE
+    )
 
     ## 3. Relabel samples and update solve state
-    object <- .relabel_samples(object, relabels, solver_name="majority")
+    object <- .relabel_samples(object, relabels, solver_name = "majority")
     # print(paste(nrow(relabels), "samples relabeled"))
     return(object)
 }
@@ -113,7 +124,12 @@ solveMajoritySearch <- function(object, unambiguous_only=FALSE) {
 #'
 #' @export
 #'
-solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
+solveGlobalSearch <- function(
+    object,
+    max_genotypes = 8,
+    ghost_penalty = 1.5,
+    deletion_penalty = 4
+) {
     set.seed(1)
     message("Starting global search")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
@@ -125,14 +141,22 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
     putative_subjects <- object@.solve_state$putative_subjects
 
     ## 1. Update putative subjects
-    component_ids <- sort(unique(object@.solve_state$unsolved_relabel_data$Component_ID))
+    component_ids <- sort(unique(
+        object@.solve_state$unsolved_relabel_data$Component_ID
+    ))
     for (component_id in component_ids) {
         cc_unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
             filter(Component_ID == component_id)
         cc_unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
             filter(Component_ID == component_id)
-        cc_sample_ids <- c(cc_unsolved_relabel_data$Sample_ID, cc_unsolved_ghost_data$Sample_ID)
-        cc_swap_cat_ids <- unique(c(cc_unsolved_relabel_data$SwapCat_ID, cc_unsolved_ghost_data$SwapCat_ID))
+        cc_sample_ids <- c(
+            cc_unsolved_relabel_data$Sample_ID,
+            cc_unsolved_ghost_data$Sample_ID
+        )
+        cc_swap_cat_ids <- unique(c(
+            cc_unsolved_relabel_data$SwapCat_ID,
+            cc_unsolved_ghost_data$SwapCat_ID
+        ))
         cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
         cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
 
@@ -143,13 +167,19 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
         }
 
         ## Lock genotypes that already have a putative subject assigned, and find all possible permutations for free genotypes
-        locked_genotypes <- intersect(putative_subjects$Genotype_Group_ID, cc_genotypes)
+        locked_genotypes <- intersect(
+            putative_subjects$Genotype_Group_ID,
+            cc_genotypes
+        )
         locked_subjects <- intersect(putative_subjects$Subject_ID, cc_subjects)
         free_genotypes <- setdiff(cc_genotypes, locked_genotypes)
         free_subjects <- setdiff(cc_subjects, locked_subjects)
 
         ## Pass out of components if they have too many genotypes
-        if (length(free_genotypes) > max_genotypes | length(free_subjects) > max_genotypes) {
+        if (
+            length(free_genotypes) > max_genotypes |
+                length(free_subjects) > max_genotypes
+        ) {
             next
         }
 
@@ -160,18 +190,41 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
             colnames(perm_genotypes) <- sort(free_genotypes)
             n_perm <- nrow(perm_genotypes)
             for (locked_genotype_id in locked_genotypes) {
-                locked_subject_id <- putative_subjects[putative_subjects$Genotype_Group_ID == locked_genotype_id, "Subject_ID"][[1]]
-                new_perm_col <- matrix(data=locked_subject_id, ncol=1, nrow=n_perm, dimnames=list(NULL, locked_genotype_id))
+                locked_subject_id <- putative_subjects[
+                    putative_subjects$Genotype_Group_ID == locked_genotype_id,
+                    "Subject_ID"
+                ][[1]]
+                new_perm_col <- matrix(
+                    data = locked_subject_id,
+                    ncol = 1,
+                    nrow = n_perm,
+                    dimnames = list(NULL, locked_genotype_id)
+                )
                 perm_genotypes <- cbind(perm_genotypes, new_perm_col)
             }
         } else {
-            locked_putative_subjects <- putative_subjects[putative_subjects$Genotype_Group_ID %in% locked_genotypes, ]
+            locked_putative_subjects <- putative_subjects[
+                putative_subjects$Genotype_Group_ID %in% locked_genotypes,
+            ]
             perm_genotypes <- t(locked_putative_subjects$Subject_ID)
-            colnames(perm_genotypes) <- locked_putative_subjects$Genotype_Group_ID
+            colnames(
+                perm_genotypes
+            ) <- locked_putative_subjects$Genotype_Group_ID
         }
-        perm_genotypes <- as.matrix(perm_genotypes, dimnames=c("Permutation_ID", "Genotype_Group_ID"))
+        perm_genotypes <- as.matrix(
+            perm_genotypes,
+            dimnames = c("Permutation_ID", "Genotype_Group_ID")
+        )
         n_perms <- nrow(perm_genotypes)
-        permutation_ids <- str_c("Permutation", formatC(seq_len(n_perms), width=str_length(n_perms), format="d", flag="0"))
+        permutation_ids <- str_c(
+            "Permutation",
+            formatC(
+                seq_len(n_perms),
+                width = str_length(n_perms),
+                format = "d",
+                flag = "0"
+            )
+        )
         rownames(perm_genotypes) <- permutation_ids
 
         ## For each Genotype_Group_ID/Subject_ID permutation, determine
@@ -181,28 +234,44 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
         label_counts <- cc_unsolved_relabel_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Subject_ID, SwapCat_ID) |>
-            summarize(n_labels = n(), .groups="drop")
+            summarize(n_labels = n(), .groups = "drop")
         ghost_label_counts <- cc_unsolved_ghost_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Subject_ID, SwapCat_ID) |>
-            summarize(n_ghost_labels = n(), .groups="drop")
+            summarize(n_ghost_labels = n(), .groups = "drop")
         genotype_counts <- cc_unsolved_relabel_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Genotype_Group_ID, SwapCat_ID) |>
-            summarize(n_in_genotype = n(), .groups="drop")
+            summarize(n_in_genotype = n(), .groups = "drop")
         genotype_subject_concordant_counts <- cc_unsolved_relabel_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
-            summarize(n_samples_correct = n(), .groups="drop")
+            summarize(n_samples_correct = n(), .groups = "drop")
 
         ## Create a "long" version of perm_genotypes
         long_perm_genotypes <- melt(perm_genotypes)
-        colnames(long_perm_genotypes) <- c("Permutation_ID", "Genotype_Group_ID", "Subject_ID")
-        long_perm_genotypes <- as.data.frame(lapply(long_perm_genotypes, as.character))
+        colnames(long_perm_genotypes) <- c(
+            "Permutation_ID",
+            "Genotype_Group_ID",
+            "Subject_ID"
+        )
+        long_perm_genotypes <- as.data.frame(lapply(
+            long_perm_genotypes,
+            as.character
+        ))
 
         ## Create an empty matrix of stats for each permutation
-        count_cols <- c("n_labels", "n_ghost_labels", "n_in_genotype", "n_samples_correct")
-        permutation_stats <- matrix(0, nrow=n_perms, ncol=length(count_cols))
+        count_cols <- c(
+            "n_labels",
+            "n_ghost_labels",
+            "n_in_genotype",
+            "n_samples_correct"
+        )
+        permutation_stats <- matrix(
+            0,
+            nrow = n_perms,
+            ncol = length(count_cols)
+        )
         colnames(permutation_stats) <- count_cols
         rownames(permutation_stats) <- permutation_ids
         for (swap_cat_id in cc_swap_cat_ids) {
@@ -210,22 +279,40 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
 
             ## Join in ascending order of size
             merged_long_perm_genotypes <- long_perm_genotypes |>
-                left_join(label_counts, by=c("Subject_ID", "SwapCat_ID")) |>
-                left_join(ghost_label_counts, by=c("Subject_ID", "SwapCat_ID")) |>
-                left_join(genotype_counts, by=c("Genotype_Group_ID", "SwapCat_ID")) |>
-                left_join(genotype_subject_concordant_counts, by=c("Subject_ID", "Genotype_Group_ID", "SwapCat_ID")) |>
+                left_join(label_counts, by = c("Subject_ID", "SwapCat_ID")) |>
+                left_join(
+                    ghost_label_counts,
+                    by = c("Subject_ID", "SwapCat_ID")
+                ) |>
+                left_join(
+                    genotype_counts,
+                    by = c("Genotype_Group_ID", "SwapCat_ID")
+                ) |>
+                left_join(
+                    genotype_subject_concordant_counts,
+                    by = c("Subject_ID", "Genotype_Group_ID", "SwapCat_ID")
+                ) |>
                 mutate_at(
                     vars(all_of(count_cols)),
-                    ~coalesce(., 0)
+                    ~ coalesce(., 0)
                 )
             merged_long_perm_genotypes <- merged_long_perm_genotypes |>
                 mutate(
                     ## In each genotype group, the number of samples that can be relabeled to a genotyped sample
-                    n_samples_to_relabel = pmin(n_in_genotype, n_labels) - n_samples_correct,
+                    n_samples_to_relabel = pmin(n_in_genotype, n_labels) -
+                        n_samples_correct,
                     ## In each genotype group, the number of mislabeled samples outstanding is
                     ## n_genotypes - n_correct - n_samples_to_relabel. We try to plug this gap with ghost samples
-                    n_samples_to_relabel_ghost = pmin(n_in_genotype - n_samples_correct - n_samples_to_relabel, n_ghost_labels),
-                    n_label_deletions = pmax(0, n_in_genotype - n_labels - n_ghost_labels),
+                    n_samples_to_relabel_ghost = pmin(
+                        n_in_genotype -
+                            n_samples_correct -
+                            n_samples_to_relabel,
+                        n_ghost_labels
+                    ),
+                    n_label_deletions = pmax(
+                        0,
+                        n_in_genotype - n_labels - n_ghost_labels
+                    ),
                     n_genotype_deletions = pmax(0, n_labels - n_in_genotype)
                 ) |>
                 arrange(Permutation_ID)
@@ -236,20 +323,30 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
                 summarize(
                     n_samples_correct = sum(n_samples_correct),
                     n_samples_to_relabel = sum(n_samples_to_relabel),
-                    n_samples_to_relabel_ghost = sum(n_samples_to_relabel_ghost),
+                    n_samples_to_relabel_ghost = sum(
+                        n_samples_to_relabel_ghost
+                    ),
                     n_genotype_deletions = sum(n_genotype_deletions),
                     n_label_deletions = sum(n_label_deletions),
                     .groups = "drop"
                 ) |>
                 as.data.frame() |>
                 mutate(
-                    n_samples_to_relabel = n_samples_to_relabel + pmin(n_genotype_deletions, n_samples_to_relabel_ghost),
-                    n_genotype_deletions = pmax(0, n_genotype_deletions - n_samples_to_relabel_ghost),
+                    n_samples_to_relabel = n_samples_to_relabel +
+                        pmin(n_genotype_deletions, n_samples_to_relabel_ghost),
+                    n_genotype_deletions = pmax(
+                        0,
+                        n_genotype_deletions - n_samples_to_relabel_ghost
+                    ),
                     ## The weighting scheme is arbitrary right now
-                    perm_score = n_samples_to_relabel + ghost_penalty * n_samples_to_relabel_ghost + deletion_penalty * pmax(n_genotype_deletions, n_label_deletions)
+                    perm_score = n_samples_to_relabel +
+                        ghost_penalty * n_samples_to_relabel_ghost +
+                        deletion_penalty *
+                            pmax(n_genotype_deletions, n_label_deletions)
                 )
             rownames(swap_cat_perm_stats) <- swap_cat_perm_stats$Permutation_ID
-            swap_cat_perm_stats <- swap_cat_perm_stats |> select(-Permutation_ID)
+            swap_cat_perm_stats <- swap_cat_perm_stats |>
+                select(-Permutation_ID)
 
             permutation_stats <- permutation_stats + swap_cat_perm_stats
         }
@@ -260,7 +357,11 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
             arrange(.data$perm_score)
 
         ## To find a single solution, take top row
-        best_permutation <- perm_genotypes[permutation_stats$Permutation_ID[1], , drop=FALSE]
+        best_permutation <- perm_genotypes[
+            permutation_stats$Permutation_ID[1],
+            ,
+            drop = FALSE
+        ]
 
         ## Record any ties as subject ambiguities
         if (nrow(permutation_stats) > 1) {
@@ -268,13 +369,29 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
             tied_permutation_stats <- permutation_stats |>
                 filter(.data$perm_score == best_score)
             if (nrow(tied_permutation_stats) > 1) {
-                tied_permutations <- perm_genotypes[tied_permutation_stats$Permutation_ID, , drop=FALSE]
+                tied_permutations <- perm_genotypes[
+                    tied_permutation_stats$Permutation_ID,
+                    ,
+                    drop = FALSE
+                ]
                 for (curr_genotype_group in colnames(tied_permutations)) {
-                    if (!(curr_genotype_group %in% names(object@.solve_state$ambiguous_subjects))) {
-                        object@.solve_state$ambiguous_subjects[[curr_genotype_group]] <- tied_permutations[, curr_genotype_group]
+                    if (
+                        !(curr_genotype_group %in%
+                            names(object@.solve_state$ambiguous_subjects))
+                    ) {
+                        object@.solve_state$ambiguous_subjects[[
+                            curr_genotype_group
+                        ]] <- tied_permutations[, curr_genotype_group]
                     } else {
-                        object@.solve_state$ambiguous_subjects[[curr_genotype_group]] <-
-                            unique(c(object@.solve_state$ambiguous_subjects[[curr_genotype_group]], tied_permutations[curr_genotype_group]))
+                        object@.solve_state$ambiguous_subjects[[
+                            curr_genotype_group
+                        ]] <-
+                            unique(c(
+                                object@.solve_state$ambiguous_subjects[[
+                                    curr_genotype_group
+                                ]],
+                                tied_permutations[curr_genotype_group]
+                            ))
                     }
                 }
             }
@@ -291,17 +408,36 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
         ## Also update putative_subjects when a Subject_ID in the component
         ## doesn't have a Genotype_Group_ID, or vice versa
         if (length(cc_genotypes) > length(cc_subjects)) {
-            unmatched_genotypes <- setdiff(cc_genotypes, new_putative_subjects$Genotype_Group_ID)
-            new_putative_subjects <- rbind(new_putative_subjects,
-                                           data.frame(Genotype_Group_ID = unmatched_genotypes, Subject_ID = NA_character_))
+            unmatched_genotypes <- setdiff(
+                cc_genotypes,
+                new_putative_subjects$Genotype_Group_ID
+            )
+            new_putative_subjects <- rbind(
+                new_putative_subjects,
+                data.frame(
+                    Genotype_Group_ID = unmatched_genotypes,
+                    Subject_ID = NA_character_
+                )
+            )
         }
         if (length(cc_genotypes) < length(cc_subjects)) {
-            unmatched_subjects <- setdiff(cc_subjects, new_putative_subjects$Subject_ID)
-            new_putative_subjects <- rbind(new_putative_subjects,
-                                           data.frame(Genotype_Group_ID = NA_character_, Subject_ID = unmatched_subjects))
+            unmatched_subjects <- setdiff(
+                cc_subjects,
+                new_putative_subjects$Subject_ID
+            )
+            new_putative_subjects <- rbind(
+                new_putative_subjects,
+                data.frame(
+                    Genotype_Group_ID = NA_character_,
+                    Subject_ID = unmatched_subjects
+                )
+            )
         }
         new_putative_subjects <- new_putative_subjects |>
-            anti_join(object@.solve_state$putative_subjects, by=c("Genotype_Group_ID", "Subject_ID"))
+            anti_join(
+                object@.solve_state$putative_subjects,
+                by = c("Genotype_Group_ID", "Subject_ID")
+            )
         object <- .update_putative_subjects(object, new_putative_subjects)
     }
 
@@ -309,12 +445,15 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
     unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
     unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data
     putative_subjects <- object@.solve_state$putative_subjects
-    relabels <- .find_relabel_cycles_from_putative_subjects(unsolved_relabel_data, putative_subjects,
-                                                            unsolved_ghost_data, allow_unknowns=TRUE)
-
+    relabels <- .find_relabel_cycles_from_putative_subjects(
+        unsolved_relabel_data,
+        putative_subjects,
+        unsolved_ghost_data,
+        allow_unknowns = TRUE
+    )
 
     ## Relabel samples and update solve state
-    object <- .relabel_samples(object, relabels, solver_name="global")
+    object <- .relabel_samples(object, relabels, solver_name = "global")
     # print(paste(nrow(relabels), "samples relabeled"))
     return(object)
 }
@@ -332,12 +471,26 @@ solveGlobalSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deleti
 #'
 #' @export
 #'
-solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
-    .Deprecated("solveGlobalSearch", package = "fomo",
-                msg = paste0("'solveComprehensiveSearch()' was renamed to 'solveGlobalSearch()' ",
-                            "and is now a deprecated alias for it."))
-    solveGlobalSearch(object, max_genotypes = max_genotypes,
-                      ghost_penalty = ghost_penalty, deletion_penalty = deletion_penalty)
+solveComprehensiveSearch <- function(
+    object,
+    max_genotypes = 8,
+    ghost_penalty = 1.5,
+    deletion_penalty = 4
+) {
+    .Deprecated(
+        "solveGlobalSearch",
+        package = "fomo",
+        msg = paste0(
+            "'solveComprehensiveSearch()' was renamed to 'solveGlobalSearch()' ",
+            "and is now a deprecated alias for it."
+        )
+    )
+    solveGlobalSearch(
+        object,
+        max_genotypes = max_genotypes,
+        ghost_penalty = ghost_penalty,
+        deletion_penalty = deletion_penalty
+    )
 }
 
 #' Local Search Sample Relabeling
@@ -356,37 +509,79 @@ solveComprehensiveSearch <- function(object, max_genotypes=8, ghost_penalty=1.5,
 #'
 #' @export
 #'
-solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_concordant_vertices=FALSE) {
+solveLocalSearch <- function(
+    object,
+    n_iter = 1,
+    include_ghost = FALSE,
+    filter_concordant_vertices = FALSE
+) {
     set.seed(1)
     message("Starting local search")
 
     for (i in 1:n_iter) {
-        message(paste("Local search iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
-        unsolved_all_data <- rbind(object@.solve_state$unsolved_relabel_data,
-                                   object@.solve_state$unsolved_ghost_data)
+        message(paste(
+            "Local search iteration (",
+            i,
+            " of ",
+            n_iter,
+            "):: 'include_ghost'=",
+            include_ghost,
+            ", 'filter_concordant_vertices'=",
+            filter_concordant_vertices,
+            sep = ""
+        ))
+        unsolved_all_data <- rbind(
+            object@.solve_state$unsolved_relabel_data,
+            object@.solve_state$unsolved_ghost_data
+        )
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             message("0 samples relabeled")
             return(object)
         }
-        votes <- table(object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
-                       object@.solve_state$unsolved_relabel_data$Subject_ID)
-        base_entropies <- apply(votes, MARGIN=1, .calc_scaled_entropy)
+        votes <- table(
+            object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
+            object@.solve_state$unsolved_relabel_data$Subject_ID
+        )
+        base_entropies <- apply(votes, MARGIN = 1, .calc_scaled_entropy)
 
-        neighbors <- .find_neighbors(object, include_ghost, filter_concordant_vertices) |>
+        neighbors <- .find_neighbors(
+            object,
+            include_ghost,
+            filter_concordant_vertices
+        ) |>
             left_join(
-                unsolved_all_data[, c("Sample_ID", "Subject_ID", "Genotype_Group_ID")],
-                by=c("Sample_A"="Sample_ID")
+                unsolved_all_data[, c(
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID"
+                )],
+                by = c("Sample_A" = "Sample_ID")
             ) |>
-            rename(Subject_A = Subject_ID, Genotype_Group_A = Genotype_Group_ID) |>
+            rename(
+                Subject_A = Subject_ID,
+                Genotype_Group_A = Genotype_Group_ID
+            ) |>
             left_join(
-                unsolved_all_data[, c("Sample_ID", "Subject_ID", "Genotype_Group_ID", "Component_ID")],
-                by=c("Sample_B"="Sample_ID")
+                unsolved_all_data[, c(
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID",
+                    "Component_ID"
+                )],
+                by = c("Sample_B" = "Sample_ID")
             ) |>
             rename(Subject_B = Subject_ID, Genotype_Group_B = Genotype_Group_ID)
 
         message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
-        all_component_ids <- sort(unique(object@.solve_state$unsolved_relabel_data$Component_ID))
-        relabels <- data.frame(matrix(data=NA, nrow=length(all_component_ids), ncol=2, dimnames=list(c(), c("relabel_from", "relabel_to"))))
+        all_component_ids <- sort(unique(
+            object@.solve_state$unsolved_relabel_data$Component_ID
+        ))
+        relabels <- data.frame(matrix(
+            data = NA,
+            nrow = length(all_component_ids),
+            ncol = 2,
+            dimnames = list(c(), c("relabel_from", "relabel_to"))
+        ))
         curr_idx <- 1
         for (curr_component_id in all_component_ids) {
             cc_relabel_data <- unsolved_all_data |>
@@ -394,32 +589,47 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
             cc_neighbors <- neighbors |>
                 filter(Component_ID == curr_component_id)
 
-            if (nrow(cc_neighbors) == 0) {next}
+            if (nrow(cc_neighbors) == 0) {
+                next
+            }
             cc_neighbor_objectives <- cc_neighbors |>
                 mutate(
-                    delta = mapply(.calc_swapped_delta_entropy,
-                                   swap_from_subject=Subject_A,
-                                   swap_from_genotype=Genotype_Group_A,
-                                   swap_to_subject=Subject_B,
-                                   swap_to_genotype=Genotype_Group_B,
-                                   MoreArgs=list(votes=votes, base_entropies=base_entropies))
+                    delta = mapply(
+                        .calc_swapped_delta_entropy,
+                        swap_from_subject = Subject_A,
+                        swap_from_genotype = Genotype_Group_A,
+                        swap_to_subject = Subject_B,
+                        swap_to_genotype = Genotype_Group_B,
+                        MoreArgs = list(
+                            votes = votes,
+                            base_entropies = base_entropies
+                        )
+                    )
                 )
             cc_relabels <- cc_neighbor_objectives |>
                 filter(delta > 0, delta == max(delta))
-            if (nrow(cc_relabels) == 0) {next}
+            if (nrow(cc_relabels) == 0) {
+                next
+            }
             cc_relabels <- cc_relabels |>
                 sample_n(1) |>
                 transmute(
-                    relabel_from=Sample_A,
-                    relabel_to=Sample_B
+                    relabel_from = Sample_A,
+                    relabel_to = Sample_B
                 )
             relabels[curr_idx, c("relabel_from", "relabel_to")] <- cc_relabels
             curr_idx <- curr_idx + 1
         }
 
         relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
-        relabels <- rbind(relabels, data.frame(relabel_from=relabels$relabel_to, relabel_to=relabels$relabel_from))
-        object <- .relabel_samples(object, relabels, solver_name="local")
+        relabels <- rbind(
+            relabels,
+            data.frame(
+                relabel_from = relabels$relabel_to,
+                relabel_to = relabels$relabel_from
+            )
+        )
+        object <- .relabel_samples(object, relabels, solver_name = "local")
         # print(paste(nrow(relabels), "samples relabeled"))
     }
 
@@ -460,7 +670,12 @@ solveLocalSearch <- function(object, n_iter=1, include_ghost=FALSE, filter_conco
 #'
 #' @export
 #'
-solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
+solveGlobalSearchFast <- function(
+    object,
+    max_genotypes = 8,
+    ghost_penalty = 1.5,
+    deletion_penalty = 4
+) {
     set.seed(1)
     message("Starting global search (fast)")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
@@ -471,14 +686,22 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
 
     putative_subjects <- object@.solve_state$putative_subjects
 
-    component_ids <- sort(unique(object@.solve_state$unsolved_relabel_data$Component_ID))
+    component_ids <- sort(unique(
+        object@.solve_state$unsolved_relabel_data$Component_ID
+    ))
     for (component_id in component_ids) {
         cc_unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
             filter(Component_ID == component_id)
         cc_unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
             filter(Component_ID == component_id)
-        cc_sample_ids <- c(cc_unsolved_relabel_data$Sample_ID, cc_unsolved_ghost_data$Sample_ID)
-        cc_swap_cat_ids <- unique(c(cc_unsolved_relabel_data$SwapCat_ID, cc_unsolved_ghost_data$SwapCat_ID))
+        cc_sample_ids <- c(
+            cc_unsolved_relabel_data$Sample_ID,
+            cc_unsolved_ghost_data$Sample_ID
+        )
+        cc_swap_cat_ids <- unique(c(
+            cc_unsolved_relabel_data$SwapCat_ID,
+            cc_unsolved_ghost_data$SwapCat_ID
+        ))
         cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
         cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
 
@@ -486,12 +709,18 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
             next
         }
 
-        locked_genotypes <- intersect(putative_subjects$Genotype_Group_ID, cc_genotypes)
+        locked_genotypes <- intersect(
+            putative_subjects$Genotype_Group_ID,
+            cc_genotypes
+        )
         locked_subjects <- intersect(putative_subjects$Subject_ID, cc_subjects)
         free_genotypes <- setdiff(cc_genotypes, locked_genotypes)
         free_subjects <- setdiff(cc_subjects, locked_subjects)
 
-        if (length(free_genotypes) > max_genotypes | length(free_subjects) > max_genotypes) {
+        if (
+            length(free_genotypes) > max_genotypes |
+                length(free_subjects) > max_genotypes
+        ) {
             next
         }
 
@@ -502,57 +731,108 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
             colnames(perm_genotypes) <- sort(free_genotypes)
             n_perm <- nrow(perm_genotypes)
             for (locked_genotype_id in locked_genotypes) {
-                locked_subject_id <- putative_subjects[putative_subjects$Genotype_Group_ID == locked_genotype_id, "Subject_ID"][[1]]
-                new_perm_col <- matrix(data=locked_subject_id, ncol=1, nrow=n_perm, dimnames=list(NULL, locked_genotype_id))
+                locked_subject_id <- putative_subjects[
+                    putative_subjects$Genotype_Group_ID == locked_genotype_id,
+                    "Subject_ID"
+                ][[1]]
+                new_perm_col <- matrix(
+                    data = locked_subject_id,
+                    ncol = 1,
+                    nrow = n_perm,
+                    dimnames = list(NULL, locked_genotype_id)
+                )
                 perm_genotypes <- cbind(perm_genotypes, new_perm_col)
             }
         } else {
-            locked_putative_subjects <- putative_subjects[putative_subjects$Genotype_Group_ID %in% locked_genotypes, ]
+            locked_putative_subjects <- putative_subjects[
+                putative_subjects$Genotype_Group_ID %in% locked_genotypes,
+            ]
             perm_genotypes <- t(locked_putative_subjects$Subject_ID)
-            colnames(perm_genotypes) <- locked_putative_subjects$Genotype_Group_ID
+            colnames(
+                perm_genotypes
+            ) <- locked_putative_subjects$Genotype_Group_ID
         }
-        perm_genotypes <- as.matrix(perm_genotypes, dimnames=c("Permutation_ID", "Genotype_Group_ID"))
+        perm_genotypes <- as.matrix(
+            perm_genotypes,
+            dimnames = c("Permutation_ID", "Genotype_Group_ID")
+        )
         n_perms <- nrow(perm_genotypes)
-        permutation_ids <- str_c("Permutation", formatC(seq_len(n_perms), width=str_length(n_perms), format="d", flag="0"))
+        permutation_ids <- str_c(
+            "Permutation",
+            formatC(
+                seq_len(n_perms),
+                width = str_length(n_perms),
+                format = "d",
+                flag = "0"
+            )
+        )
         rownames(perm_genotypes) <- permutation_ids
 
         label_counts <- cc_unsolved_relabel_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Subject_ID, SwapCat_ID) |>
-            summarize(n_labels = n(), .groups="drop")
+            summarize(n_labels = n(), .groups = "drop")
         ghost_label_counts <- cc_unsolved_ghost_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Subject_ID, SwapCat_ID) |>
-            summarize(n_ghost_labels = n(), .groups="drop")
+            summarize(n_ghost_labels = n(), .groups = "drop")
         genotype_counts <- cc_unsolved_relabel_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Genotype_Group_ID, SwapCat_ID) |>
-            summarize(n_in_genotype = n(), .groups="drop")
+            summarize(n_in_genotype = n(), .groups = "drop")
         genotype_subject_concordant_counts <- cc_unsolved_relabel_data |>
             select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
             group_by(Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
-            summarize(n_samples_correct = n(), .groups="drop")
+            summarize(n_samples_correct = n(), .groups = "drop")
 
         ## Base-R vectorized locked/free-aware scoring; see .score_permutations_fast() in helpers-solve.R
-        permutation_stats <- .score_permutations_fast(perm_genotypes, free_genotypes, locked_genotypes, cc_swap_cat_ids,
-                                                        label_counts, ghost_label_counts, genotype_counts,
-                                                        genotype_subject_concordant_counts,
-                                                        ghost_penalty = ghost_penalty, deletion_penalty = deletion_penalty)
+        permutation_stats <- .score_permutations_fast(
+            perm_genotypes,
+            free_genotypes,
+            locked_genotypes,
+            cc_swap_cat_ids,
+            label_counts,
+            ghost_label_counts,
+            genotype_counts,
+            genotype_subject_concordant_counts,
+            ghost_penalty = ghost_penalty,
+            deletion_penalty = deletion_penalty
+        )
 
-        best_permutation <- perm_genotypes[permutation_stats$Permutation_ID[1], , drop=FALSE]
+        best_permutation <- perm_genotypes[
+            permutation_stats$Permutation_ID[1],
+            ,
+            drop = FALSE
+        ]
 
         if (nrow(permutation_stats) > 1) {
             best_score <- permutation_stats$perm_score[1]
             tied_permutation_stats <- permutation_stats |>
                 filter(.data$perm_score == best_score)
             if (nrow(tied_permutation_stats) > 1) {
-                tied_permutations <- perm_genotypes[tied_permutation_stats$Permutation_ID, , drop=FALSE]
+                tied_permutations <- perm_genotypes[
+                    tied_permutation_stats$Permutation_ID,
+                    ,
+                    drop = FALSE
+                ]
                 for (curr_genotype_group in colnames(tied_permutations)) {
-                    if (!(curr_genotype_group %in% names(object@.solve_state$ambiguous_subjects))) {
-                        object@.solve_state$ambiguous_subjects[[curr_genotype_group]] <- tied_permutations[, curr_genotype_group]
+                    if (
+                        !(curr_genotype_group %in%
+                            names(object@.solve_state$ambiguous_subjects))
+                    ) {
+                        object@.solve_state$ambiguous_subjects[[
+                            curr_genotype_group
+                        ]] <- tied_permutations[, curr_genotype_group]
                     } else {
-                        object@.solve_state$ambiguous_subjects[[curr_genotype_group]] <-
-                            unique(c(object@.solve_state$ambiguous_subjects[[curr_genotype_group]], tied_permutations[curr_genotype_group]))
+                        object@.solve_state$ambiguous_subjects[[
+                            curr_genotype_group
+                        ]] <-
+                            unique(c(
+                                object@.solve_state$ambiguous_subjects[[
+                                    curr_genotype_group
+                                ]],
+                                tied_permutations[curr_genotype_group]
+                            ))
                     }
                 }
             }
@@ -567,27 +847,50 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
         rownames(new_putative_subjects) <- NULL
 
         if (length(cc_genotypes) > length(cc_subjects)) {
-            unmatched_genotypes <- setdiff(cc_genotypes, new_putative_subjects$Genotype_Group_ID)
-            new_putative_subjects <- rbind(new_putative_subjects,
-                                           data.frame(Genotype_Group_ID = unmatched_genotypes, Subject_ID = NA_character_))
+            unmatched_genotypes <- setdiff(
+                cc_genotypes,
+                new_putative_subjects$Genotype_Group_ID
+            )
+            new_putative_subjects <- rbind(
+                new_putative_subjects,
+                data.frame(
+                    Genotype_Group_ID = unmatched_genotypes,
+                    Subject_ID = NA_character_
+                )
+            )
         }
         if (length(cc_genotypes) < length(cc_subjects)) {
-            unmatched_subjects <- setdiff(cc_subjects, new_putative_subjects$Subject_ID)
-            new_putative_subjects <- rbind(new_putative_subjects,
-                                           data.frame(Genotype_Group_ID = NA_character_, Subject_ID = unmatched_subjects))
+            unmatched_subjects <- setdiff(
+                cc_subjects,
+                new_putative_subjects$Subject_ID
+            )
+            new_putative_subjects <- rbind(
+                new_putative_subjects,
+                data.frame(
+                    Genotype_Group_ID = NA_character_,
+                    Subject_ID = unmatched_subjects
+                )
+            )
         }
         new_putative_subjects <- new_putative_subjects |>
-            anti_join(object@.solve_state$putative_subjects, by=c("Genotype_Group_ID", "Subject_ID"))
+            anti_join(
+                object@.solve_state$putative_subjects,
+                by = c("Genotype_Group_ID", "Subject_ID")
+            )
         object <- .update_putative_subjects(object, new_putative_subjects)
     }
 
     unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
     unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data
     putative_subjects <- object@.solve_state$putative_subjects
-    relabels <- .find_relabel_cycles_from_putative_subjects(unsolved_relabel_data, putative_subjects,
-                                                            unsolved_ghost_data, allow_unknowns=TRUE)
+    relabels <- .find_relabel_cycles_from_putative_subjects(
+        unsolved_relabel_data,
+        putative_subjects,
+        unsolved_ghost_data,
+        allow_unknowns = TRUE
+    )
 
-    object <- .relabel_samples(object, relabels, solver_name="global_fast")
+    object <- .relabel_samples(object, relabels, solver_name = "global_fast")
     return(object)
 }
 
@@ -607,12 +910,26 @@ solveGlobalSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, de
 #'
 #' @export
 #'
-solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=1.5, deletion_penalty=4) {
-    .Deprecated("solveGlobalSearchFast", package = "fomo",
-                msg = paste0("'solveComprehensiveSearchFast()' was renamed to 'solveGlobalSearchFast()' ",
-                            "and is now a deprecated alias for it."))
-    solveGlobalSearchFast(object, max_genotypes = max_genotypes,
-                          ghost_penalty = ghost_penalty, deletion_penalty = deletion_penalty)
+solveComprehensiveSearchFast <- function(
+    object,
+    max_genotypes = 8,
+    ghost_penalty = 1.5,
+    deletion_penalty = 4
+) {
+    .Deprecated(
+        "solveGlobalSearchFast",
+        package = "fomo",
+        msg = paste0(
+            "'solveComprehensiveSearchFast()' was renamed to 'solveGlobalSearchFast()' ",
+            "and is now a deprecated alias for it."
+        )
+    )
+    solveGlobalSearchFast(
+        object,
+        max_genotypes = max_genotypes,
+        ghost_penalty = ghost_penalty,
+        deletion_penalty = deletion_penalty
+    )
 }
 
 #' Local Search Sample Relabeling (Fast)
@@ -656,64 +973,122 @@ solveComprehensiveSearchFast <- function(object, max_genotypes=8, ghost_penalty=
 #'
 #' @export
 #'
-solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_concordant_vertices=FALSE) {
+solveLocalSearchFast <- function(
+    object,
+    n_iter = 1,
+    include_ghost = FALSE,
+    filter_concordant_vertices = FALSE
+) {
     set.seed(1)
     message("Starting local search (fast)")
 
     for (i in 1:n_iter) {
-        message(paste("Local search (fast) iteration (", i, " of ", n_iter, "):: 'include_ghost'=", include_ghost, ", 'filter_concordant_vertices'=", filter_concordant_vertices, sep = ""))
-        unsolved_all_data <- rbind(object@.solve_state$unsolved_relabel_data,
-                                   object@.solve_state$unsolved_ghost_data)
+        message(paste(
+            "Local search (fast) iteration (",
+            i,
+            " of ",
+            n_iter,
+            "):: 'include_ghost'=",
+            include_ghost,
+            ", 'filter_concordant_vertices'=",
+            filter_concordant_vertices,
+            sep = ""
+        ))
+        unsolved_all_data <- rbind(
+            object@.solve_state$unsolved_relabel_data,
+            object@.solve_state$unsolved_ghost_data
+        )
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             message("0 samples relabeled")
             return(object)
         }
-        votes <- table(object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
-                       object@.solve_state$unsolved_relabel_data$Subject_ID)
+        votes <- table(
+            object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
+            object@.solve_state$unsolved_relabel_data$Subject_ID
+        )
 
-        neighbors <- .find_neighbors(object, include_ghost, filter_concordant_vertices) |>
+        neighbors <- .find_neighbors(
+            object,
+            include_ghost,
+            filter_concordant_vertices
+        ) |>
             left_join(
-                unsolved_all_data[, c("Sample_ID", "Subject_ID", "Genotype_Group_ID")],
-                by=c("Sample_A"="Sample_ID")
+                unsolved_all_data[, c(
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID"
+                )],
+                by = c("Sample_A" = "Sample_ID")
             ) |>
-            rename(Subject_A = Subject_ID, Genotype_Group_A = Genotype_Group_ID) |>
+            rename(
+                Subject_A = Subject_ID,
+                Genotype_Group_A = Genotype_Group_ID
+            ) |>
             left_join(
-                unsolved_all_data[, c("Sample_ID", "Subject_ID", "Genotype_Group_ID", "Component_ID")],
-                by=c("Sample_B"="Sample_ID")
+                unsolved_all_data[, c(
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID",
+                    "Component_ID"
+                )],
+                by = c("Sample_B" = "Sample_ID")
             ) |>
             rename(Subject_B = Subject_ID, Genotype_Group_B = Genotype_Group_ID)
 
         message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
-        all_component_ids <- sort(unique(object@.solve_state$unsolved_relabel_data$Component_ID))
-        relabels <- data.frame(matrix(data=NA, nrow=length(all_component_ids), ncol=2, dimnames=list(c(), c("relabel_from", "relabel_to"))))
+        all_component_ids <- sort(unique(
+            object@.solve_state$unsolved_relabel_data$Component_ID
+        ))
+        relabels <- data.frame(matrix(
+            data = NA,
+            nrow = length(all_component_ids),
+            ncol = 2,
+            dimnames = list(c(), c("relabel_from", "relabel_to"))
+        ))
         curr_idx <- 1
         for (curr_component_id in all_component_ids) {
             cc_neighbors <- neighbors |>
                 filter(Component_ID == curr_component_id)
 
-            if (nrow(cc_neighbors) == 0) {next}
+            if (nrow(cc_neighbors) == 0) {
+                next
+            }
             ## Closed-form vectorized delta instead of mapply(.calc_swapped_delta_entropy, ...);
             ## see .calc_swapped_delta_entropy_fast() in helpers-solve.R for the derivation.
             cc_neighbor_objectives <- cc_neighbors |>
                 mutate(
-                    delta = .calc_swapped_delta_entropy_fast(votes, Subject_A, Genotype_Group_A, Subject_B, Genotype_Group_B)
+                    delta = .calc_swapped_delta_entropy_fast(
+                        votes,
+                        Subject_A,
+                        Genotype_Group_A,
+                        Subject_B,
+                        Genotype_Group_B
+                    )
                 )
             cc_relabels <- cc_neighbor_objectives |>
                 filter(delta > 0, delta == max(delta))
-            if (nrow(cc_relabels) == 0) {next}
+            if (nrow(cc_relabels) == 0) {
+                next
+            }
             cc_relabels <- cc_relabels |>
                 sample_n(1) |>
                 transmute(
-                    relabel_from=Sample_A,
-                    relabel_to=Sample_B
+                    relabel_from = Sample_A,
+                    relabel_to = Sample_B
                 )
             relabels[curr_idx, c("relabel_from", "relabel_to")] <- cc_relabels
             curr_idx <- curr_idx + 1
         }
 
         relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
-        relabels <- rbind(relabels, data.frame(relabel_from=relabels$relabel_to, relabel_to=relabels$relabel_from))
-        object <- .relabel_samples(object, relabels, solver_name="local_fast")
+        relabels <- rbind(
+            relabels,
+            data.frame(
+                relabel_from = relabels$relabel_to,
+                relabel_to = relabels$relabel_from
+            )
+        )
+        object <- .relabel_samples(object, relabels, solver_name = "local_fast")
         # print(paste(nrow(relabels), "samples relabeled"))
     }
 
@@ -757,16 +1132,31 @@ solveLocalSearchFast <- function(object, n_iter=1, include_ghost=FALSE, filter_c
 #'
 #' @export
 #'
-solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), time_limit=2 * 60 * 60, seed=1) {
-    valid_solvers <- c("majority", "global", "global_fast", "local", "local_fast",
-                       "comprehensive", "comprehensive_fast")
+solveEnsemble <- function(
+    object,
+    use_solvers = c("majority", "global", "local"),
+    time_limit = 2 * 60 * 60,
+    seed = 1
+) {
+    valid_solvers <- c(
+        "majority",
+        "global",
+        "global_fast",
+        "local",
+        "local_fast",
+        "comprehensive",
+        "comprehensive_fast"
+    )
     assert_that(
         is.character(use_solvers) && length(use_solvers) > 0,
         msg = "'use_solvers' must be a non-empty character vector"
     )
     assert_that(
         all(use_solvers %in% valid_solvers),
-        msg = paste0("'use_solvers' must only contain values from: ", paste(valid_solvers, collapse=", "))
+        msg = paste0(
+            "'use_solvers' must only contain values from: ",
+            paste(valid_solvers, collapse = ", ")
+        )
     )
 
     ## "comprehensive"/"comprehensive_fast" are deprecated aliases for
@@ -774,12 +1164,26 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
     ## "comprehensive search"). Translate them to their canonical name
     ## before any further validation or dispatch, so the rest of this
     ## function only ever has to deal with the current names.
-    deprecated_used <- intersect(use_solvers, c("comprehensive", "comprehensive_fast"))
+    deprecated_used <- intersect(
+        use_solvers,
+        c("comprehensive", "comprehensive_fast")
+    )
     if (length(deprecated_used) > 0) {
-        replacement_names <- str_replace(deprecated_used, "^comprehensive", "global")
-        warning("'", paste(deprecated_used, collapse="', '"), "' in 'use_solvers' ",
-               "is deprecated: comprehensive search has been renamed to global search. ",
-               "Use '", paste(replacement_names, collapse="', '"), "' instead.", call. = FALSE)
+        replacement_names <- str_replace(
+            deprecated_used,
+            "^comprehensive",
+            "global"
+        )
+        warning(
+            "'",
+            paste(deprecated_used, collapse = "', '"),
+            "' in 'use_solvers' ",
+            "is deprecated: comprehensive search has been renamed to global search. ",
+            "Use '",
+            paste(replacement_names, collapse = "', '"),
+            "' instead.",
+            call. = FALSE
+        )
         use_solvers[use_solvers == "comprehensive"] <- "global"
         use_solvers[use_solvers == "comprehensive_fast"] <- "global_fast"
     }
@@ -795,7 +1199,10 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
     )
 
     assert_that(
-        is.numeric(time_limit) && length(time_limit) == 1 && !is.na(time_limit) && time_limit >= 0,
+        is.numeric(time_limit) &&
+            length(time_limit) == 1 &&
+            !is.na(time_limit) &&
+            time_limit >= 0,
         msg = "'time_limit' must be a single non-negative number (of seconds)"
     )
 
@@ -811,9 +1218,15 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
             ## Everything has already been resolved; nothing left to solve.
             break
         }
-        if (as.numeric(difftime(Sys.time(), start_time, units="secs")) > time_limit) {
-            warning("solveEnsemble() reached 'time_limit' of ", time_limit,
-                   " second(s) before converging; returning the object in its current, incompletely solved state.")
+        if (
+            as.numeric(difftime(Sys.time(), start_time, units = "secs")) >
+                time_limit
+        ) {
+            warning(
+                "solveEnsemble() reached 'time_limit' of ",
+                time_limit,
+                " second(s) before converging; returning the object in its current, incompletely solved state."
+            )
             ## Out of time; stop looping and return the best-effort partial
             ## result computed so far instead of continuing indefinitely.
             break
@@ -825,7 +1238,9 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
         } else {
             solveGlobalSearch
         }
-        run_global <- "global" %in% use_solvers || "global_fast" %in% use_solvers
+        run_global <- "global" %in%
+            use_solvers ||
+            "global_fast" %in% use_solvers
         if (run_global) {
             object <- global_solver(object)
         }
@@ -843,18 +1258,44 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
             } else {
                 solveLocalSearch
             }
-            object <- local_solver(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=TRUE)
+            object <- local_solver(
+                object,
+                n_iter = 1,
+                include_ghost = TRUE,
+                filter_concordant_vertices = TRUE
+            )
 
             ## If local search found no swaps, try allowing concordant vertices
-            if (nrow(global_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
-                if (identical(global_relabel_data, object@.solve_state$unsolved_relabel_data)) {
-                    object <- local_solver(object, n_iter=1, include_ghost=TRUE, filter_concordant_vertices=FALSE)
+            if (
+                nrow(global_relabel_data) ==
+                    nrow(object@.solve_state$unsolved_relabel_data)
+            ) {
+                if (
+                    identical(
+                        global_relabel_data,
+                        object@.solve_state$unsolved_relabel_data
+                    )
+                ) {
+                    object <- local_solver(
+                        object,
+                        n_iter = 1,
+                        include_ghost = TRUE,
+                        filter_concordant_vertices = FALSE
+                    )
                 }
             }
         }
 
-        if (nrow(prev_relabel_data) == nrow(object@.solve_state$unsolved_relabel_data)) {
-            if (identical(prev_relabel_data, object@.solve_state$unsolved_relabel_data)) {
+        if (
+            nrow(prev_relabel_data) ==
+                nrow(object@.solve_state$unsolved_relabel_data)
+        ) {
+            if (
+                identical(
+                    prev_relabel_data,
+                    object@.solve_state$unsolved_relabel_data
+                )
+            ) {
                 ## This pass made no further progress at all (the unsolved
                 ## data is byte-for-byte unchanged from before this
                 ## iteration ran), so further iterations would loop forever
@@ -865,7 +1306,6 @@ solveEnsemble <- function(object, use_solvers=c("majority", "global", "local"), 
     }
 
     ## After the solve, check if cycles can be broken down
-
 
     return(object)
 }

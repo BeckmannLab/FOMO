@@ -14,7 +14,11 @@ toy_swap_scenario <- function(ids = c("sample1", "sample2", "sample3")) {
         Genotype_Group_ID = c("G1", "G1", "G2"),
         stringsAsFactors = FALSE
     )
-    swap_cats <- data.frame(Sample_ID = ids, SwapCat_ID = "omic1", stringsAsFactors = FALSE)
+    swap_cats <- data.frame(
+        Sample_ID = ids,
+        SwapCat_ID = "omic1",
+        stringsAsFactors = FALSE
+    )
     list(sample_metadata = sample_metadata, swap_cats = swap_cats)
 }
 
@@ -23,14 +27,21 @@ toy_swap_scenario <- function(ids = c("sample1", "sample2", "sample3")) {
 ## ghost sample anywhere reports S1 (G1's true subject), so BOTH of G1's
 ## samples can only be resolved by inventing a placeholder ID for a
 ## duplicate that doesn't exist ("unknown"/LABELNOTFOUND labels).
-toy_deficit_scenario <- function(ids = c("sample1", "sample2", "sample3"), shuffle = FALSE) {
+toy_deficit_scenario <- function(
+    ids = c("sample1", "sample2", "sample3"),
+    shuffle = FALSE
+) {
     sample_metadata <- data.frame(
         Sample_ID = ids,
         Subject_ID = c("S2", "S2", "S2"),
         Genotype_Group_ID = c("G1", "G1", "G2"),
         stringsAsFactors = FALSE
     )
-    swap_cats <- data.frame(Sample_ID = ids, SwapCat_ID = "omic1", stringsAsFactors = FALSE)
+    swap_cats <- data.frame(
+        Sample_ID = ids,
+        SwapCat_ID = "omic1",
+        stringsAsFactors = FALSE
+    )
     if (shuffle) {
         ord <- rev(seq_len(nrow(sample_metadata)))
         sample_metadata <- sample_metadata[ord, ]

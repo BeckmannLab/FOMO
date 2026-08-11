@@ -33,19 +33,20 @@
 #'
 #' @export
 #'
-setClass("MislabelSolver",
-         representation(
-             sample_metadata = "data.frame",
-             genotype_matrix = "ANY",
-             swap_cats = "data.frame",
-             anchor_samples = "character",
-             .solve_state = "list"
-         ),
-         prototype(
-             genotype_matrix = NULL,
-             swap_cats = NULL,
-             anchor_samples = character(0)
-         )
+setClass(
+    "MislabelSolver",
+    representation(
+        sample_metadata = "data.frame",
+        genotype_matrix = "ANY",
+        swap_cats = "data.frame",
+        anchor_samples = "character",
+        .solve_state = "list"
+    ),
+    prototype(
+        genotype_matrix = NULL,
+        swap_cats = NULL,
+        anchor_samples = character(0)
+    )
 )
 
 
@@ -79,20 +80,28 @@ setClass("MislabelSolver",
 #'
 #' @export
 #'
-MislabelSolver <- function(sample_metadata, genotype_matrix=NULL, swap_cats=NULL, anchor_samples=character(0)) {
+MislabelSolver <- function(
+    sample_metadata,
+    genotype_matrix = NULL,
+    swap_cats = NULL,
+    anchor_samples = character(0)
+) {
     ## Convert and validate inputs
     sample_metadata <- as.data.frame(lapply(sample_metadata, as.character))
-    .validate_sample_metadata(sample_metadata, has_genotype_matrix=!is.null(genotype_matrix))
+    .validate_sample_metadata(
+        sample_metadata,
+        has_genotype_matrix = !is.null(genotype_matrix)
+    )
 
     if (!is.null(genotype_matrix)) {
         .validate_genotype_matrix(genotype_matrix, sample_metadata)
         genotype_df <- .genotype_matrix_to_genotype_df(genotype_matrix)
         sample_metadata <- sample_metadata |>
-            left_join(genotype_df, by="Sample_ID")
+            left_join(genotype_df, by = "Sample_ID")
     }
 
     if (is.null(swap_cats)) {
-        swap_cats <- sample_metadata[, "Sample_ID", drop=FALSE]
+        swap_cats <- sample_metadata[, "Sample_ID", drop = FALSE]
         swap_cats$SwapCat_ID <- "SwapCat1"
     }
     swap_cats <- as.data.frame(lapply(swap_cats, as.character))
@@ -101,93 +110,126 @@ MislabelSolver <- function(sample_metadata, genotype_matrix=NULL, swap_cats=NULL
     anchor_samples <- unique(as.character(anchor_samples))
     .validate_anchor_samples(sample_metadata, anchor_samples)
 
-    return(new("MislabelSolver", sample_metadata, genotype_matrix, swap_cats, anchor_samples))
+    return(new(
+        "MislabelSolver",
+        sample_metadata,
+        genotype_matrix,
+        swap_cats,
+        anchor_samples
+    ))
 }
 
-setMethod("initialize", "MislabelSolver",
-          function(.Object, sample_metadata, genotype_matrix=NULL, swap_cats=NULL, anchor_samples=character(0)) {
-              # Hack to get around the NOTE "no visible binding for global variable"
-              Genotype_Group_ID <- Subject_ID <- Sample_ID <- Init_Sample_ID <- NULL
+setMethod(
+    "initialize",
+    "MislabelSolver",
+    function(
+        .Object,
+        sample_metadata,
+        genotype_matrix = NULL,
+        swap_cats = NULL,
+        anchor_samples = character(0)
+    ) {
+        # Hack to get around the NOTE "no visible binding for global variable"
+        Genotype_Group_ID <- Subject_ID <- Sample_ID <- Init_Sample_ID <- NULL
 
-              ## Sort deterministically by Sample_ID, so that construction (and
-              ## everything derived from it -- relabel_data's row order, and the
-              ## placeholder IDs generated just below) does not depend on the row
-              ## order 'sample_metadata'/'swap_cats' happened to be provided in.
-              sample_metadata <- sample_metadata[order(sample_metadata$Sample_ID), , drop=FALSE]
-              rownames(sample_metadata) <- NULL
-              swap_cats <- swap_cats[order(swap_cats$Sample_ID), , drop=FALSE]
-              rownames(swap_cats) <- NULL
+        ## Sort deterministically by Sample_ID, so that construction (and
+        ## everything derived from it -- relabel_data's row order, and the
+        ## placeholder IDs generated just below) does not depend on the row
+        ## order 'sample_metadata'/'swap_cats' happened to be provided in.
+        sample_metadata <- sample_metadata[
+            order(sample_metadata$Sample_ID),
+            ,
+            drop = FALSE
+        ]
+        rownames(sample_metadata) <- NULL
+        swap_cats <- swap_cats[order(swap_cats$Sample_ID), , drop = FALSE]
+        rownames(swap_cats) <- NULL
 
-              ## Pre-generate a random placeholder Sample_ID for every sample, once,
-              ## up front, for .find_relabel_cycles_from_putative_subjects() to use
-              ## later if (and only if) that specific sample is determined to need
-              ## one -- i.e. no real or ghost sample is available to relabel it to,
-              ## so its mislabel can only be resolved by treating it as a duplicate
-              ## of a sample that doesn't actually exist ("unknown"/LABELNOTFOUND
-              ## labels; see helpers-solve.R). A sample whose pre-generated ID never
-              ## ends up needed is simply never referenced again.
-              ##
-              ## Seeded from a hash of this (now sorted) input via a dedicated RNG
-              ## stream (with_seed(), which restores the prior RNG state
-              ## afterward), so that: (a) the same input always yields the same
-              ## placeholder IDs, (b) different input yields different ones rather
-              ## than colliding on one fixed global seed, and (c) this doesn't
-              ## consume from or interfere with the RNG stream solveMajoritySearch()/
-              ## solveGlobalSearch()/solveLocalSearch() use for their own purposes.
-              input_seed <- .hash_to_seed(list(sample_metadata=sample_metadata, swap_cats=swap_cats))
-              placeholder_ids <- with_seed(input_seed, .generate_placeholder_ids(nrow(sample_metadata)))
-              names(placeholder_ids) <- sample_metadata$Sample_ID
+        ## Pre-generate a random placeholder Sample_ID for every sample, once,
+        ## up front, for .find_relabel_cycles_from_putative_subjects() to use
+        ## later if (and only if) that specific sample is determined to need
+        ## one -- i.e. no real or ghost sample is available to relabel it to,
+        ## so its mislabel can only be resolved by treating it as a duplicate
+        ## of a sample that doesn't actually exist ("unknown"/LABELNOTFOUND
+        ## labels; see helpers-solve.R). A sample whose pre-generated ID never
+        ## ends up needed is simply never referenced again.
+        ##
+        ## Seeded from a hash of this (now sorted) input via a dedicated RNG
+        ## stream (with_seed(), which restores the prior RNG state
+        ## afterward), so that: (a) the same input always yields the same
+        ## placeholder IDs, (b) different input yields different ones rather
+        ## than colliding on one fixed global seed, and (c) this doesn't
+        ## consume from or interfere with the RNG stream solveMajoritySearch()/
+        ## solveGlobalSearch()/solveLocalSearch() use for their own purposes.
+        input_seed <- .hash_to_seed(list(
+            sample_metadata = sample_metadata,
+            swap_cats = swap_cats
+        ))
+        placeholder_ids <- with_seed(
+            input_seed,
+            .generate_placeholder_ids(nrow(sample_metadata))
+        )
+        names(placeholder_ids) <- sample_metadata$Sample_ID
 
-              ## Provided there are enough shapes, assign a unique shape to each SwapCat_ID
-              all_swap_cat_ids <- names(sort(table(swap_cats$SwapCat_ID), decreasing=TRUE))
-              swap_cat_shapes <- data.frame(
-                  SwapCat_ID = all_swap_cat_ids,
-                  SwapCat_Shape = "dot",
-                  vertex_size_scalar = 1
-              )
-              if (length(all_swap_cat_ids) <= length(VISNETWORK_SWAPCAT_SHAPES)) {
-                  swap_cat_shapes$SwapCat_Shape <- VISNETWORK_SWAPCAT_SHAPES[seq_along(all_swap_cat_ids)]
-              }
-              swap_cats <- swap_cats |>
-                  left_join(swap_cat_shapes, by="SwapCat_ID")
+        ## Provided there are enough shapes, assign a unique shape to each SwapCat_ID
+        all_swap_cat_ids <- names(sort(
+            table(swap_cats$SwapCat_ID),
+            decreasing = TRUE
+        ))
+        swap_cat_shapes <- data.frame(
+            SwapCat_ID = all_swap_cat_ids,
+            SwapCat_Shape = "dot",
+            vertex_size_scalar = 1
+        )
+        if (length(all_swap_cat_ids) <= length(VISNETWORK_SWAPCAT_SHAPES)) {
+            swap_cat_shapes$SwapCat_Shape <- VISNETWORK_SWAPCAT_SHAPES[seq_along(
+                all_swap_cat_ids
+            )]
+        }
+        swap_cats <- swap_cats |>
+            left_join(swap_cat_shapes, by = "SwapCat_ID")
 
-              ## Initialize object 'solve_state'
-              relabel_data <- sample_metadata |>
-                  mutate(
-                      Init_Sample_ID = Sample_ID,
-                      Init_Subject_ID = Subject_ID,
-                      Is_Ghost = is.na(Genotype_Group_ID),
-                      Is_Anchor = Init_Sample_ID %in% anchor_samples,
-                      Solved = FALSE,
-                      Placeholder_ID = placeholder_ids[Sample_ID]
-                  ) |>
-                  left_join(swap_cats, by="Sample_ID")
-              unsolved_relabel_data <- relabel_data |>
-                  filter(!is.na(Genotype_Group_ID))
-              unsolved_ghost_data <- relabel_data |>
-                  filter(is.na(Genotype_Group_ID))
-              putative_subjects <- data.frame(Genotype_Group_ID = character(0),
-                                              Subject_ID = character(0))
-              lnf_counts <- data.frame(Subject_ID = character(0),
-                                       SwapCatID = character(0),
-                                       count = integer(0))
-              ambiguous_subjects <- list()
-              solve_state <- list(
-                  relabel_data = relabel_data,
-                  unsolved_relabel_data = unsolved_relabel_data,
-                  unsolved_ghost_data = unsolved_ghost_data,
-                  putative_subjects = putative_subjects,
-                  lnf_counts,
-                  ambiguous_subjects = ambiguous_subjects
-              )
+        ## Initialize object 'solve_state'
+        relabel_data <- sample_metadata |>
+            mutate(
+                Init_Sample_ID = Sample_ID,
+                Init_Subject_ID = Subject_ID,
+                Is_Ghost = is.na(Genotype_Group_ID),
+                Is_Anchor = Init_Sample_ID %in% anchor_samples,
+                Solved = FALSE,
+                Placeholder_ID = placeholder_ids[Sample_ID]
+            ) |>
+            left_join(swap_cats, by = "Sample_ID")
+        unsolved_relabel_data <- relabel_data |>
+            filter(!is.na(Genotype_Group_ID))
+        unsolved_ghost_data <- relabel_data |>
+            filter(is.na(Genotype_Group_ID))
+        putative_subjects <- data.frame(
+            Genotype_Group_ID = character(0),
+            Subject_ID = character(0)
+        )
+        lnf_counts <- data.frame(
+            Subject_ID = character(0),
+            SwapCatID = character(0),
+            count = integer(0)
+        )
+        ambiguous_subjects <- list()
+        solve_state <- list(
+            relabel_data = relabel_data,
+            unsolved_relabel_data = unsolved_relabel_data,
+            unsolved_ghost_data = unsolved_ghost_data,
+            putative_subjects = putative_subjects,
+            lnf_counts,
+            ambiguous_subjects = ambiguous_subjects
+        )
 
-              .Object@sample_metadata <- sample_metadata
-              .Object@genotype_matrix <- genotype_matrix
-              .Object@swap_cats <- swap_cats
-              .Object@anchor_samples <- anchor_samples
-              .Object@.solve_state <- solve_state
+        .Object@sample_metadata <- sample_metadata
+        .Object@genotype_matrix <- genotype_matrix
+        .Object@swap_cats <- swap_cats
+        .Object@anchor_samples <- anchor_samples
+        .Object@.solve_state <- solve_state
 
-              .Object <- .update_solve_state(.Object, initialization=TRUE)
-              return(.Object)
-          }
+        .Object <- .update_solve_state(.Object, initialization = TRUE)
+        return(.Object)
+    }
 )
