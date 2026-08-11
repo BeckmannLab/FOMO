@@ -1,7 +1,7 @@
 Package: fomo
 Type: Package
 Title: Mislabel Correction in Multi-Omic Datasets
-Version: 0.99.0
+Version: 0.100.0
 Description: An R package to automatically detect and correct mislabeled samples 
     in multi-omic datasets that have multiple samples per individual. Provides functions 
     for solving, visualizing, and outputting sample mislabel information.
