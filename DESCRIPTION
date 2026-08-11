@@ -32,12 +32,12 @@ Imports:
     gtools,
     reshape2,
     graphics,
-    openxlsx,
     stats,
     tibble,
     rlang,
     tidyselect,
-    utils
+    utils,
+    writexl
 Suggests:
     BiocStyle, 
     knitr, 

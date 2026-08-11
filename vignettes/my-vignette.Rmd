@@ -219,7 +219,9 @@ Finally, a summary of corrections can be outputted as an Excel spreadsheet
 
 ```{r}
 
-summary_list <- writeOutput(mislabel_solver_solved, "~/outputted_corrections")
+summary_list <- collateOutput(mislabel_solver_solved)
 summary_list$Sample
+
+writeOutput(summary_list, "outputted_corrections.xlsx")
 
 ```

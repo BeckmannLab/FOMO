@@ -1,33 +1,13 @@
-#' Plot corrections for \code{MislabelSolver} objects
+#' Produce tables summarizing the output of FOMO
 #'
-#' Leverages \code{visNetwork} to generate an interactive plot of sample
-#' relabels
+#' @param object An object of class \code{MislabelSolver}.
 #'
-#' @param object An object of class \code{MislabelSolver}
-#' @param dir_path Output directory where solver results are written. Will be
-#'   created if directory doesn't already exist. If no directory provided,
-#'   output will be written to the current working directory.
-#'
+#' @returns A named list of data frames summarizing the results at the following
+#'   levels: "Sample", "Genotype_Group", "Component", and "Dataset".
 #' @export
 #'
-writeOutput <- function(object, dir_path = NULL) {
-    if (is.null(dir_path)) {
-        dir_path <- getwd()
-    }
-
-    if (!dir.exists(dir_path)) {
-        dir.create(dir_path, recursive = FALSE)
-        if (dir.exists(dir_path)) {
-            message(paste0("Created new directory ", dir_path))
-        } else {
-            message(paste0(
-                "Failed to create new directory ",
-                dir_path,
-                ". Please check if parent directory for the provided path exists."
-            ))
-        }
-    }
-
+#' @seealso [writeOutput()]
+collateOutput <- function(object) {
     sample_summary <- object@.solve_state$relabel_data |>
         group_by(Genotype_Group_ID, Init_Subject_ID) |>
         mutate(n_agree = n()) |>
@@ -463,9 +443,31 @@ writeOutput <- function(object, dir_path = NULL) {
         "Dataset" = dataset_summary
     )
 
-    excel_filename <- file.path(dir_path, "corrections_summary.xlsx")
-    write.xlsx(summary_list, file = excel_filename)
-    message(paste0("Output successfully written to ", excel_filename))
-
     return(summary_list)
+}
+
+
+#' Write the output of FOMO to an Excel file.
+#'
+#' @param object Either a MislabelSolver object, or a named list of data frames
+#'   (i.e. the return value of [collateOutput()].
+#' @param file The file name to write to. This should end in ".xlsx".
+#'
+#' @export
+#'
+#' @seealso [collateOutput()]
+writeOutput <- function(object, file) {
+    if (is(object, "MislabelSolver")) {
+        object <- collateOutput(object)
+    }
+    assert_that(
+        is.list(object),
+        all(vapply(object, is, logical(1), "data.frame")),
+        msg = "object must be either a MislabelSolver or the result of collateOutput()."
+    )
+    # Freeze the header row
+    formatted_tables <- lapply(object, xl_sheet, freeze = "A2")
+    write_xlsx(formatted_tables, path = file)
+    message(paste0("Output successfully written to ", file))
+    invisible(NULL)
 }

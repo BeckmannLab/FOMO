@@ -2,18 +2,19 @@
 % Please edit documentation in R/methods-output.R
 \name{writeOutput}
 \alias{writeOutput}
-\title{Plot corrections for \code{MislabelSolver} objects}
+\title{Write the output of FOMO to an Excel file.}
 \usage{
-writeOutput(object, dir_path = NULL)
+writeOutput(object, file)
 }
 \arguments{
-\item{object}{An object of class \code{MislabelSolver}}
+\item{object}{Either a MislabelSolver object, or a named list of data frames
+(i.e. the return value of \code{\link[=collateOutput]{collateOutput()}}.}
 
-\item{dir_path}{Output directory where solver results are written. Will be
-created if directory doesn't already exist. If no directory provided,
-output will be written to the current working directory.}
+\item{file}{The file name to write to. This should end in ".xlsx".}
 }
 \description{
-Leverages \code{visNetwork} to generate an interactive plot of sample
-relabels
+Write the output of FOMO to an Excel file.
+}
+\seealso{
+\code{\link[=collateOutput]{collateOutput()}}
 }
