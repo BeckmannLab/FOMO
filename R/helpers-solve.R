@@ -319,7 +319,7 @@
         E(genotype_graph)$genotypes <- TRUE
         label_graph <- .generate_graph(relabel_data, "label", ghost_data)
         E(label_graph)$labels <- TRUE
-        graph <- graph.union(genotype_graph, label_graph, byname=TRUE)
+        graph <- igraph::union(genotype_graph, label_graph, byname = TRUE)
         E(graph)[is.na(E(graph)$genotypes)]$genotypes <- FALSE
         E(graph)[is.na(E(graph)$labels)]$labels <- FALSE
         E(graph)$concordant <- E(graph)$genotypes & E(graph)$labels
