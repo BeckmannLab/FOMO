@@ -804,7 +804,22 @@ solveEnsemble <- function(
         )
     }
 
+    run_global <- "global" %in% use_solvers
+
+    ## Tracks the set of samples available for solveGlobalSearch() to
+    ## analyze (see .global_search_available_samples() in helpers-solve.R)
+    ## as of the last time it actually ran, so it can be skipped below when
+    ## nothing new has become available to it since then -- calling it
+    ## again in that case is guaranteed to be futile: every component it
+    ## would look at now is one it either already fully resolved (and so
+    ## has left the unsolved pool entirely) or already skipped for the
+    ## exact same reason (too large, or more genotypes than subjects) last
+    ## time, and neither of those can change without changing this set.
+    ## Starts empty, before anything has been analyzed.
+    global_available_samples <- character(0)
+
     start_time <- Sys.time()
+    time_limit_exceeded <- FALSE
     while (TRUE) {
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             ## Everything has already been resolved; nothing left to solve.
@@ -821,29 +836,57 @@ solveEnsemble <- function(
             )
             ## Out of time; stop looping and return the best-effort partial
             ## result computed so far instead of continuing indefinitely.
+            time_limit_exceeded <- TRUE
             break
         }
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
-        run_global <- "global" %in% use_solvers
         if (run_global) {
-            object <- solveGlobalSearch(
+            current_available_samples <- .global_search_available_samples(
                 object,
-                max_genotypes = global_max_genotypes,
-                ghost_penalty = global_ghost_penalty,
-                deletion_penalty = global_deletion_penalty
+                global_max_genotypes
             )
+            if (
+                !identical(current_available_samples, global_available_samples)
+            ) {
+                object <- solveGlobalSearch(
+                    object,
+                    max_genotypes = global_max_genotypes,
+                    ghost_penalty = global_ghost_penalty,
+                    deletion_penalty = global_deletion_penalty
+                )
+                global_available_samples <- current_available_samples
+            } else {
+                message(
+                    "Skipping global search: no new samples have become ",
+                    "available to it since it last ran."
+                )
+            }
         }
         if ("majority" %in% use_solvers) {
             object <- solveMajoritySearch(object)
         }
         if (run_global) {
-            object <- solveGlobalSearch(
+            current_available_samples <- .global_search_available_samples(
                 object,
-                max_genotypes = global_max_genotypes,
-                ghost_penalty = global_ghost_penalty,
-                deletion_penalty = global_deletion_penalty
+                global_max_genotypes
             )
+            if (
+                !identical(current_available_samples, global_available_samples)
+            ) {
+                object <- solveGlobalSearch(
+                    object,
+                    max_genotypes = global_max_genotypes,
+                    ghost_penalty = global_ghost_penalty,
+                    deletion_penalty = global_deletion_penalty
+                )
+                global_available_samples <- current_available_samples
+            } else {
+                message(
+                    "Skipping global search: no new samples have become ",
+                    "available to it since it last ran."
+                )
+            }
         }
 
         global_relabel_data <- object@.solve_state$unsolved_relabel_data
@@ -898,6 +941,22 @@ solveEnsemble <- function(
                 break
             }
         }
+    }
+
+    ## The loop above can skip calling global search on its very last
+    ## iteration (if nothing new became available to it right at the end),
+    ## so run it once more here to make sure it never ends up skipped
+    ## entirely -- unless there's no point: either the loop stopped because
+    ## it ran out of time (in which case any further solving, global search
+    ## included, should also be skipped), or the caller didn't request
+    ## global search in the first place.
+    if (run_global && !time_limit_exceeded) {
+        object <- solveGlobalSearch(
+            object,
+            max_genotypes = global_max_genotypes,
+            ghost_penalty = global_ghost_penalty,
+            deletion_penalty = global_deletion_penalty
+        )
     }
 
     ## After the solve, check if cycles can be broken down

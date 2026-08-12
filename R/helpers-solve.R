@@ -106,6 +106,85 @@
     invisible(NULL)
 }
 
+## Returns the sorted, unique Sample_ID(s) (from both unsolved_relabel_data
+## and unsolved_ghost_data) that currently belong to a component
+## solveGlobalSearch() would actually attempt to process (not skip) if
+## called right now, restricted to the specific real samples whose
+## Genotype_Group_ID is not already locked via putative_subjects (i.e. is
+## genuinely still "free" for solveGlobalSearch() to decide), plus any
+## ghost samples in that same component (ghosts have no Genotype_Group_ID
+## of their own to lock, but can still be newly relevant to a component
+## that hasn't changed status otherwise). Mirrors the per-component skip
+## conditions in solveGlobalSearch()'s own loop: a component is excluded
+## here if it has more Genotype_Group_ID(s) than Subject_ID(s) (an
+## unrelated, locking-independent reason solveGlobalSearch() always skips
+## it), or if its *free* genotype/subject counts exceed max_genotypes.
+##
+## Used by solveEnsemble() to detect when calling solveGlobalSearch() again
+## would be futile -- see the comment above where it's called, in
+## solveEnsemble() itself, for the full reasoning. Deliberately keyed on
+## free (not-yet-locked) genotypes rather than plain component membership:
+## solveMajoritySearch() pays no attention to component boundaries or
+## max_genotypes and can lock a component's individual genotypes without
+## changing which samples belong to it at all, and that newly-available
+## information is exactly what a membership-only comparison would miss.
+##
+## This does duplicate part of solveGlobalSearch()'s own per-component
+## logic (deliberately: it's cheap, and keeping solveGlobalSearch() itself
+## completely unmodified was judged the lower-risk option here), so if
+## solveGlobalSearch()'s eligibility conditions ever change, this needs to
+## be updated to match.
+.global_search_available_samples <- function(object, max_genotypes) {
+    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
+    unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data
+    putative_subjects <- object@.solve_state$putative_subjects
+
+    if (nrow(unsolved_relabel_data) == 0) {
+        return(character(0))
+    }
+
+    component_ids <- sort(unique(unsolved_relabel_data$Component_ID))
+    available_sample_ids <- character(0)
+    for (component_id in component_ids) {
+        cc_unsolved_relabel_data <- unsolved_relabel_data |>
+            filter(Component_ID == component_id)
+        cc_unsolved_ghost_data <- unsolved_ghost_data |>
+            filter(Component_ID == component_id)
+        cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
+        cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
+
+        ## Same locking-independent structural skip solveGlobalSearch() uses
+        if (length(cc_genotypes) > length(cc_subjects)) {
+            next
+        }
+
+        free_genotypes <- setdiff(
+            cc_genotypes,
+            putative_subjects$Genotype_Group_ID
+        )
+        free_subjects <- setdiff(cc_subjects, putative_subjects$Subject_ID)
+
+        ## Same size-based skip solveGlobalSearch() uses, but based on the
+        ## *free* (locking-adjusted) counts, not the raw component size
+        if (
+            length(free_genotypes) > max_genotypes ||
+                length(free_subjects) > max_genotypes
+        ) {
+            next
+        }
+
+        available_sample_ids <- c(
+            available_sample_ids,
+            cc_unsolved_relabel_data$Sample_ID[
+                cc_unsolved_relabel_data$Genotype_Group_ID %in%
+                    free_genotypes
+            ],
+            cc_unsolved_ghost_data$Sample_ID
+        )
+    }
+    sort(unique(available_sample_ids))
+}
+
 ## solver_name attributes newly-solved samples to whoever solved them, for
 ## the "Solved_By" column surfaced in writeOutput()'s Sample/Component
 ## sheets (see solveEnsemble()'s call sites for the actual solver names
