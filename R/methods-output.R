@@ -58,6 +58,14 @@ collateOutput <- function(object) {
             ## still unsolved (only possible if solveEnsemble() hit its
             ## time_limit before converging).
             Solved_By,
+            ## Which solver most recently changed this sample's label,
+            ## updated every time a relabel happens (unlike Solved_By, which
+            ## is set once, permanently, the moment a component is solved).
+            ## NA if the sample was never relabeled. Can still be non-NA
+            ## even when Init_Sample_ID == Proposed_Final_Sample_ID, in the
+            ## rare case where a later solver reverts an earlier relabel
+            ## back to the original label -- that's expected, not a bug.
+            Relabeled_By,
             Selected_For_Review = case_when(
                 Ghost & Mislabeled ~ "ghost_relabeled",
                 Ghost ~ "ghost",
@@ -244,6 +252,7 @@ collateOutput <- function(object) {
             Selected_For_Review,
             Mislabeled,
             Solved_By,
+            Relabeled_By,
             Mislabeling_Event_ID,
             Multiple_Valid_Solutions,
             All_Valid_Subject_IDs,

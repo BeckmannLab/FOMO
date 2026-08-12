@@ -197,6 +197,7 @@ setMethod(
                 Is_Ghost = is.na(Genotype_Group_ID),
                 Is_Anchor = Init_Sample_ID %in% anchor_samples,
                 Solved = FALSE,
+                Relabeled_By = NA_character_,
                 Placeholder_ID = placeholder_ids[Sample_ID]
             ) |>
             left_join(swap_cats, by = "Sample_ID")

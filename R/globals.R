@@ -86,6 +86,7 @@ global_vars <- c(
     "Putative_Subject_A",
     "Putative_Subject_B",
     "Putative_Subject_ID",
+    "Relabeled_By",
     "relabel_from",
     "Row",
     "sample_a",

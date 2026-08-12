@@ -321,6 +321,7 @@
             "Subject_ID",
             "Solved",
             "Solved_By",
+            "Relabeled_By",
             "Is_Ghost",
             "Is_Anchor",
             "SwapCat_ID",
@@ -650,7 +651,18 @@
             ## coalesce(a, b): a if it's not NA, else b -- exactly what these
             ## two ifelse(!is.na(a), a, b) calls were doing.
             Sample_ID = coalesce(Sample_ID.y, Sample_ID),
-            Subject_ID = coalesce(Subject_ID.y, Subject_ID.x)
+            Subject_ID = coalesce(Subject_ID.y, Subject_ID.x),
+            ## Unlike Solved_By (set once, permanently, when a component is
+            ## solved), Relabeled_By is overwritten every time a sample is
+            ## actually relabeled -- Sample_ID.y is only non-NA for rows that
+            ## matched a real entry in 'relabels' (i.e. were just relabeled
+            ## by this call), so untouched rows simply carry forward
+            ## whatever value they already had (NA if never relabeled).
+            Relabeled_By = if_else(
+                !is.na(Sample_ID.y),
+                solver_name,
+                Relabeled_By
+            )
         ) |>
         select(-ends_with(".x"), -ends_with(".y"))
 
