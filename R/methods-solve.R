@@ -81,9 +81,7 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
 #'
 #' This global search function permutes over all combinations of assigning a
 #' Subject_ID to a Genotype_Group_ID, then picks the assignment that implies the
-#' fewest number of sample mislabels and deletions. Formerly (and still
-#' commonly) known as "comprehensive search"; see [solveComprehensiveSearch()]
-#' for the deprecated alias.
+#' fewest number of sample mislabels and deletions.
 #'
 #' @param object A MislabelSolver object
 #' @param max_genotypes (Default = 8) The number of combinations scales in factorial
@@ -458,41 +456,6 @@ solveGlobalSearch <- function(
     return(object)
 }
 
-#' Comprehensive-based Sample Relabeling (deprecated)
-#'
-#' \strong{Deprecated.} Comprehensive search was renamed to "global search"
-#' for clarity. This function is a deprecated alias that issues a warning
-#' and calls [solveGlobalSearch()]; update calling code to use
-#' [solveGlobalSearch()] directly.
-#'
-#' @inheritParams solveGlobalSearch
-#'
-#' @return A MislabelSolver object
-#'
-#' @export
-#'
-solveComprehensiveSearch <- function(
-    object,
-    max_genotypes = 8,
-    ghost_penalty = 1.5,
-    deletion_penalty = 4
-) {
-    .Deprecated(
-        "solveGlobalSearch",
-        package = "fomo",
-        msg = paste0(
-            "'solveComprehensiveSearch()' was renamed to 'solveGlobalSearch()' ",
-            "and is now a deprecated alias for it."
-        )
-    )
-    solveGlobalSearch(
-        object,
-        max_genotypes = max_genotypes,
-        ghost_penalty = ghost_penalty,
-        deletion_penalty = deletion_penalty
-    )
-}
-
 #' Local Search Sample Relabeling
 #'
 #' This search function looks through all possible swaps of 2 samples, and selects
@@ -653,9 +616,6 @@ solveLocalSearch <- function(
 #' mid-solve state (8 free / 16 locked genotypes, 40,320 permutations, 6
 #' swap categories): identical scores and identical best permutation, ~16x
 #' faster on that case.
-#'
-#' Formerly (and still commonly) known as "comprehensive search (fast)";
-#' see [solveComprehensiveSearchFast()] for the deprecated alias.
 #'
 #' Use via `solveEnsemble(object, use_solvers = c("majority",
 #' "global_fast", "local"))` rather than calling this directly,
@@ -894,44 +854,6 @@ solveGlobalSearchFast <- function(
     return(object)
 }
 
-#' Comprehensive Search Sample Relabeling (Fast, deprecated)
-#'
-#' \strong{Deprecated.} Comprehensive search was renamed to "global search"
-#' for clarity. This function is a deprecated alias that issues a warning
-#' and calls [solveGlobalSearchFast()]; update calling code to use
-#' [solveGlobalSearchFast()] directly.
-#'
-#' @inheritParams solveGlobalSearch
-#'
-#' @return A MislabelSolver object
-#'
-#' @seealso [solveComprehensiveSearch()], the corresponding regular
-#'   (non-fast) deprecated alias.
-#'
-#' @export
-#'
-solveComprehensiveSearchFast <- function(
-    object,
-    max_genotypes = 8,
-    ghost_penalty = 1.5,
-    deletion_penalty = 4
-) {
-    .Deprecated(
-        "solveGlobalSearchFast",
-        package = "fomo",
-        msg = paste0(
-            "'solveComprehensiveSearchFast()' was renamed to 'solveGlobalSearchFast()' ",
-            "and is now a deprecated alias for it."
-        )
-    )
-    solveGlobalSearchFast(
-        object,
-        max_genotypes = max_genotypes,
-        ghost_penalty = ghost_penalty,
-        deletion_penalty = deletion_penalty
-    )
-}
-
 #' Local Search Sample Relabeling (Fast)
 #'
 #' A drop-in replacement for [solveLocalSearch()] that evaluates each
@@ -1116,10 +1038,6 @@ solveLocalSearchFast <- function(
 #'   bit-exact replacement for `"global"`; `"local_fast"` is only extremely
 #'   close (not bit-exact) to `"local"` -- see [solveGlobalSearchFast()] and
 #'   [solveLocalSearchFast()] for why that distinction exists.
-#'   `"comprehensive"` and `"comprehensive_fast"` are accepted as deprecated
-#'   aliases for `"global"` and `"global_fast"` (global search was
-#'   previously called "comprehensive search"); using either issues a
-#'   deprecation warning.
 #' @param time_limit (Default = 7200, i.e. 2 hours) The maximum time, in
 #'   seconds, to let the solver run. Elapsed time is checked once per
 #'   iteration of the while loop; if `time_limit` is reached before the
@@ -1143,9 +1061,7 @@ solveEnsemble <- function(
         "global",
         "global_fast",
         "local",
-        "local_fast",
-        "comprehensive",
-        "comprehensive_fast"
+        "local_fast"
     )
     assert_that(
         is.character(use_solvers) && length(use_solvers) > 0,
@@ -1159,34 +1075,6 @@ solveEnsemble <- function(
         )
     )
 
-    ## "comprehensive"/"comprehensive_fast" are deprecated aliases for
-    ## "global"/"global_fast" (global search was previously called
-    ## "comprehensive search"). Translate them to their canonical name
-    ## before any further validation or dispatch, so the rest of this
-    ## function only ever has to deal with the current names.
-    deprecated_used <- intersect(
-        use_solvers,
-        c("comprehensive", "comprehensive_fast")
-    )
-    if (length(deprecated_used) > 0) {
-        replacement_names <- str_replace(
-            deprecated_used,
-            "^comprehensive",
-            "global"
-        )
-        warning(
-            "'",
-            paste(deprecated_used, collapse = "', '"),
-            "' in 'use_solvers' ",
-            "is deprecated: comprehensive search has been renamed to global search. ",
-            "Use '",
-            paste(replacement_names, collapse = "', '"),
-            "' instead.",
-            call. = FALSE
-        )
-        use_solvers[use_solvers == "comprehensive"] <- "global"
-        use_solvers[use_solvers == "comprehensive_fast"] <- "global_fast"
-    }
     use_solvers <- unique(use_solvers)
 
     assert_that(

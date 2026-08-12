@@ -55,7 +55,5 @@ A MislabelSolver object
 \description{
 This global search function permutes over all combinations of assigning a
 Subject_ID to a Genotype_Group_ID, then picks the assignment that implies the
-fewest number of sample mislabels and deletions. Formerly (and still
-commonly) known as "comprehensive search"; see \code{\link[=solveComprehensiveSearch]{solveComprehensiveSearch()}}
-for the deprecated alias.
+fewest number of sample mislabels and deletions.
 }

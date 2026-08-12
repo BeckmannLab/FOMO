@@ -27,11 +27,7 @@ respectively; each pair are alternative implementations of the same
 step and cannot both be requested at once. \code{"global_fast"} is a
 bit-exact replacement for \code{"global"}; \code{"local_fast"} is only extremely
 close (not bit-exact) to \code{"local"} -- see \code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}} and
-\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} for why that distinction exists.
-\code{"comprehensive"} and \code{"comprehensive_fast"} are accepted as deprecated
-aliases for \code{"global"} and \code{"global_fast"} (global search was
-previously called "comprehensive search"); using either issues a
-deprecation warning.}
+\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} for why that distinction exists.}
 
 \item{time_limit}{(Default = 7200, i.e. 2 hours) The maximum time, in
 seconds, to let the solver run. Elapsed time is checked once per

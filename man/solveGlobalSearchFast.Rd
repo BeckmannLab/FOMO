@@ -54,7 +54,7 @@ A MislabelSolver object
 }
 \description{
 A drop-in, numerically exact replacement for \code{\link[=solveGlobalSearch]{solveGlobalSearch()}}
-that scores permutations without \code{\link[reshape2:melt]{melt()}}/\code{dplyr} joins on the
+that scores permutations without \code{\link[reshape2:melt]{reshape2::melt()}}/\code{dplyr} joins on the
 full genotype-by-permutation table. Two independent changes: (1) a
 component's \emph{locked} genotype columns (already resolved before global
 search reached this component) are constant across every
@@ -70,9 +70,6 @@ swap categories): identical scores and identical best permutation, ~16x
 faster on that case.
 }
 \details{
-Formerly (and still commonly) known as "comprehensive search (fast)";
-see \code{\link[=solveComprehensiveSearchFast]{solveComprehensiveSearchFast()}} for the deprecated alias.
-
 Use via \code{solveEnsemble(object, use_solvers = c("majority", "global_fast", "local"))} rather than calling this directly,
 unless you are composing your own solver loop.
 }

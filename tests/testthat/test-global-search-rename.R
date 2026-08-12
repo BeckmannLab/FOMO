@@ -1,122 +1,41 @@
-test_that("solveComprehensiveSearch() is deprecated but matches solveGlobalSearch()", {
-    scenario <- toy_swap_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-
-    expect_warning(
-        r1 <- solveComprehensiveSearch(x1),
-        "renamed to 'solveGlobalSearch"
-    )
-    r2 <- suppressMessages(solveGlobalSearch(x2))
-
-    expect_identical(
-        r1@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )],
-        r2@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )]
+test_that("solveComprehensiveSearch() and solveComprehensiveSearchFast() no longer exist", {
+    expect_false(exists("solveComprehensiveSearch", mode = "function"))
+    expect_false(exists("solveComprehensiveSearchFast", mode = "function"))
+    expect_false("solveComprehensiveSearch" %in% getNamespaceExports("fomo"))
+    expect_false(
+        "solveComprehensiveSearchFast" %in% getNamespaceExports("fomo")
     )
 })
 
-test_that("solveComprehensiveSearchFast() is deprecated but matches solveGlobalSearchFast()", {
+test_that("solveEnsemble(use_solvers = 'comprehensive') is no longer accepted", {
     scenario <- toy_swap_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-    x2 <- MislabelSolver(
+    x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
         swap_cats = scenario$swap_cats
     )
 
-    expect_warning(
-        r1 <- solveComprehensiveSearchFast(x1),
-        "renamed to 'solveGlobalSearchFast"
+    expect_error(
+        solveEnsemble(x, use_solvers = c("majority", "comprehensive", "local")),
+        "must only contain values from"
     )
-    r2 <- suppressMessages(solveGlobalSearchFast(x2))
-
-    expect_identical(
-        r1@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )],
-        r2@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )]
-    )
-})
-
-test_that("solveEnsemble(use_solvers = 'comprehensive') is a deprecated alias for 'global'", {
-    scenario <- toy_swap_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-
-    expect_warning(
-        r1 <- solveEnsemble(
-            x1,
-            use_solvers = c("majority", "comprehensive", "local")
+    expect_error(
+        solveEnsemble(
+            x,
+            use_solvers = c("majority", "comprehensive_fast", "local")
         ),
-        "deprecated"
-    )
-    r2 <- suppressMessages(solveEnsemble(
-        x2,
-        use_solvers = c("majority", "global", "local")
-    ))
-
-    expect_identical(
-        r1@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )],
-        r2@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )]
+        "must only contain values from"
     )
 })
 
-test_that("use_solvers rejects mixing 'global' and 'global_fast', including via the deprecated alias", {
+test_that("use_solvers rejects mixing 'global' and 'global_fast'", {
     scenario <- toy_swap_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-    x2 <- MislabelSolver(
+    x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
         swap_cats = scenario$swap_cats
     )
 
     expect_error(
-        solveEnsemble(x1, use_solvers = c("majority", "global", "global_fast")),
-        "cannot contain both"
-    )
-    expect_error(
-        suppressWarnings(solveEnsemble(
-            x2,
-            use_solvers = c("majority", "comprehensive", "global_fast")
-        )),
+        solveEnsemble(x, use_solvers = c("majority", "global", "global_fast")),
         "cannot contain both"
     )
 })
