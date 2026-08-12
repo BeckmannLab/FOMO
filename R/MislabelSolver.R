@@ -129,9 +129,6 @@ setMethod(
         swap_cats = NULL,
         anchor_samples = character(0)
     ) {
-        # Hack to get around the NOTE "no visible binding for global variable"
-        Genotype_Group_ID <- Subject_ID <- Sample_ID <- Init_Sample_ID <- NULL
-
         ## Sort deterministically by Sample_ID, so that construction (and
         ## everything derived from it -- relabel_data's row order, and the
         ## placeholder IDs generated just below) does not depend on the row
@@ -192,19 +189,19 @@ setMethod(
         ## Initialize object 'solve_state'
         relabel_data <- sample_metadata |>
             mutate(
-                Init_Sample_ID = Sample_ID,
-                Init_Subject_ID = Subject_ID,
-                Is_Ghost = is.na(Genotype_Group_ID),
-                Is_Anchor = Init_Sample_ID %in% anchor_samples,
+                Init_Sample_ID = .data$Sample_ID,
+                Init_Subject_ID = .data$Subject_ID,
+                Is_Ghost = is.na(.data$Genotype_Group_ID),
+                Is_Anchor = .data$Init_Sample_ID %in% anchor_samples,
                 Solved = FALSE,
                 Relabeled_By = NA_character_,
-                Placeholder_ID = placeholder_ids[Sample_ID]
+                Placeholder_ID = placeholder_ids[.data$Sample_ID]
             ) |>
             left_join(swap_cats, by = "Sample_ID")
         unsolved_relabel_data <- relabel_data |>
-            filter(!is.na(Genotype_Group_ID))
+            filter(!is.na(.data$Genotype_Group_ID))
         unsolved_ghost_data <- relabel_data |>
-            filter(is.na(Genotype_Group_ID))
+            filter(is.na(.data$Genotype_Group_ID))
         putative_subjects <- data.frame(
             Genotype_Group_ID = character(0),
             Subject_ID = character(0)

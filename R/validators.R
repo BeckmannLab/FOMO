@@ -191,25 +191,25 @@
             )],
             by = "Sample_ID"
         ) |>
-        filter(!is.na(Genotype_Group_ID)) |>
-        group_by(Genotype_Group_ID) |>
+        filter(!is.na(.data$Genotype_Group_ID)) |>
+        group_by(.data$Genotype_Group_ID) |>
         mutate(
-            n_Subject_ID = length(unique(Subject_ID))
+            n_Subject_ID = length(unique(.data$Subject_ID))
         ) |>
         ungroup() |>
-        group_by(Subject_ID) |>
+        group_by(.data$Subject_ID) |>
         mutate(
-            n_Genotype_Group_ID = length(unique(Genotype_Group_ID))
+            n_Genotype_Group_ID = length(unique(.data$Genotype_Group_ID))
         ) |>
         ungroup()
     subject_inconsistent_samples <- anchor_samples_consistency |>
-        filter(n_Subject_ID != 1) |>
-        arrange(Sample_ID) |>
-        pull(Sample_ID)
+        filter(.data$n_Subject_ID != 1) |>
+        arrange(.data$Sample_ID) |>
+        pull(.data$Sample_ID)
     genotype_inconsistent_samples <- anchor_samples_consistency |>
-        filter(n_Genotype_Group_ID != 1) |>
-        arrange(Sample_ID) |>
-        pull(Sample_ID)
+        filter(.data$n_Genotype_Group_ID != 1) |>
+        arrange(.data$Sample_ID) |>
+        pull(.data$Sample_ID)
     assert_that(
         length(subject_inconsistent_samples) == 0,
         msg = paste0(

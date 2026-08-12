@@ -9,55 +9,58 @@
 #' @seealso [writeOutput()]
 collateOutput <- function(object) {
     sample_summary <- object@.solve_state$relabel_data |>
-        group_by(Genotype_Group_ID, Init_Subject_ID) |>
+        group_by(.data$Genotype_Group_ID, .data$Init_Subject_ID) |>
         mutate(n_agree = n()) |>
-        ungroup(Init_Subject_ID) |>
+        ungroup("Init_Subject_ID") |>
         mutate(Sample_Count_In_Genotype_Group = n()) |>
-        ungroup(Genotype_Group_ID) |>
+        ungroup("Genotype_Group_ID") |>
         left_join(
             object@.solve_state$putative_subjects |>
-                filter(!is.na(Genotype_Group_ID)),
+                filter(!is.na(.data$Genotype_Group_ID)),
             by = "Genotype_Group_ID",
             suffix = c("", "_putative")
         ) |>
         transmute(
-            Component_ID = Init_Component_ID,
-            Genotype_Group_ID,
-            SwapCat_ID,
-            Ghost = is.na(Genotype_Group_ID),
-            Init_Subject_ID,
-            Init_Sample_ID,
-            Proposed_Final_Subject_ID = Subject_ID,
-            Proposed_Final_Sample_ID = Sample_ID,
-            Inferred_Subject_ID = Subject_ID_putative,
-            All_Valid_Subject_IDs = sapply(Genotype_Group_ID, function(x) {
-                if (x %in% names(object@.solve_state$ambiguous_subjects)) {
-                    str_c(
-                        object@.solve_state$ambiguous_subjects[[x]],
-                        collapse = ", "
-                    )
-                } else {
-                    NA_character_
+            Component_ID = .data$Init_Component_ID,
+            .data$Genotype_Group_ID,
+            .data$SwapCat_ID,
+            Ghost = is.na(.data$Genotype_Group_ID),
+            .data$Init_Subject_ID,
+            .data$Init_Sample_ID,
+            Proposed_Final_Subject_ID = .data$Subject_ID,
+            Proposed_Final_Sample_ID = .data$Sample_ID,
+            Inferred_Subject_ID = .data$Subject_ID_putative,
+            All_Valid_Subject_IDs = sapply(
+                .data$Genotype_Group_ID,
+                function(x) {
+                    if (x %in% names(object@.solve_state$ambiguous_subjects)) {
+                        str_c(
+                            object@.solve_state$ambiguous_subjects[[x]],
+                            collapse = ", "
+                        )
+                    } else {
+                        NA_character_
+                    }
                 }
-            }),
+            ),
             Sample_Count_In_Genotype_Group = if_else(
-                !Ghost,
-                Sample_Count_In_Genotype_Group,
+                !.data$Ghost,
+                .data$Sample_Count_In_Genotype_Group,
                 NA_integer_
             ),
             Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label = if_else(
-                !Ghost,
-                n_agree,
+                !.data$Ghost,
+                .data$n_agree,
                 NA_integer_
             ),
-            Mislabeled = Init_Sample_ID != Proposed_Final_Sample_ID,
+            Mislabeled = .data$Init_Sample_ID != .data$Proposed_Final_Sample_ID,
             ## Which solver step resolved this sample: "majority", "global",
             ## "local"/"local_old", or "initial" if it was
             ## already resolved at construction time (e.g. a singleton
             ## component, or anchor_samples), before any solver ran. NA if
             ## still unsolved (only possible if solveEnsemble() hit its
             ## time_limit before converging).
-            Solved_By,
+            .data$Solved_By,
             ## Which solver most recently changed this sample's label,
             ## updated every time a relabel happens (unlike Solved_By, which
             ## is set once, permanently, the moment a component is solved).
@@ -65,44 +68,46 @@ collateOutput <- function(object) {
             ## even when Init_Sample_ID == Proposed_Final_Sample_ID, in the
             ## rare case where a later solver reverts an earlier relabel
             ## back to the original label -- that's expected, not a bug.
-            Relabeled_By,
+            .data$Relabeled_By,
             Selected_For_Review = case_when(
-                Ghost & Mislabeled ~ "ghost_relabeled",
-                Ghost ~ "ghost",
-                is.na(Inferred_Subject_ID) ~ "inconsistent_genotype",
+                .data$Ghost & .data$Mislabeled ~ "ghost_relabeled",
+                .data$Ghost ~ "ghost",
+                is.na(.data$Inferred_Subject_ID) ~ "inconsistent_genotype",
                 str_detect(
-                    Proposed_Final_Sample_ID,
+                    .data$Proposed_Final_Sample_ID,
                     LABEL_NOT_FOUND
                 ) ~ "deletion_or_duplication",
-                Mislabeled &
-                    (Proposed_Final_Subject_ID != Inferred_Subject_ID |
-                        Sample_Count_In_Genotype_Group ==
+                .data$Mislabeled &
+                    (.data$Proposed_Final_Subject_ID !=
+                        .data$Inferred_Subject_ID |
+                        .data$Sample_Count_In_Genotype_Group ==
                             1) ~ "relabel_low_confidence",
-                Mislabeled ~ "relabel_high_confidence",
-                Sample_Count_In_Genotype_Group == 1 ~ "singleton_no_inference",
-                n_agree < 2 ~ "not_relabeled_low_confidence",
+                .data$Mislabeled ~ "relabel_high_confidence",
+                .data$Sample_Count_In_Genotype_Group ==
+                    1 ~ "singleton_no_inference",
+                .data$n_agree < 2 ~ "not_relabeled_low_confidence",
                 TRUE ~ "no_review_needed"
             )
         ) |>
         arrange(
-            Component_ID,
-            Genotype_Group_ID,
-            Proposed_Final_Subject_ID,
-            Proposed_Final_Sample_ID
+            .data$Component_ID,
+            .data$Genotype_Group_ID,
+            .data$Proposed_Final_Subject_ID,
+            .data$Proposed_Final_Sample_ID
         )
 
     ## Mislabeled samples in the same genotype group
     ## with identical swappable categories are
     ## are ambiguities for one another
     ambiguity_summary <- sample_summary |>
-        filter(Init_Subject_ID != Inferred_Subject_ID) |>
-        group_by(Genotype_Group_ID, SwapCat_ID) |>
+        filter(.data$Init_Subject_ID != .data$Inferred_Subject_ID) |>
+        group_by(.data$Genotype_Group_ID, .data$SwapCat_ID) |>
         mutate(
             n_LABELNOTFOUND = sum(str_detect(
-                Proposed_Final_Sample_ID,
+                .data$Proposed_Final_Sample_ID,
                 LABEL_NOT_FOUND
             )),
-            has_Ghost_Solution = any(Ghost),
+            has_Ghost_Solution = any(.data$Ghost),
             has_LABELNOTFOUND_Solution = .data$n_LABELNOTFOUND > 0
         ) |>
         ungroup()
@@ -114,11 +119,11 @@ collateOutput <- function(object) {
         has_LABELNOTFOUND <- ambiguity_summary$has_LABELNOTFOUND_Solution[i]
         sample_ambiguities <- ambiguity_summary |>
             filter(
-                Genotype_Group_ID != genotype_group_id,
-                Init_Subject_ID == inferred_subject_id,
-                SwapCat_ID == swap_cat_id
+                .data$Genotype_Group_ID != genotype_group_id,
+                .data$Init_Subject_ID == inferred_subject_id,
+                .data$SwapCat_ID == swap_cat_id
             ) |>
-            pull(Init_Sample_ID)
+            pull(.data$Init_Sample_ID)
         if (has_LABELNOTFOUND) {
             sample_ambiguities <- c(
                 sample_ambiguities,
@@ -138,14 +143,15 @@ collateOutput <- function(object) {
         }
     }
     ambiguity_summary <- ambiguity_summary |>
-        select(Init_Sample_ID, All_Valid_Sample_IDs)
+        select("Init_Sample_ID", "All_Valid_Sample_IDs")
 
     sample_summary <- sample_summary |>
         left_join(ambiguity_summary, by = "Init_Sample_ID") |>
         mutate(
             Multiple_Valid_Solutions = case_when(
-                !is.na(All_Valid_Subject_IDs) > 0 ~ "multiple_valid_subjects",
-                !is.na(All_Valid_Sample_IDs) >
+                !is.na(.data$All_Valid_Subject_IDs) >
+                    0 ~ "multiple_valid_subjects",
+                !is.na(.data$All_Valid_Sample_IDs) >
                     0 ~ "one_valid_subject_multiple_valid_samples"
             )
         )
@@ -158,8 +164,8 @@ collateOutput <- function(object) {
         sample_summary$Sample_Contamination_Metric_Denominator <- NA_integer_
         sample_summary$Sample_Contamination_Metric <- NA
         genotyped_sample_ids <- sample_summary |>
-            filter(!Ghost) |>
-            pull(Init_Sample_ID)
+            filter(!.data$Ghost) |>
+            pull(.data$Init_Sample_ID)
         for (sample_id in genotyped_sample_ids) {
             neighbor_samples <- names(which(
                 object@genotype_matrix[sample_id, ] == 1
@@ -209,20 +215,20 @@ collateOutput <- function(object) {
     sample_summary <- sample_summary |>
         left_join(Mislabeling_Event_ID_df, by = "Init_Sample_ID")
     Mislabeling_Event_ID_renamer_df <- sample_summary |>
-        filter(!is.na(Mislabeling_Event_ID)) |>
-        select(Component_ID, Mislabeling_Event_ID) |>
+        filter(!is.na(.data$Mislabeling_Event_ID)) |>
+        select("Component_ID", "Mislabeling_Event_ID") |>
         distinct() |>
-        group_by(Component_ID) |>
+        group_by(.data$Component_ID) |>
         mutate(Event_Number = row_number()) |>
         ungroup() |>
         mutate(
             Mislabeling_Event_ID_New = str_c(
-                Component_ID,
+                .data$Component_ID,
                 "_Mislabeling_Event_",
-                Event_Number
+                .data$Event_Number
             )
         ) |>
-        select(Mislabeling_Event_ID, Mislabeling_Event_ID_New)
+        select("Mislabeling_Event_ID", "Mislabeling_Event_ID_New")
     Mislabeling_Event_ID_renamer_map <- setNames(
         Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID_New,
         Mislabeling_Event_ID_renamer_df$Mislabeling_Event_ID
@@ -243,75 +249,75 @@ collateOutput <- function(object) {
 
     sample_summary <- sample_summary |>
         select(
-            Connected_Component_ID = Component_ID,
-            Genotype_Group_ID,
-            SwapCat_ID,
-            Is_Ghost = Ghost,
-            Initial_Subject_ID = Init_Subject_ID,
-            Initial_Sample_ID = Init_Sample_ID,
-            Selected_For_Review,
-            Mislabeled,
-            Solved_By,
-            Relabeled_By,
-            Mislabeling_Event_ID,
-            Multiple_Valid_Solutions,
-            All_Valid_Subject_IDs,
-            All_Valid_Sample_IDs,
-            Inferred_Subject_ID,
-            Proposed_Final_Subject_ID,
-            Proposed_Final_Sample_ID,
-            Sample_Count_In_Genotype_Group,
-            Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label,
-            Sample_Contamination_Metric,
-            Sample_Contamination_Metric_Denominator,
-            Sample_Contamination_Metric_Numerator
+            Connected_Component_ID = "Component_ID",
+            "Genotype_Group_ID",
+            "SwapCat_ID",
+            Is_Ghost = "Ghost",
+            Initial_Subject_ID = "Init_Subject_ID",
+            Initial_Sample_ID = "Init_Sample_ID",
+            "Selected_For_Review",
+            "Mislabeled",
+            "Solved_By",
+            "Relabeled_By",
+            "Mislabeling_Event_ID",
+            "Multiple_Valid_Solutions",
+            "All_Valid_Subject_IDs",
+            "All_Valid_Sample_IDs",
+            "Inferred_Subject_ID",
+            "Proposed_Final_Subject_ID",
+            "Proposed_Final_Sample_ID",
+            "Sample_Count_In_Genotype_Group",
+            "Sample_Count_In_Genotype_Group_with_Same_Initial_Subject_Label",
+            "Sample_Contamination_Metric",
+            "Sample_Contamination_Metric_Denominator",
+            "Sample_Contamination_Metric_Numerator"
         )
 
     genotype_group_summary <- sample_summary |>
-        group_by(Genotype_Group_ID, Inferred_Subject_ID) |>
-        filter(!is.na(Genotype_Group_ID)) |>
+        group_by(.data$Genotype_Group_ID, .data$Inferred_Subject_ID) |>
+        filter(!is.na(.data$Genotype_Group_ID)) |>
         summarize(
             # Majority_Subject_ID = names(sort(table(Proposed_Final_Subject_ID), decreasing = TRUE)[1]),
             n_Samples_no_review_needed = sum(
-                Selected_For_Review == "no_review_needed"
+                .data$Selected_For_Review == "no_review_needed"
             ),
             n_Samples_inconsistent_genotype = sum(
-                Selected_For_Review == "inconsistent_genotype"
+                .data$Selected_For_Review == "inconsistent_genotype"
             ),
             n_Samples_deletion_or_duplication = sum(
-                Selected_For_Review == "deletion_or_duplication"
+                .data$Selected_For_Review == "deletion_or_duplication"
             ),
             n_Samples_relabel_low_confidence = sum(
-                Selected_For_Review == "relabel_low_confidence"
+                .data$Selected_For_Review == "relabel_low_confidence"
             ),
             n_Samples_relabel_high_confidence = sum(
-                Selected_For_Review == "relabel_high_confidence"
+                .data$Selected_For_Review == "relabel_high_confidence"
             ),
             n_Samples_singleton_no_inference = sum(
-                Selected_For_Review == "singleton_no_inference"
+                .data$Selected_For_Review == "singleton_no_inference"
             ),
             n_Samples_not_relabeled_low_confidence = sum(
-                Selected_For_Review == "not_relabeled_low_confidence"
+                .data$Selected_For_Review == "not_relabeled_low_confidence"
             ),
             n_Samples_total = n(),
             n_Samples_Initially_Matching_Inferred_Subject = sum(
-                Initial_Subject_ID == Inferred_Subject_ID
+                .data$Initial_Subject_ID == .data$Inferred_Subject_ID
             ),
             Selected_For_Review = case_when(
-                n_Samples_total ==
-                    n_Samples_no_review_needed ~ "no_review_needed",
-                n_Samples_total ==
-                    n_Samples_singleton_no_inference ~ "singleton_no_inference",
+                .data$n_Samples_total ==
+                    .data$n_Samples_no_review_needed ~ "no_review_needed",
+                .data$n_Samples_total ==
+                    .data$n_Samples_singleton_no_inference ~ "singleton_no_inference",
                 TRUE ~ "check_sample_table"
             )
         ) |>
         ungroup() |>
         select(
-            Genotype_Group_ID,
-            n_Samples_total,
-            Inferred_Subject_ID,
-            Selected_For_Review,
-            n_Samples_Initially_Matching_Inferred_Subject,
+            "Genotype_Group_ID",
+            "n_Samples_total",
+            "Inferred_Subject_ID",
+            "Selected_For_Review",
+            "n_Samples_Initially_Matching_Inferred_Subject",
             everything()
         )
 
@@ -324,8 +330,8 @@ collateOutput <- function(object) {
         genotype_group_summary$Genotype_Contamination_Metric_Numerator <- NA_integer_
         for (genotype_group_id in genotype_group_summary$Genotype_Group_ID) {
             genotype_group_init_samples <- sample_summary |>
-                filter(Genotype_Group_ID == genotype_group_id) |>
-                pull(Initial_Sample_ID)
+                filter(.data$Genotype_Group_ID == genotype_group_id) |>
+                pull(.data$Initial_Sample_ID)
             ## drop = FALSE: see the identical reasoning in the per-sample
             ## contamination metric loop above (this is the same pattern, one
             ## element short of matrix-ness when a genotype group has exactly
@@ -361,37 +367,37 @@ collateOutput <- function(object) {
     }
 
     component_summary <- sample_summary |>
-        group_by(Connected_Component_ID) |>
+        group_by(.data$Connected_Component_ID) |>
         summarize(
-            n_Genotype_Groups = length(unique(Genotype_Group_ID)),
-            n_Subjects = length(unique(Initial_Subject_ID)),
+            n_Genotype_Groups = length(unique(.data$Genotype_Group_ID)),
+            n_Subjects = length(unique(.data$Initial_Subject_ID)),
             n_Samples_total = n(),
-            Same_Number_of_Genotypes_And_Subjects = n_Genotype_Groups ==
-                n_Subjects,
+            Same_Number_of_Genotypes_And_Subjects = .data$n_Genotype_Groups ==
+                .data$n_Subjects,
             n_Samples_no_review_needed = sum(
-                Selected_For_Review == "no_review_needed"
+                .data$Selected_For_Review == "no_review_needed"
             ),
             n_Samples_ghost_relabeled = sum(
-                Selected_For_Review == "ghost_relabeled"
+                .data$Selected_For_Review == "ghost_relabeled"
             ),
-            n_Samples_ghost = sum(Selected_For_Review == "ghost"),
+            n_Samples_ghost = sum(.data$Selected_For_Review == "ghost"),
             n_Samples_inconsistent_genotype = sum(
-                Selected_For_Review == "inconsistent_genotype"
+                .data$Selected_For_Review == "inconsistent_genotype"
             ),
             n_Samples_deletion_or_duplication = sum(
-                Selected_For_Review == "deletion_or_duplication"
+                .data$Selected_For_Review == "deletion_or_duplication"
             ),
             n_Samples_relabel_low_confidence = sum(
-                Selected_For_Review == "relabel_low_confidence"
+                .data$Selected_For_Review == "relabel_low_confidence"
             ),
             n_Samples_relabel_high_confidence = sum(
-                Selected_For_Review == "relabel_high_confidence"
+                .data$Selected_For_Review == "relabel_high_confidence"
             ),
             n_Samples_singleton_no_inference = sum(
-                Selected_For_Review == "singleton_no_inference"
+                .data$Selected_For_Review == "singleton_no_inference"
             ),
             n_Samples_not_relabeled_low_confidence = sum(
-                Selected_For_Review == "not_relabeled_low_confidence"
+                .data$Selected_For_Review == "not_relabeled_low_confidence"
             ),
             ## Which solver(s) contributed to resolving this component's
             ## samples -- e.g. "global" if a single solver step resolved
@@ -400,48 +406,48 @@ collateOutput <- function(object) {
             ## NA); those are already visible via the n_Samples_* columns
             ## above and Same_Number_of_Genotypes_And_Subjects.
             Solved_By = str_c(
-                sort(unique(Solved_By[!is.na(Solved_By)])),
+                sort(unique(.data$Solved_By[!is.na(.data$Solved_By)])),
                 collapse = ", "
             ),
             Selected_For_Review = case_when(
-                n_Samples_total ==
-                    n_Samples_no_review_needed ~ "no_review_needed",
-                n_Samples_total ==
-                    n_Samples_singleton_no_inference ~ "singleton_no_inference",
+                .data$n_Samples_total ==
+                    .data$n_Samples_no_review_needed ~ "no_review_needed",
+                .data$n_Samples_total ==
+                    .data$n_Samples_singleton_no_inference ~ "singleton_no_inference",
                 TRUE ~ "check_sample_table"
             )
         )
 
     dataset_summary <- sample_summary |>
         summarize(
-            n_Components = length(unique(Connected_Component_ID)),
-            n_Genotype_Groups = length(unique(Genotype_Group_ID)),
-            n_Subjects = length(unique(Initial_Subject_ID)),
+            n_Components = length(unique(.data$Connected_Component_ID)),
+            n_Genotype_Groups = length(unique(.data$Genotype_Group_ID)),
+            n_Subjects = length(unique(.data$Initial_Subject_ID)),
             n_Samples_total = n(),
             n_Samples_no_review_needed = sum(
-                Selected_For_Review == "no_review_needed"
+                .data$Selected_For_Review == "no_review_needed"
             ),
             n_Samples_ghost_relabeled = sum(
-                Selected_For_Review == "ghost_relabeled"
+                .data$Selected_For_Review == "ghost_relabeled"
             ),
-            n_Samples_ghost = sum(Selected_For_Review == "ghost"),
+            n_Samples_ghost = sum(.data$Selected_For_Review == "ghost"),
             n_Samples_inconsistent_genotype = sum(
-                Selected_For_Review == "inconsistent_genotype"
+                .data$Selected_For_Review == "inconsistent_genotype"
             ),
             n_Samples_deletion_or_duplication = sum(
-                Selected_For_Review == "deletion_or_duplication"
+                .data$Selected_For_Review == "deletion_or_duplication"
             ),
             n_Samples_relabel_low_confidence = sum(
-                Selected_For_Review == "relabel_low_confidence"
+                .data$Selected_For_Review == "relabel_low_confidence"
             ),
             n_Samples_relabel_high_confidence = sum(
-                Selected_For_Review == "relabel_high_confidence"
+                .data$Selected_For_Review == "relabel_high_confidence"
             ),
             n_Samples_singleton_no_inference = sum(
-                Selected_For_Review == "singleton_no_inference"
+                .data$Selected_For_Review == "singleton_no_inference"
             ),
             n_Samples_not_relabeled_low_confidence = sum(
-                Selected_For_Review == "not_relabeled_low_confidence"
+                .data$Selected_For_Review == "not_relabeled_low_confidence"
             )
         )
 

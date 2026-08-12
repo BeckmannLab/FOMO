@@ -37,9 +37,9 @@ setMethod(
             ghost_data <- x@.solve_state$unsolved_ghost_data
         } else {
             relabel_data <- x@.solve_state$relabel_data |>
-                filter(!Is_Ghost)
+                filter(!.data$Is_Ghost)
             ghost_data <- x@.solve_state$relabel_data |>
-                filter(Is_Ghost)
+                filter(.data$Is_Ghost)
         }
         if (!is.null(query_val)) {
             query_by <- as.character(query_by)
@@ -47,12 +47,12 @@ setMethod(
             if (query_by == "Init_Component_ID") {
                 component_id <- rbind(relabel_data, ghost_data) |>
                     filter(!!sym(query_by) == query_val) |>
-                    pull(Init_Component_ID) |>
+                    pull(.data$Init_Component_ID) |>
                     unique()
             } else {
                 component_id <- rbind(relabel_data, ghost_data) |>
                     filter(!!sym(query_by) == query_val) |>
-                    pull(Component_ID) |>
+                    pull(.data$Component_ID) |>
                     unique()
             }
             if (length(component_id) == 0) {
@@ -67,14 +67,14 @@ setMethod(
             component_id <- component_id[[1]]
             if (query_by == "Init_Component_ID") {
                 relabel_data <- relabel_data |>
-                    filter(Init_Component_ID == component_id)
+                    filter(.data$Init_Component_ID == component_id)
                 ghost_data <- ghost_data |>
-                    filter(Init_Component_ID == component_id)
+                    filter(.data$Init_Component_ID == component_id)
             } else {
                 relabel_data <- relabel_data |>
-                    filter(Component_ID == component_id)
+                    filter(.data$Component_ID == component_id)
                 ghost_data <- ghost_data |>
-                    filter(Component_ID == component_id)
+                    filter(.data$Component_ID == component_id)
             }
         }
         if (nrow(relabel_data) + nrow(ghost_data) == 0) {
@@ -151,7 +151,7 @@ plotCorrections <- function(
         } else {
             component_id <- relabel_data |>
                 filter(!!sym(query_by) == query_val) |>
-                pull(Init_Component_ID) |>
+                pull(.data$Init_Component_ID) |>
                 unique()
             if (length(component_id) == 0) {
                 warning(paste(
@@ -163,7 +163,7 @@ plotCorrections <- function(
                 return()
             }
             relabel_data <- relabel_data |>
-                filter(Init_Component_ID == component_id)
+                filter(.data$Init_Component_ID == component_id)
         }
     }
 

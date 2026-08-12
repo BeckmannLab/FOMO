@@ -147,9 +147,9 @@
     available_sample_ids <- character(0)
     for (component_id in component_ids) {
         cc_unsolved_relabel_data <- unsolved_relabel_data |>
-            filter(Component_ID == component_id)
+            filter(.data$Component_ID == component_id)
         cc_unsolved_ghost_data <- unsolved_ghost_data |>
-            filter(Component_ID == component_id)
+            filter(.data$Component_ID == component_id)
         cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
         cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
 
@@ -217,13 +217,13 @@
     unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
         mutate(
             Component_ID = as.character(components(combined_graph)$membership[
-                Sample_ID
+                .data$Sample_ID
             ])
         )
     unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
         mutate(
             Component_ID = as.character(components(combined_graph)$membership[
-                Sample_ID
+                .data$Sample_ID
             ])
         )
 
@@ -231,35 +231,45 @@
     ##    A Sample_ID is solved if it belongs to a Component_ID that includes only one
     ##    Genotype_Group_ID and one Subject_ID
     component_data <- rbind(unsolved_relabel_data, unsolved_ghost_data) |>
-        group_by(Component_ID) |>
+        group_by(.data$Component_ID) |>
         summarise(
-            n_Genotype_Group_ID = n_distinct(Genotype_Group_ID) -
-                anyNA(Genotype_Group_ID),
-            n_Subject_ID = n_distinct(Subject_ID),
-            n_Sample_ID = length(Sample_ID)
+            n_Genotype_Group_ID = n_distinct(.data$Genotype_Group_ID) -
+                anyNA(.data$Genotype_Group_ID),
+            n_Subject_ID = n_distinct(.data$Subject_ID),
+            n_Sample_ID = length(.data$Sample_ID)
         ) |>
-        mutate(Solved = n_Genotype_Group_ID <= 1 & n_Subject_ID == 1)
+        mutate(
+            Solved = .data$n_Genotype_Group_ID <= 1 & .data$n_Subject_ID == 1
+        )
 
     solved_components <- component_data |>
-        filter(Solved) |>
-        pull(Component_ID)
+        filter(.data$Solved) |>
+        pull(.data$Component_ID)
 
     unsolved_relabel_data <- unsolved_relabel_data |>
         mutate(
-            Solved = Component_ID %in% solved_components,
-            Solved_By = if_else(Solved, effective_solver_name, NA_character_)
+            Solved = .data$Component_ID %in% solved_components,
+            Solved_By = if_else(
+                .data$Solved,
+                effective_solver_name,
+                NA_character_
+            )
         )
     unsolved_ghost_data <- unsolved_ghost_data |>
         mutate(
-            Solved = Component_ID %in% solved_components,
-            Solved_By = if_else(Solved, effective_solver_name, NA_character_)
+            Solved = .data$Component_ID %in% solved_components,
+            Solved_By = if_else(
+                .data$Solved,
+                effective_solver_name,
+                NA_character_
+            )
         )
 
     ## 3. Re-rank Component_ID(s) in order of size (so that Component1 is the largest unsolved component)
     # component_data <- component_data |> filter(!Solved)
     n_components <- nrow(component_data)
     component_data <- component_data |>
-        arrange(Solved, desc(n_Sample_ID)) |>
+        arrange(.data$Solved, desc(.data$n_Sample_ID)) |>
         mutate(
             new_Component_ID = if (n_components != 0) {
                 seq_len(n_components)
@@ -269,7 +279,7 @@
             new_Component_ID = str_c(
                 "Component_",
                 formatC(
-                    new_Component_ID,
+                    .data$new_Component_ID,
                     width = str_length(n_components),
                     format = "d",
                     flag = "0"
@@ -281,32 +291,32 @@
             component_data[, c("Component_ID", "new_Component_ID")],
             by = "Component_ID"
         ) |>
-        mutate(Component_ID = new_Component_ID) |>
-        select(-new_Component_ID)
+        mutate(Component_ID = .data$new_Component_ID) |>
+        select(-"new_Component_ID")
     unsolved_ghost_data <- unsolved_ghost_data |>
         left_join(
             component_data[, c("Component_ID", "new_Component_ID")],
             by = "Component_ID"
         ) |>
-        mutate(Component_ID = new_Component_ID) |>
-        select(-new_Component_ID)
+        mutate(Component_ID = .data$new_Component_ID) |>
+        select(-"new_Component_ID")
 
     ## 4. Update putative_subjects
     ##    During initialization, lock Subject_ID/Genotype_Group_ID pairs for anchor_samples
     if (initialization) {
         anchor_putative_subjects <- object@sample_metadata |>
             filter(
-                !is.na(Genotype_Group_ID),
-                !is.na(Subject_ID),
-                Sample_ID %in% object@anchor_samples
+                !is.na(.data$Genotype_Group_ID),
+                !is.na(.data$Subject_ID),
+                .data$Sample_ID %in% object@anchor_samples
             ) |>
-            select(Genotype_Group_ID, Subject_ID) |>
+            select("Genotype_Group_ID", "Subject_ID") |>
             distinct()
         object <- .update_putative_subjects(object, anchor_putative_subjects)
     }
     solved_putative_subjects <- unsolved_relabel_data |>
-        filter(Solved) |>
-        select(Genotype_Group_ID, Subject_ID) |>
+        filter(.data$Solved) |>
+        select("Genotype_Group_ID", "Subject_ID") |>
         distinct()
     object <- .update_putative_subjects(object, solved_putative_subjects)
 
@@ -331,12 +341,12 @@
         )
         unsolved_relabel_data <- unsolved_relabel_data |>
             select(all_of(col_order)) |>
-            mutate(Init_Component_ID = Component_ID) |>
-            relocate(Init_Component_ID, .before = Component_ID)
+            mutate(Init_Component_ID = .data$Component_ID) |>
+            relocate("Init_Component_ID", .before = "Component_ID")
         unsolved_ghost_data <- unsolved_ghost_data |>
             select(all_of(col_order)) |>
-            mutate(Init_Component_ID = Component_ID) |>
-            relocate(Init_Component_ID, .before = Component_ID)
+            mutate(Init_Component_ID = .data$Component_ID) |>
+            relocate("Init_Component_ID", .before = "Component_ID")
         relabel_data <- rbind(unsolved_relabel_data, unsolved_ghost_data)
     } else {
         ## Update 'relabel_data' with new sample labels in 'unsolved_relabel_data' and 'unsolved_ghost_data'
@@ -347,8 +357,8 @@
             by = "Init_Sample_ID"
         )
     }
-    unsolved_relabel_data <- unsolved_relabel_data |> filter(!Solved)
-    unsolved_ghost_data <- unsolved_ghost_data |> filter(!Solved)
+    unsolved_relabel_data <- unsolved_relabel_data |> filter(!.data$Solved)
+    unsolved_ghost_data <- unsolved_ghost_data |> filter(!.data$Solved)
 
     ## 6. Overwrite .solve_state
     object@.solve_state$relabel_data <- relabel_data
@@ -359,8 +369,6 @@
 }
 
 .update_putative_subjects <- function(object, proposed_putative_subjects) {
-    Subject_ID <- Genotype_Group_ID <- NULL
-
     if (nrow(proposed_putative_subjects) == 0) {
         return(object)
     }
@@ -374,8 +382,8 @@
     )
     proposed_putative_subjects <- proposed_putative_subjects |>
         filter(
-            !(Subject_ID %in% existing_subjects),
-            !(Genotype_Group_ID %in% existing_genotypes)
+            !(.data$Subject_ID %in% existing_subjects),
+            !(.data$Genotype_Group_ID %in% existing_genotypes)
         )
     putative_subjects <- rbind(
         object@.solve_state$putative_subjects,
@@ -429,38 +437,42 @@
 
     if (collapse_samples) {
         relabel_data <- relabel_data |>
-            group_by(Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
+            group_by(
+                .data$Subject_ID,
+                .data$Genotype_Group_ID,
+                .data$SwapCat_ID
+            ) |>
             mutate(
                 count = n(),
-                vertex_size_scalar = sqrt(sum(vertex_size_scalar)),
+                vertex_size_scalar = sqrt(sum(.data$vertex_size_scalar)),
                 Is_Ghost = FALSE,
-                Is_Anchor = any(Is_Anchor),
+                Is_Anchor = any(.data$Is_Anchor),
                 ## Include Genotype_Group_ID in the synthetic label so that two
                 ## different groups that happen to share Subject_ID, SwapCat_ID,
                 ## and collapsed size don't collapse to the same vertex name
                 ## (which igraph rejects with "Duplicate vertex names").
                 Sample_ID = if_else(
-                    count == 1,
-                    Sample_ID,
+                    .data$count == 1,
+                    .data$Sample_ID,
                     paste(
-                        paste(count, "samples"),
-                        Subject_ID,
-                        Genotype_Group_ID,
-                        SwapCat_ID,
+                        paste(.data$count, "samples"),
+                        .data$Subject_ID,
+                        .data$Genotype_Group_ID,
+                        .data$SwapCat_ID,
                         sep = "\n"
                     )
                 )
             ) |>
             select(
-                Sample_ID,
-                Subject_ID,
-                Genotype_Group_ID,
-                SwapCat_ID,
-                SwapCat_Shape,
-                count,
-                vertex_size_scalar,
-                Is_Ghost,
-                Is_Anchor
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID",
+                "SwapCat_Shape",
+                "count",
+                "vertex_size_scalar",
+                "Is_Ghost",
+                "Is_Anchor"
             ) |>
             distinct()
     }
@@ -470,33 +482,37 @@
     if (!is.null(ghost_data)) {
         if (collapse_samples) {
             ghost_data <- ghost_data |>
-                group_by(Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
+                group_by(
+                    .data$Subject_ID,
+                    .data$Genotype_Group_ID,
+                    .data$SwapCat_ID
+                ) |>
                 mutate(
                     count = n(),
-                    vertex_size_scalar = sqrt(sum(vertex_size_scalar)),
+                    vertex_size_scalar = sqrt(sum(.data$vertex_size_scalar)),
                     Is_Ghost = TRUE,
                     Is_Anchor = FALSE,
                     Sample_ID = if_else(
-                        count == 1,
-                        Sample_ID,
+                        .data$count == 1,
+                        .data$Sample_ID,
                         paste(
-                            paste(count, "samples"),
-                            Subject_ID,
-                            SwapCat_ID,
+                            paste(.data$count, "samples"),
+                            .data$Subject_ID,
+                            .data$SwapCat_ID,
                             sep = "\n"
                         )
                     )
                 ) |>
                 select(
-                    Sample_ID,
-                    Subject_ID,
-                    Genotype_Group_ID,
-                    SwapCat_ID,
-                    SwapCat_Shape,
-                    count,
-                    vertex_size_scalar,
-                    Is_Ghost,
-                    Is_Anchor
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID",
+                    "SwapCat_ID",
+                    "SwapCat_Shape",
+                    "count",
+                    "vertex_size_scalar",
+                    "Is_Ghost",
+                    "Is_Anchor"
                 ) |>
                 distinct()
         }
@@ -539,16 +555,16 @@
             edges <- all_data |>
                 group_by_at(group_col) |>
                 mutate(
-                    sample_a = Sample_ID,
-                    sample_b = list(Sample_ID)
+                    sample_a = .data$Sample_ID,
+                    sample_b = list(.data$Sample_ID)
                 ) |>
                 ungroup() |>
-                unnest(sample_b) |>
+                unnest("sample_b") |>
                 transmute(
-                    sample1 = pmin(sample_a, sample_b),
-                    sample2 = pmax(sample_a, sample_b)
+                    sample1 = pmin(.data$sample_a, .data$sample_b),
+                    sample2 = pmax(.data$sample_a, .data$sample_b)
                 ) |>
-                filter(sample1 != sample2) |>
+                filter(.data$sample1 != .data$sample2) |>
                 distinct()
             vertices <- all_data[, "Sample_ID", drop = FALSE]
             graph <- graph_from_data_frame(
@@ -566,25 +582,25 @@
     ## Specify vertex and edge attributes for plotting
     vertex_shapes <- data.frame(Sample_ID = names(V(graph))) |>
         left_join(all_data, by = "Sample_ID") |>
-        pull(SwapCat_Shape)
+        pull(.data$SwapCat_Shape)
     vertex_size_scalars <- data.frame(Sample_ID = names(V(graph))) |>
         left_join(all_data, by = "Sample_ID") |>
-        pull(vertex_size_scalar)
+        pull(.data$vertex_size_scalar)
     V(graph)$shape <- vertex_shapes
     V(graph)$size <- 12 * vertex_size_scalars
     V(graph)$label.cex <- 0.5
 
     anchor_samples <- relabel_data |>
-        filter(Is_Anchor) |>
-        pull(Sample_ID)
+        filter(.data$Is_Anchor) |>
+        pull(.data$Sample_ID)
     anchor_samples <- intersect(anchor_samples, V(graph)$name)
     label_not_found_samples <- relabel_data |>
-        filter(str_detect(Sample_ID, LABEL_NOT_FOUND)) |>
-        pull(Sample_ID)
+        filter(str_detect(.data$Sample_ID, LABEL_NOT_FOUND)) |>
+        pull(.data$Sample_ID)
     label_not_found_samples <- intersect(label_not_found_samples, V(graph)$name)
     ghost_samples <- NULL
     if (!is.null(ghost_data)) {
-        ghost_samples <- ghost_data |> pull(Sample_ID)
+        ghost_samples <- ghost_data |> pull(.data$Sample_ID)
         ghost_samples <- intersect(ghost_samples, V(graph)$name)
     }
     V(graph)$color <- PLOT_COLOR_REGULAR_SAMPLE
@@ -627,14 +643,21 @@
         ) |>
         mutate(
             Subject_ID = if_else(
-                is.na(Subject_ID),
-                vapply(Sample_ID, \(x) str_split_1(x, "#")[2], character(1)),
-                Subject_ID
+                is.na(.data$Subject_ID),
+                vapply(
+                    .data$Sample_ID,
+                    \(x) str_split_1(x, "#")[2],
+                    character(1)
+                ),
+                .data$Subject_ID
             ),
-            Deleted_relabel_from = str_detect(relabel_from, LABEL_NOT_FOUND)
+            Deleted_relabel_from = str_detect(
+                .data$relabel_from,
+                LABEL_NOT_FOUND
+            )
         ) |>
-        filter(!Deleted_relabel_from) |>
-        select(-Deleted_relabel_from)
+        filter(!.data$Deleted_relabel_from) |>
+        select(-"Deleted_relabel_from")
 
     ## Call it relabeled sample ID instead
     unsolved_all_data <- rbind(
@@ -650,8 +673,8 @@
         mutate(
             ## coalesce(a, b): a if it's not NA, else b -- exactly what these
             ## two ifelse(!is.na(a), a, b) calls were doing.
-            Sample_ID = coalesce(Sample_ID.y, Sample_ID),
-            Subject_ID = coalesce(Subject_ID.y, Subject_ID.x),
+            Sample_ID = coalesce(.data$Sample_ID.y, .data$Sample_ID),
+            Subject_ID = coalesce(.data$Subject_ID.y, .data$Subject_ID.x),
             ## Unlike Solved_By (set once, permanently, when a component is
             ## solved), Relabeled_By is overwritten every time a sample is
             ## actually relabeled -- Sample_ID.y is only non-NA for rows that
@@ -659,17 +682,17 @@
             ## by this call), so untouched rows simply carry forward
             ## whatever value they already had (NA if never relabeled).
             Relabeled_By = if_else(
-                !is.na(Sample_ID.y),
+                !is.na(.data$Sample_ID.y),
                 solver_name,
-                Relabeled_By
+                .data$Relabeled_By
             )
         ) |>
         select(-ends_with(".x"), -ends_with(".y"))
 
     object@.solve_state$unsolved_relabel_data <- unsolved_all_data |>
-        filter(!Is_Ghost)
+        filter(!.data$Is_Ghost)
     object@.solve_state$unsolved_ghost_data <- unsolved_all_data |>
-        filter(Is_Ghost)
+        filter(.data$Is_Ghost)
     object <- .update_solve_state(object, solver_name = solver_name)
 
     message(paste(nrow(relabels), "samples relabeled"))
@@ -750,20 +773,21 @@
 
     mislabel_data <- unsolved_relabel_data |>
         left_join(
-            putative_subjects |> rename(Putative_Subject_ID = Subject_ID),
+            putative_subjects |> rename(Putative_Subject_ID = "Subject_ID"),
             by = "Genotype_Group_ID"
         ) |>
         mutate(
-            Inferred_Correctly_Labeled = Putative_Subject_ID == Subject_ID,
+            Inferred_Correctly_Labeled = .data$Putative_Subject_ID ==
+                .data$Subject_ID,
             ## Only include samples where the current label is a Subject_ID
             ## that also has a Genotype_Group_ID assigned
-            Curr_Subject_ID_Genotyped = Subject_ID %in%
+            Curr_Subject_ID_Genotyped = .data$Subject_ID %in%
                 putative_subjects$Subject_ID
         ) |>
         filter(
-            !is.na(Putative_Subject_ID) &
-                !Inferred_Correctly_Labeled &
-                Curr_Subject_ID_Genotyped
+            !is.na(.data$Putative_Subject_ID) &
+                !.data$Inferred_Correctly_Labeled &
+                .data$Curr_Subject_ID_Genotyped
         )
 
     relabels <- EMPTY_RELABELS
@@ -776,7 +800,7 @@
     ## must also have the same potential relabels. We search for relabels at
     ## at the SwapCat_ID/Genotype_Group_ID level
     mislabeled_genotype_swapcats <- mislabel_data |>
-        select(SwapCat_ID, Genotype_Group_ID) |>
+        select("SwapCat_ID", "Genotype_Group_ID") |>
         distinct() |>
         left_join(putative_subjects, by = "Genotype_Group_ID")
 
@@ -801,20 +825,20 @@
         ## These are all the mislabeled samples for a SwapCat_ID/Genotype_Group_ID pair
         mislabeled_subset <- mislabel_data |>
             filter(
-                SwapCat_ID == swap_cat_id,
-                Genotype_Group_ID == genotype_group_id
+                .data$SwapCat_ID == swap_cat_id,
+                .data$Genotype_Group_ID == genotype_group_id
             )
-        mislabeled_samples <- mislabeled_subset |> pull(Sample_ID)
+        mislabeled_samples <- mislabeled_subset |> pull(.data$Sample_ID)
         n_mislabeled_samples <- length(mislabeled_samples)
 
         ## The eligible relabels have the putative Subject_ID but are in a different Genotype_Group
         eligible_labels <- unsolved_relabel_data |>
             filter(
-                SwapCat_ID == swap_cat_id,
-                Subject_ID == subject_id,
-                Genotype_Group_ID != genotype_group_id
+                .data$SwapCat_ID == swap_cat_id,
+                .data$Subject_ID == subject_id,
+                .data$Genotype_Group_ID != genotype_group_id
             ) |>
-            pull(Sample_ID)
+            pull(.data$Sample_ID)
         n_eligible_labels <- length(eligible_labels)
 
         n_label_deficit <- n_mislabeled_samples - n_eligible_labels
@@ -824,8 +848,11 @@
         ## If there aren't enough eligible labels, try using ghosts to plug the gap
         if (allow_ghosts && n_label_deficit > 0) {
             ghost_labels <- unsolved_ghost_data |>
-                filter(SwapCat_ID == swap_cat_id, Subject_ID == subject_id) |>
-                pull(Sample_ID)
+                filter(
+                    .data$SwapCat_ID == swap_cat_id,
+                    .data$Subject_ID == subject_id
+                ) |>
+                pull(.data$Sample_ID)
             n_ghost_labels <- length(ghost_labels)
 
             ## If we have more ghost labels than needed, select a subset
@@ -850,8 +877,8 @@
         ## Placeholder_ID regardless of whether it ends up used here.
         if (allow_unknowns && n_label_deficit > 0) {
             chosen_placeholder_ids <- mislabeled_subset |>
-                arrange(Sample_ID) |>
-                pull(Placeholder_ID) |>
+                arrange(.data$Sample_ID) |>
+                pull(.data$Placeholder_ID) |>
                 head(n_label_deficit)
             unknown_labels <- str_c(
                 LABEL_NOT_FOUND,
@@ -1017,20 +1044,20 @@
         Col = colnames(adj_matrix_sparse)[adj_matrix_idx[, 2]]
     ) |>
         transmute(
-            Sample_A = pmin(Row, Col),
-            Sample_B = pmax(Row, Col)
+            Sample_A = pmin(.data$Row, .data$Col),
+            Sample_B = pmax(.data$Row, .data$Col)
         ) |>
-        filter(Sample_A != Sample_B) |>
+        filter(.data$Sample_A != .data$Sample_B) |>
         distinct()
     unique_pairs_within2 <- data.frame(
         Row = rownames(dist_within_2_sparse)[dist_within_2_idx[, 1]],
         Col = colnames(dist_within_2_sparse)[dist_within_2_idx[, 2]]
     ) |>
         transmute(
-            Sample_A = pmin(Row, Col),
-            Sample_B = pmax(Row, Col)
+            Sample_A = pmin(.data$Row, .data$Col),
+            Sample_B = pmax(.data$Row, .data$Col)
         ) |>
-        filter(Sample_A != Sample_B) |>
+        filter(.data$Sample_A != .data$Sample_B) |>
         distinct()
     unique_pairs <- anti_join(
         unique_pairs_within2,
@@ -1057,8 +1084,8 @@
             by = c("Sample_B" = "Sample_ID")
         ) |>
         rename("SwapCat_B" = "SwapCat_ID") |>
-        filter(SwapCat_A == SwapCat_B) |>
-        select(Sample_A, Sample_B)
+        filter(.data$SwapCat_A == .data$SwapCat_B) |>
+        select("Sample_A", "Sample_B")
 
     ## Criteria 4: filter out vertices that have at least 1 concordant edge
     if (filter_concordant_vertices) {
@@ -1066,8 +1093,8 @@
         concordant_vertices <- unique(c(ends(combined_graph, concordant_edges)))
         unique_pairs <- unique_pairs |>
             filter(
-                !(Sample_A %in% concordant_vertices),
-                !(Sample_B %in% concordant_vertices)
+                !(.data$Sample_A %in% concordant_vertices),
+                !(.data$Sample_B %in% concordant_vertices)
             )
     }
 
@@ -1086,7 +1113,7 @@
             "Genotype_Group_A" = "Genotype_Group_ID"
         ) |>
         left_join(
-            putative_subjects |> filter(!is.na(Genotype_Group_ID)),
+            putative_subjects |> filter(!is.na(.data$Genotype_Group_ID)),
             by = c("Genotype_Group_A" = "Genotype_Group_ID")
         ) |>
         rename("Putative_Subject_A" = "Subject_ID") |>
@@ -1103,7 +1130,7 @@
             "Genotype_Group_B" = "Genotype_Group_ID"
         ) |>
         left_join(
-            putative_subjects |> filter(!is.na(Genotype_Group_ID)),
+            putative_subjects |> filter(!is.na(.data$Genotype_Group_ID)),
             by = c("Genotype_Group_B" = "Genotype_Group_ID")
         ) |>
         rename("Putative_Subject_B" = "Subject_ID") |>
@@ -1113,16 +1140,17 @@
             # 2. Sample_B is already in its Putative_Subject
             # For swaps where the putative subjects of both samples are assigned, the swap is also invalid if
             # 3. Neither Sample_A nor Sample_B match their Putative_Subject after
-            Invalid_Swap = (!is.na(Putative_Subject_A) &
-                Subject_A == Putative_Subject_A) |
-                (!is.na(Putative_Subject_B) & Subject_B == Putative_Subject_B) |
-                (!is.na(Putative_Subject_A) &
-                    !is.na(Putative_Subject_B) &
-                    Putative_Subject_A != Subject_B &
-                    Putative_Subject_B != Subject_A)
+            Invalid_Swap = (!is.na(.data$Putative_Subject_A) &
+                .data$Subject_A == .data$Putative_Subject_A) |
+                (!is.na(.data$Putative_Subject_B) &
+                    .data$Subject_B == .data$Putative_Subject_B) |
+                (!is.na(.data$Putative_Subject_A) &
+                    !is.na(.data$Putative_Subject_B) &
+                    .data$Putative_Subject_A != .data$Subject_B &
+                    .data$Putative_Subject_B != .data$Subject_A)
         ) |>
-        filter(!Invalid_Swap) |>
-        select(Sample_A, Sample_B)
+        filter(!.data$Invalid_Swap) |>
+        select("Sample_A", "Sample_B")
 
     return(unique_pairs)
 }

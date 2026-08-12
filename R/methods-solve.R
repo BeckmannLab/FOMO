@@ -33,11 +33,11 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
         n_Max_Subject_ID = apply(votes, 1, max)
     ) |>
         filter(
-            n_Max_Subject_ID >= 2,
-            n_Max_Subject_ID > n / 2
+            .data$n_Max_Subject_ID >= 2,
+            .data$n_Max_Subject_ID > n / 2
         ) |>
-        rename(Subject_ID = Max_Subject_ID) |>
-        select(Genotype_Group_ID, Subject_ID)
+        rename(Subject_ID = "Max_Subject_ID") |>
+        select("Genotype_Group_ID", "Subject_ID")
     votes_by_subject <- data.frame(
         Subject_ID = colnames(votes),
         Max_Genotype_Group_ID = rownames(votes)[apply(votes, 2, which.max)],
@@ -45,11 +45,11 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
         n_Max_Genotype_Group_ID = apply(votes, 2, max)
     ) |>
         filter(
-            n_Max_Genotype_Group_ID >= 2,
-            n_Max_Genotype_Group_ID > n / 2
+            .data$n_Max_Genotype_Group_ID >= 2,
+            .data$n_Max_Genotype_Group_ID > n / 2
         ) |>
-        rename(Genotype_Group_ID = Max_Genotype_Group_ID) |>
-        select(Subject_ID, Genotype_Group_ID)
+        rename(Genotype_Group_ID = "Max_Genotype_Group_ID") |>
+        select("Subject_ID", "Genotype_Group_ID")
     new_putative_subjects <- inner_join(
         votes_by_subject,
         votes_by_genotype,
@@ -151,8 +151,8 @@ solveLocalSearchOld <- function(
                 by = c("Sample_A" = "Sample_ID")
             ) |>
             rename(
-                Subject_A = Subject_ID,
-                Genotype_Group_A = Genotype_Group_ID
+                Subject_A = "Subject_ID",
+                Genotype_Group_A = "Genotype_Group_ID"
             ) |>
             left_join(
                 unsolved_all_data[, c(
@@ -163,7 +163,10 @@ solveLocalSearchOld <- function(
                 )],
                 by = c("Sample_B" = "Sample_ID")
             ) |>
-            rename(Subject_B = Subject_ID, Genotype_Group_B = Genotype_Group_ID)
+            rename(
+                Subject_B = "Subject_ID",
+                Genotype_Group_B = "Genotype_Group_ID"
+            )
 
         message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
         all_component_ids <- sort(unique(
@@ -178,9 +181,9 @@ solveLocalSearchOld <- function(
         curr_idx <- 1
         for (curr_component_id in all_component_ids) {
             cc_relabel_data <- unsolved_all_data |>
-                filter(Component_ID == curr_component_id)
+                filter(.data$Component_ID == curr_component_id)
             cc_neighbors <- neighbors |>
-                filter(Component_ID == curr_component_id)
+                filter(.data$Component_ID == curr_component_id)
 
             if (nrow(cc_neighbors) == 0) {
                 next
@@ -189,10 +192,10 @@ solveLocalSearchOld <- function(
                 mutate(
                     delta = mapply(
                         .calc_swapped_delta_entropy,
-                        swap_from_subject = Subject_A,
-                        swap_from_genotype = Genotype_Group_A,
-                        swap_to_subject = Subject_B,
-                        swap_to_genotype = Genotype_Group_B,
+                        swap_from_subject = .data$Subject_A,
+                        swap_from_genotype = .data$Genotype_Group_A,
+                        swap_to_subject = .data$Subject_B,
+                        swap_to_genotype = .data$Genotype_Group_B,
                         MoreArgs = list(
                             votes = votes,
                             base_entropies = base_entropies
@@ -200,15 +203,15 @@ solveLocalSearchOld <- function(
                     )
                 )
             cc_relabels <- cc_neighbor_objectives |>
-                filter(delta > 0, delta == max(delta))
+                filter(.data$delta > 0, .data$delta == max(.data$delta))
             if (nrow(cc_relabels) == 0) {
                 next
             }
             cc_relabels <- cc_relabels |>
                 sample_n(1) |>
                 transmute(
-                    relabel_from = Sample_A,
-                    relabel_to = Sample_B
+                    relabel_from = .data$Sample_A,
+                    relabel_to = .data$Sample_B
                 )
             relabels[curr_idx, c("relabel_from", "relabel_to")] <- cc_relabels
             curr_idx <- curr_idx + 1
@@ -306,9 +309,9 @@ solveGlobalSearch <- function(
     ))
     for (component_id in component_ids) {
         cc_unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
-            filter(Component_ID == component_id)
+            filter(.data$Component_ID == component_id)
         cc_unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
-            filter(Component_ID == component_id)
+            filter(.data$Component_ID == component_id)
         cc_sample_ids <- c(
             cc_unsolved_relabel_data$Sample_ID,
             cc_unsolved_ghost_data$Sample_ID
@@ -384,20 +387,44 @@ solveGlobalSearch <- function(
         rownames(perm_genotypes) <- permutation_ids
 
         label_counts <- cc_unsolved_relabel_data |>
-            select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
-            group_by(Subject_ID, SwapCat_ID) |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
             summarize(n_labels = n(), .groups = "drop")
         ghost_label_counts <- cc_unsolved_ghost_data |>
-            select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
-            group_by(Subject_ID, SwapCat_ID) |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
             summarize(n_ghost_labels = n(), .groups = "drop")
         genotype_counts <- cc_unsolved_relabel_data |>
-            select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
-            group_by(Genotype_Group_ID, SwapCat_ID) |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(.data$Genotype_Group_ID, .data$SwapCat_ID) |>
             summarize(n_in_genotype = n(), .groups = "drop")
         genotype_subject_concordant_counts <- cc_unsolved_relabel_data |>
-            select(Sample_ID, Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
-            group_by(Subject_ID, Genotype_Group_ID, SwapCat_ID) |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(
+                .data$Subject_ID,
+                .data$Genotype_Group_ID,
+                .data$SwapCat_ID
+            ) |>
             summarize(n_samples_correct = n(), .groups = "drop")
 
         ## Base-R vectorized locked/free-aware scoring; see .score_permutations_fast() in helpers-solve.R
@@ -457,7 +484,7 @@ solveGlobalSearch <- function(
             t() |>
             as.data.frame() |>
             rownames_to_column("X") |>
-            relocate(X)
+            relocate("X")
         colnames(new_putative_subjects) <- c("Genotype_Group_ID", "Subject_ID")
         rownames(new_putative_subjects) <- NULL
 
@@ -600,8 +627,8 @@ solveLocalSearch <- function(
                 by = c("Sample_A" = "Sample_ID")
             ) |>
             rename(
-                Subject_A = Subject_ID,
-                Genotype_Group_A = Genotype_Group_ID
+                Subject_A = "Subject_ID",
+                Genotype_Group_A = "Genotype_Group_ID"
             ) |>
             left_join(
                 unsolved_all_data[, c(
@@ -612,7 +639,10 @@ solveLocalSearch <- function(
                 )],
                 by = c("Sample_B" = "Sample_ID")
             ) |>
-            rename(Subject_B = Subject_ID, Genotype_Group_B = Genotype_Group_ID)
+            rename(
+                Subject_B = "Subject_ID",
+                Genotype_Group_B = "Genotype_Group_ID"
+            )
 
         message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
         all_component_ids <- sort(unique(
@@ -627,7 +657,7 @@ solveLocalSearch <- function(
         curr_idx <- 1
         for (curr_component_id in all_component_ids) {
             cc_neighbors <- neighbors |>
-                filter(Component_ID == curr_component_id)
+                filter(.data$Component_ID == curr_component_id)
 
             if (nrow(cc_neighbors) == 0) {
                 next
@@ -638,22 +668,22 @@ solveLocalSearch <- function(
                 mutate(
                     delta = .calc_swapped_delta_entropy_fast(
                         votes,
-                        Subject_A,
-                        Genotype_Group_A,
-                        Subject_B,
-                        Genotype_Group_B
+                        .data$Subject_A,
+                        .data$Genotype_Group_A,
+                        .data$Subject_B,
+                        .data$Genotype_Group_B
                     )
                 )
             cc_relabels <- cc_neighbor_objectives |>
-                filter(delta > 0, delta == max(delta))
+                filter(.data$delta > 0, .data$delta == max(.data$delta))
             if (nrow(cc_relabels) == 0) {
                 next
             }
             cc_relabels <- cc_relabels |>
                 sample_n(1) |>
                 transmute(
-                    relabel_from = Sample_A,
-                    relabel_to = Sample_B
+                    relabel_from = .data$Sample_A,
+                    relabel_to = .data$Sample_B
                 )
             relabels[curr_idx, c("relabel_from", "relabel_to")] <- cc_relabels
             curr_idx <- curr_idx + 1

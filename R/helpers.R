@@ -64,9 +64,9 @@
     relabel_data
 ) {
     sample_corrections_df <- relabel_data |>
-        filter(Init_Sample_ID != Sample_ID)
+        filter(.data$Init_Sample_ID != .data$Sample_ID)
     corrections_edges <- sample_corrections_df |>
-        select(Init_Sample_ID, Sample_ID)
+        select("Init_Sample_ID", "Sample_ID")
 
     corrections_vertices <- data.frame(
         Sample_ID = unique(c(
@@ -77,38 +77,38 @@
         left_join(
             sample_corrections_df |>
                 select(
-                    Sample_ID = Init_Sample_ID,
-                    Init_Component_ID,
-                    Component_ID,
-                    Subject_ID,
-                    Genotype_Group_ID,
-                    Is_Ghost,
-                    SwapCat_ID,
-                    SwapCat_Shape,
-                    vertex_size_scalar
+                    Sample_ID = "Init_Sample_ID",
+                    "Init_Component_ID",
+                    "Component_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID",
+                    "Is_Ghost",
+                    "SwapCat_ID",
+                    "SwapCat_Shape",
+                    "vertex_size_scalar"
                 ),
             by = "Sample_ID"
         )
     ## For samples that don't appear in the Init_Sample_ID column (LABELNOTFOUND samples)
     ## need to manually populate fields Is_Ghost, SwapCat_ID, and SwapCat_Shape
     corrections_vertices_split <- corrections_vertices |>
-        filter(!is.na(Is_Ghost)) |>
+        filter(!is.na(.data$Is_Ghost)) |>
         mutate(Is_LABELNOTFOUND = FALSE)
     corrections_vertices_label_not_found <- corrections_vertices |>
-        filter(is.na(Is_Ghost)) |>
+        filter(is.na(.data$Is_Ghost)) |>
         mutate(Is_LABELNOTFOUND = TRUE) |>
         select("Sample_ID", "Is_LABELNOTFOUND") |>
         left_join(
             sample_corrections_df |>
                 select(
-                    Sample_ID,
-                    Init_Component_ID,
-                    Component_ID,
-                    Subject_ID,
-                    Genotype_Group_ID,
-                    SwapCat_ID,
-                    SwapCat_Shape,
-                    vertex_size_scalar
+                    "Sample_ID",
+                    "Init_Component_ID",
+                    "Component_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID",
+                    "SwapCat_ID",
+                    "SwapCat_Shape",
+                    "vertex_size_scalar"
                 ),
             by = "Sample_ID"
         ) |>
@@ -118,13 +118,13 @@
         corrections_vertices_label_not_found
     ) |>
         mutate(
-            shape = SwapCat_Shape,
+            shape = .data$SwapCat_Shape,
             color = case_when(
-                Is_LABELNOTFOUND ~ PLOT_COLOR_LABEL_NOT_FOUND,
-                Is_Ghost ~ PLOT_COLOR_GHOST,
+                .data$Is_LABELNOTFOUND ~ PLOT_COLOR_LABEL_NOT_FOUND,
+                .data$Is_Ghost ~ PLOT_COLOR_GHOST,
                 TRUE ~ PLOT_COLOR_REGULAR_SAMPLE
             ),
-            size = 12 * vertex_size_scalar,
+            size = 12 * .data$vertex_size_scalar,
             label.cex = 0.5
         )
 
