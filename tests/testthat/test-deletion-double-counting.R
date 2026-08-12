@@ -26,29 +26,3 @@ test_that("global search does not double-count a single orphaned sample's deleti
     )
     expect_equal(rd, expected, ignore_attr = TRUE)
 })
-
-test_that("solveGlobalSearch and solveGlobalSearchFast agree on the double-counting scenario", {
-    scenario <- toy_swap_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
-    )
-    r1 <- suppressMessages(solveGlobalSearch(x1))
-    r2 <- suppressMessages(solveGlobalSearchFast(x2))
-    expect_identical(
-        r1@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )],
-        r2@.solve_state$relabel_data[, c(
-            "Init_Sample_ID",
-            "Subject_ID",
-            "Genotype_Group_ID"
-        )]
-    )
-})

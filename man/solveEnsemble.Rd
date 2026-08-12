@@ -17,17 +17,16 @@ solveEnsemble(
 \item{use_solvers}{(Default = \code{c("majority", "global", "local")}) A
 character vector giving the subset of single-method solvers to run on
 each iteration of the ensemble loop. Must be a non-empty subset of
-\code{"majority"}, \code{"global"}, \code{"global_fast"}, \code{"local"}, and
-\code{"local_fast"}. Any solver left out of \code{use_solvers} is skipped
-entirely. For example, setting \code{use_solvers} to \code{c("global", "majority")} will skip local search. \code{"local_fast"} is
-\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} and \code{"global_fast"} is
-\code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}}, faster alternatives to \code{"local"}
-(\code{\link[=solveLocalSearch]{solveLocalSearch()}}) and \code{"global"} (\code{\link[=solveGlobalSearch]{solveGlobalSearch()}})
-respectively; each pair are alternative implementations of the same
-step and cannot both be requested at once. \code{"global_fast"} is a
-bit-exact replacement for \code{"global"}; \code{"local_fast"} is only extremely
-close (not bit-exact) to \code{"local"} -- see \code{\link[=solveGlobalSearchFast]{solveGlobalSearchFast()}} and
-\code{\link[=solveLocalSearchFast]{solveLocalSearchFast()}} for why that distinction exists.}
+\code{"majority"}, \code{"global"}, \code{"local"}, and \code{"local_old"}. Any solver left
+out of \code{use_solvers} is skipped entirely. For example, setting
+\code{use_solvers} to \code{c("global", "majority")} will skip local search.
+\code{"local"} is \code{\link[=solveLocalSearch]{solveLocalSearch()}}, the standard local search algorithm;
+\code{"local_old"} is \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, the original algorithm it
+replaced as the default. The two are alternative implementations of
+the same step and cannot both be requested at once: \code{\link[=solveLocalSearch]{solveLocalSearch()}}
+is only extremely close (not bit-exact) to \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} --
+see \code{\link[=solveLocalSearch]{solveLocalSearch()}} for why that distinction exists -- so use
+\code{"local_old"} if you need results that exactly match it.}
 
 \item{time_limit}{(Default = 7200, i.e. 2 hours) The maximum time, in
 seconds, to let the solver run. Elapsed time is checked once per

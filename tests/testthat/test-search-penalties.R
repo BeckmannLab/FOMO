@@ -57,9 +57,7 @@ test_that("deletion_penalty must also be strictly greater than ghost_penalty", {
     expect_silent(.validate_search_penalties(3, 3.01))
 })
 
-test_that("solveGlobalSearch()/solveGlobalSearchFast() default to ghost_penalty=1.5, deletion_penalty=4", {
+test_that("solveGlobalSearch() defaults to ghost_penalty=1.5, deletion_penalty=4", {
     expect_equal(formals(solveGlobalSearch)$ghost_penalty, 1.5)
     expect_equal(formals(solveGlobalSearch)$deletion_penalty, 4)
-    expect_equal(formals(solveGlobalSearchFast)$ghost_penalty, 1.5)
-    expect_equal(formals(solveGlobalSearchFast)$deletion_penalty, 4)
 })

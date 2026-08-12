@@ -1,5 +1,5 @@
 ## Shared validation for the `ghost_penalty`/`deletion_penalty` arguments used
-## by solveGlobalSearch()/solveGlobalSearchFast(). The relabel
+## by solveGlobalSearch(). The relabel
 ## penalty is fixed at 1 (all three penalties are relative to each other, so
 ## fixing one just sets the scale); `ghost_penalty` and `deletion_penalty`
 ## default to the package's current weights (1.5 and 4) but can be
@@ -109,7 +109,7 @@
 ## solver_name attributes newly-solved samples to whoever solved them, for
 ## the "Solved_By" column surfaced in writeOutput()'s Sample/Component
 ## sheets (see solveEnsemble()'s call sites for the actual solver names
-## used: "majority", "global"/"global_fast", "local"/"local_fast"). Not
+## used: "majority", "global", "local"/"local_old"). Not
 ## meaningful when initialization=TRUE (no solver has run yet); any sample
 ## that comes out solved at construction time -- e.g. because its whole
 ## component was already internally consistent, or anchor_samples pinned it
@@ -1095,9 +1095,9 @@
 }
 
 ## Closed-form, algebraically exact replacement for the per-swap entropy delta
-## used by solveLocalSearch()'s calc_scaled_entropy()-based computation.
+## used by solveLocalSearchOld()'s calc_scaled_entropy()-based computation.
 ## "Algebraically" is an important qualifier here, not a hedge -- see the
-## floating-point note below, and solveLocalSearchFast()'s documentation.
+## floating-point note below, and solveLocalSearch()'s documentation.
 ##
 ## For a genotype's vote vector x, calc_scaled_entropy(x) = sum_i x_i*log(x_i/n)
 ## = sum_i x_i*log(x_i) - n*log(n), where n = sum(x). A candidate swap moves
@@ -1131,9 +1131,9 @@
 ## built from real per-sample records, as .find_neighbors() would produce):
 ## about 3 in 5 evaluations differ from the original at the ~1e-14 to 1e-15
 ## (relative) level. That is normally inconsequential, but because
-## solveLocalSearch() picks the single best swap via `delta == max(delta)`
+## solveLocalSearchOld() picks the single best swap via `delta == max(delta)`
 ## within a component, a difference this small can occasionally flip which
-## swap wins a near-tie, which is why solveLocalSearchFast() is documented as
+## swap wins a near-tie, which is why solveLocalSearch() is documented as
 ## a close-but-not-bit-exact replacement rather than an exact one. See that
 ## function's documentation for the practical implications.
 ##
@@ -1143,7 +1143,7 @@
 ## rather than arbitrary label combinations) across component sizes from 60
 ## to 3,000 candidate subjects: identical results (all.equal tolerance 1e-9)
 ## in every case tested, 9-380x faster, with the gap widening as the subject
-## pool grows. See solveLocalSearchFast().
+## pool grows. See solveLocalSearch().
 .xlogx <- function(v) if_else(v <= 0, 0, v * log(v))
 
 .calc_swapped_delta_entropy_fast <- function(
@@ -1238,7 +1238,7 @@
 ## permutation in every case tested, ~16x faster on that case (~1.2x on a
 ## small synthetic case with 0 locked genotypes, where fixed overhead
 ## dominates either way and there is nothing to separate out). See
-## solveGlobalSearchFast().
+## solveGlobalSearch().
 .score_permutations_fast <- function(
     perm_genotypes,
     free_genotypes,

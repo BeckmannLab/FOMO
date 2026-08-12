@@ -51,8 +51,8 @@ collateOutput <- function(object) {
                 NA_integer_
             ),
             Mislabeled = Init_Sample_ID != Proposed_Final_Sample_ID,
-            ## Which solver step resolved this sample: "majority", "global"/
-            ## "global_fast", "local"/"local_fast", or "initial" if it was
+            ## Which solver step resolved this sample: "majority", "global",
+            ## "local"/"local_old", or "initial" if it was
             ## already resolved at construction time (e.g. a singleton
             ## component, or anchor_samples), before any solver ran. NA if
             ## still unsolved (only possible if solveEnsemble() hit its

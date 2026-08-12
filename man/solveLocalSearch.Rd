@@ -25,6 +25,39 @@ with at least one concordant edge}
 A MislabelSolver object
 }
 \description{
-This search function looks through all possible swaps of 2 samples, and selects
-the swap that minimizes the sum of within-genotype entropies
+This search function looks through all possible swaps of 2 samples, and
+selects the swap that minimizes the sum of within-genotype entropies.
+Evaluates each candidate swap's entropy delta with a closed-form update
+instead of rebuilding and rescanning the full vote vector for the
+affected genotype(s); see \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, which does the
+latter and whose cost scales with the width of the votes table -- one
+column per distinct \code{Subject_ID} across the \emph{whole} unsolved dataset,
+not just the candidate swap's own component -- so the speedup from
+avoiding that rescan grows with dataset size: 9-380x faster than
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} on synthetic components ranging from 60 to
+3,000 candidate subjects in testing.
+}
+\details{
+The closed-form update is algebraically exact (an exact rearrangement of
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}'s entropy formula, true under infinite-precision
+arithmetic), but it is not a bit-exact re-derivation of it, because it
+evaluates \code{log()} on different arguments than the original (see the
+comment above \code{.calc_swapped_delta_entropy_fast()} in \code{helpers-solve.R}
+for the full explanation). In practice this means entropy deltas from the
+two functions typically agree to about 1e-9 or tighter, not to the last
+bit. That is inconsequential on its own, but because \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}
+selects a single best swap per component via \code{delta == max(delta)}, a
+difference this small can occasionally change which swap wins a near-tie
+-- so on rare inputs, this function's swap selections (and hence its
+output) can differ slightly from \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}'s, even though
+both are picking from among equally-good (or all but indistinguishably
+good) options. If you need results that exactly match
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, use that function instead.
+
+Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local"))} rather than calling this directly, unless you are
+composing your own solver loop.
+}
+\seealso{
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, the original (exact) version of this
+algorithm, retained for cases needing bit-exact reproducibility.
 }

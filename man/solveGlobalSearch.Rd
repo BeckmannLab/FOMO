@@ -54,6 +54,18 @@ A MislabelSolver object
 }
 \description{
 This global search function permutes over all combinations of assigning a
-Subject_ID to a Genotype_Group_ID, then picks the assignment that implies the
-fewest number of sample mislabels and deletions.
+Subject_ID to a Genotype_Group_ID, then picks the assignment that implies
+the fewest number of sample mislabels and deletions. Scores permutations
+efficiently: (1) a component's \emph{locked} genotype columns (already
+resolved before global search reached this component) are constant
+across every permutation, so their score contribution is computed once
+from a single row rather than recomputed on every one of up to 8! =
+40,320 permutation rows; (2) the per-swap-category scoring itself is
+done with named-vector lookups and \code{rowsum()} rather than
+\code{left_join()}/\code{group_by()}/\code{summarize()}, since profiling showed cost
+dominated by join/data-mask overhead rather than the arithmetic itself.
+}
+\details{
+Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local"))} rather than calling this directly,
+unless you are composing your own solver loop.
 }
