@@ -10,11 +10,11 @@
 
 #' The MislabelSolver class
 #'
-#' The MislabelSolver class stores the sample metadata required form mislabel detection and correction.
+#' The MislabelSolver class stores the sample metadata required for mislabel detection and correction.
 #'
-#' @slot sample_metadata A data.frame containing sample metadata, with one row per sample
+#' @slot sample_metadata A data.frame containing sample metadata, with one row per sample.
 #'                       Must include columns for Sample_ID, Subject_ID. If 'genotype_matrix'
-#'                       is not provided, most also include a Genotype_Group_ID column. Any
+#'                       is not provided, must also include a Genotype_Group_ID column. Any
 #'                       Sample_ID(s) with NA in the Genotype_Group_ID column will be
 #'                       tagged as phantom samples.
 #' @slot genotype_matrix (Optional) A numeric or logical matrix specifiying whether a pair of
@@ -22,10 +22,10 @@
 #'                       Sample_ID column in 'sample_metadata'. Must be square, must be symmetric.
 #'                       Any Sample_ID(s) that don't have row/columns in this matrix will be
 #'                       tagged as phantom samples.
-#' @slot swap_cats (Optional) A data.frame with one row per sample specifying the Mislabel_Constraint_Category,
-#'                 where by experimental design only samples in the same Mislabel_Constraint_Category may be
+#' @slot swap_cats (Optional) A data.frame with one row per sample specifying the SwapCat_ID,
+#'                 where by experimental design only samples with the same SwapCat_ID may be
 #'                 swapped for one another. For example, assay type or batch ID information
-#'                 can be used to categorize Sample_ID(s) into Mislabel_Constraint_Category(s)
+#'                 can be used to categorize Sample_ID(s) into SwapCat_ID(s)
 #' @slot anchor_samples (Optional) A character vector of Sample_ID(s) where the label is known to be correct
 #' @slot .solve_state A purely internal slot, used to keep track of sample relabels
 #'
@@ -54,7 +54,7 @@ setClass(
 #'
 #' @param sample_metadata A data.frame containing sample metadata, with one row per sample.
 #'                        Must include columns for Sample_ID, Subject_ID. If 'genotype_matrix'
-#'                        is not provided, most also include a Genotype_Group_ID column.
+#'                        is not provided, must also include a Genotype_Group_ID column.
 #' @param genotype_matrix (Optional) A numeric or logical matrix specifiying whether a pair of
 #'                       samples came from the same person. Row and column names must come from
 #'                       Sample_ID column in 'sample_metadata'. Must be square, must be symmetric

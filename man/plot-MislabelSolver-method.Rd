@@ -21,7 +21,12 @@
 
 \item{unsolved}{If \code{TRUE}, plots only samples that are in unsolved components}
 
-\item{collapse_samples}{If \code{TRUE}, combines samples that are identical in both Subject_ID and Genotype_Group_ID.
+\item{collapse_samples}{If \code{TRUE}, combines samples that are identical in
+\emph{all three} of Subject_ID, Genotype_Group_ID, and SwapCat_ID into a
+single plotted vertex, labeled with the sample count and the shared
+Subject_ID/Genotype_Group_ID/SwapCat_ID values (e.g. a vertex for 3
+collapsed samples sharing Subject_ID "S1", Genotype_Group_ID "G1", and
+SwapCat_ID "omic1").
 Ignored (with a warning) if \code{x} was built with a \code{genotype_matrix} rather than a \code{Genotype_Group_ID} column,
 since collapsed samples can no longer be matched back to rows/columns of the matrix.}
 
@@ -29,6 +34,24 @@ since collapsed samples can no longer be matched back to rows/columns of the mat
 
 \item{query_val}{The value to query by. Must not be \code{NULL} if a value is provided in \code{query_by}}
 }
+\value{
+A \code{visNetwork} htmlwidget (invisibly \code{NULL} if there is
+nothing to plot for the current filters).
+}
 \description{
 Leverages \code{visNetwork} to generate an interactive plot of sample mislabels
+}
+\details{
+Vertex color indicates sample type/status: orange for a regular sample,
+forest green for an anchor sample (\code{anchor_samples}), light grey for
+a ghost (ungenotyped) sample, and firebrick for a sample that only
+resolves by being treated as a duplicate of a sample that doesn't
+actually exist in the data (an invented placeholder label, internally
+tagged \code{LABELNOTFOUND}).
+Vertex shape is keyed to \code{SwapCat_ID} (up to 5 distinct shapes; see
+\code{VISNETWORK_SWAPCAT_SHAPES}). Edge color indicates the relationship
+between two samples: forest green where the genetic (Genotype_Group_ID)
+and label (Subject_ID) graphs agree ("concordant"), orange for a
+genotype-only edge, and cornflower blue for a label-only edge; ghost
+sample edges are always light grey regardless of the above.
 }

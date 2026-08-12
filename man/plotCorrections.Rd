@@ -18,10 +18,20 @@ plotCorrections(
 
 \item{query_val}{The value to query by. Must not be \code{NULL} if a value is provided in \code{query_by}}
 }
+\value{
+A \code{visNetwork} htmlwidget (invisibly \code{NULL} if there is
+nothing to plot for the current filters).
+}
 \description{
 Leverages \code{visNetwork} to generate an interactive plot of sample
 relabels
 }
 \details{
-UNDOCUMENTED
+Unlike the package's \code{plot()} method for \code{MislabelSolver}
+objects, which draws every sample in a component, this only draws
+samples whose label actually changed (Init_Sample_ID != Sample_ID) and
+the edges between them, so it's a much smaller "what actually got
+corrected" view. Vertex color follows the same scheme: firebrick for a
+placeholder ("duplicate that doesn't exist") label, light grey for a
+ghost sample, orange otherwise.
 }

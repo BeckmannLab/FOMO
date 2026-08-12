@@ -9,14 +9,38 @@ solveMajoritySearch(object, unambiguous_only = FALSE)
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{unambiguous_only}{(Default = FALSE) If true, only correct sample mislabels if they are unambiguous.}
+\item{unambiguous_only}{(Default = FALSE) If TRUE, restrict relabeling to
+only the clearest cases: candidate relabels that would require
+inventing a placeholder ("duplicate that doesn't exist") label or using
+up a ghost (ungenotyped) sample are skipped, as are any samples that
+have more than one possible real relabel target to choose between.
+Anything skipped this way is left for a later solver to attempt
+instead.}
 }
 \value{
 A MislabelSolver object
 }
 \description{
-This heuristic function assigns a Subject_ID to a Genotype_Group_ID if a
-majority of samples within that Genotype_Group_ID have the same Subject_ID label.
-In other words, if most samples in a particular group share the same Subject_ID,
-then that Subject_ID is assigned to the entire group.
+This heuristic function locks in a Genotype_Group_ID <-> Subject_ID
+pairing wherever the two agree on who the majority partner is: a
+majority of the samples currently claiming a given Genotype_Group_ID
+must share the same Subject_ID, \emph{and} a majority of the samples
+currently claiming that Subject_ID must share that same
+Genotype_Group_ID. Only pairings satisfying both directions of majority
+agreement are accepted; a Genotype_Group_ID with a clear majority
+Subject_ID that doesn't itself have a majority pointing back to that
+Genotype_Group_ID is left alone for a later solver (e.g.
+\code{\link[=solveGlobalSearch]{solveGlobalSearch()}} or \code{\link[=solveLocalSearch]{solveLocalSearch()}}) to resolve instead.
+Samples that disagree with an accepted pairing are then relabeled to
+match it.
+}
+\details{
+This is the cheapest and least ambiguous of the solvers -- it never needs
+to search or score alternatives, only count votes -- so
+\code{\link[=solveEnsemble]{solveEnsemble()}} always runs it first (and again after every other
+solver call) to lock in whatever it can before falling back to costlier
+search strategies.
+}
+\seealso{
+\code{\link[=solveEnsemble]{solveEnsemble()}}, \code{\link[=solveGlobalSearch]{solveGlobalSearch()}}, \code{\link[=solveLocalSearch]{solveLocalSearch()}}
 }

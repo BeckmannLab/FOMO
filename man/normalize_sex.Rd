@@ -11,7 +11,12 @@ normalize_sex(
 )
 }
 \arguments{
-\item{x}{Vector to be normalized}
+\item{x}{Vector of sex values to normalize -- e.g. strings like "m", "M",
+"male", "MALE", "f", "Female", etc. Matched case-insensitively against
+\code{male_synonyms}/\code{female_synonyms} after converting to lowercase. \code{NA}
+values are passed through as \code{NA} in the result. Any value that matches
+neither \code{male_synonyms} nor \code{female_synonyms} (and isn't \code{NA}) causes an
+error.}
 
 \item{male_synonyms}{Vector of strings that should be considered equivalent
 to "Male". Case-insensitive.}
@@ -20,7 +25,7 @@ to "Male". Case-insensitive.}
 to "Female". Case-insensitive.}
 }
 \value{
-A factor the same length as \code{x} with levels "Female" and Male".
+A factor the same length as \code{x} with levels "Female" and "Male".
 }
 \description{
 Normalize a vector of sexes to a factor with 2 levels

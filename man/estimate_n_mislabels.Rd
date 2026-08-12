@@ -22,7 +22,7 @@ samples instead of the estimated number.}
 
 \item{adjust_for_unevaluable}{If TRUE (the default), then the estimated
 number of mislabels will include mislabels of samples with missing sex
-information (i.e., NA values in \code{reported_sex} or \code{inferred_sex}. If FALSE,
+information (i.e., NA values in \code{reported_sex} or \code{inferred_sex}). If FALSE,
 then the estimate will only include mislabels of samples with fully known
 sex information. Note: this argument has no effect if \code{return_fraction} is
 TRUE.}

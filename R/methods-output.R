@@ -2,8 +2,42 @@
 #'
 #' @param object An object of class \code{MislabelSolver}.
 #'
-#' @returns A named list of data frames summarizing the results at the following
-#'   levels: "Sample", "Genotype_Group", "Component", and "Dataset".
+#' @returns A named list of four data frames summarizing the results at
+#'   different levels of granularity -- "Sample", "Genotype_Group",
+#'   "Component", and "Dataset" -- each a coarser aggregation of the one
+#'   before it. The "Sample" sheet is the primary, most granular table (one
+#'   row per sample) and includes:
+#'   \itemize{
+#'     \item \code{Solved_By}: which solver step resolved this sample's
+#'       *component* (\code{"majority"}, \code{"global"},
+#'       \code{"local"}/\code{"local_old"}, or \code{"initial"} if it was
+#'       already resolved at construction time), \code{NA} if still
+#'       unsolved. Set once, permanently, the moment the component is solved
+#'       -- it does not mean this specific sample was itself relabeled.
+#'     \item \code{Relabeled_By}: which solver most recently changed this
+#'       specific sample's own label, updated every time a relabel happens
+#'       (\code{NA} if the sample was never relabeled). Can differ from
+#'       \code{Solved_By} -- e.g. a sample can be relabeled by
+#'       \code{"local"} and have its component later marked solved by a
+#'       \code{"global"} pass that didn't need to touch that sample again.
+#'     \item \code{Selected_For_Review}: a coarse triage category for
+#'       manual review, one of \code{"ghost_relabeled"}, \code{"ghost"},
+#'       \code{"inconsistent_genotype"}, \code{"deletion_or_duplication"},
+#'       \code{"relabel_low_confidence"}, \code{"relabel_high_confidence"},
+#'       \code{"singleton_no_inference"},
+#'       \code{"not_relabeled_low_confidence"}, or
+#'       \code{"no_review_needed"}.
+#'     \item Contamination metrics (\code{Sample_Contamination_Metric} and
+#'       its numerator/denominator), estimating, from \code{genotype_matrix}
+#'       (when provided), what fraction of a sample's expected genetic
+#'       neighbors don't actually show up as genetically related.
+#'     \item \code{Mislabeling_Event_ID}: samples whose corrections are
+#'       linked (e.g. a swap between two samples) share the same ID.
+#'   }
+#'   The "Genotype_Group", "Component", and "Dataset" sheets aggregate these
+#'   same fields (counts of each \code{Selected_For_Review} category, etc.)
+#'   at increasingly coarse levels; see the column names themselves (most
+#'   are self-descriptive, e.g. \code{n_Samples_relabel_high_confidence}).
 #' @export
 #'
 #' @seealso [writeOutput()]
@@ -465,7 +499,7 @@ collateOutput <- function(object) {
 #' Write the output of FOMO to an Excel file.
 #'
 #' @param object Either a MislabelSolver object, or a named list of data frames
-#'   (i.e. the return value of [collateOutput()].
+#'   (i.e. the return value of [collateOutput()]).
 #' @param file The file name to write to. This should end in ".xlsx".
 #'
 #' @export

@@ -5,14 +5,14 @@
 \alias{MislabelSolver-class}
 \title{The MislabelSolver class}
 \description{
-The MislabelSolver class stores the sample metadata required form mislabel detection and correction.
+The MislabelSolver class stores the sample metadata required for mislabel detection and correction.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{sample_metadata}}{A data.frame containing sample metadata, with one row per sample
+\item{\code{sample_metadata}}{A data.frame containing sample metadata, with one row per sample.
 Must include columns for Sample_ID, Subject_ID. If 'genotype_matrix'
-is not provided, most also include a Genotype_Group_ID column. Any
+is not provided, must also include a Genotype_Group_ID column. Any
 Sample_ID(s) with NA in the Genotype_Group_ID column will be
 tagged as phantom samples.}
 
@@ -22,10 +22,10 @@ Sample_ID column in 'sample_metadata'. Must be square, must be symmetric.
 Any Sample_ID(s) that don't have row/columns in this matrix will be
 tagged as phantom samples.}
 
-\item{\code{swap_cats}}{(Optional) A data.frame with one row per sample specifying the Mislabel_Constraint_Category,
-where by experimental design only samples in the same Mislabel_Constraint_Category may be
+\item{\code{swap_cats}}{(Optional) A data.frame with one row per sample specifying the SwapCat_ID,
+where by experimental design only samples with the same SwapCat_ID may be
 swapped for one another. For example, assay type or batch ID information
-can be used to categorize Sample_ID(s) into Mislabel_Constraint_Category(s)}
+can be used to categorize Sample_ID(s) into SwapCat_ID(s)}
 
 \item{\code{anchor_samples}}{(Optional) A character vector of Sample_ID(s) where the label is known to be correct}
 

@@ -14,7 +14,7 @@ MislabelSolver(
 \arguments{
 \item{sample_metadata}{A data.frame containing sample metadata, with one row per sample.
 Must include columns for Sample_ID, Subject_ID. If 'genotype_matrix'
-is not provided, most also include a Genotype_Group_ID column.}
+is not provided, must also include a Genotype_Group_ID column.}
 
 \item{genotype_matrix}{(Optional) A numeric or logical matrix specifiying whether a pair of
 samples came from the same person. Row and column names must come from

@@ -1,12 +1,17 @@
 #' Normalize a vector of sexes to a factor with 2 levels
 #'
-#' @param x Vector to be normalized
+#' @param x Vector of sex values to normalize -- e.g. strings like "m", "M",
+#'   "male", "MALE", "f", "Female", etc. Matched case-insensitively against
+#'   `male_synonyms`/`female_synonyms` after converting to lowercase. `NA`
+#'   values are passed through as `NA` in the result. Any value that matches
+#'   neither `male_synonyms` nor `female_synonyms` (and isn't `NA`) causes an
+#'   error.
 #' @param male_synonyms Vector of strings that should be considered equivalent
 #'   to "Male". Case-insensitive.
 #' @param female_synonyms Vector of strings that should be considered equivalent
 #'   to "Female". Case-insensitive.
 #'
-#' @returns A factor the same length as `x` with levels "Female" and Male".
+#' @returns A factor the same length as `x` with levels "Female" and "Male".
 #' @export
 #'
 #' @examples
@@ -48,7 +53,7 @@ normalize_sex <- function(
 #'   samples instead of the estimated number.
 #' @param adjust_for_unevaluable If TRUE (the default), then the estimated
 #'   number of mislabels will include mislabels of samples with missing sex
-#'   information (i.e., NA values in `reported_sex` or `inferred_sex`. If FALSE,
+#'   information (i.e., NA values in `reported_sex` or `inferred_sex`). If FALSE,
 #'   then the estimate will only include mislabels of samples with fully known
 #'   sex information. Note: this argument has no effect if `return_fraction` is
 #'   TRUE.

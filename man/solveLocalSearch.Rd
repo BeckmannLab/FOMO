@@ -14,7 +14,15 @@ solveLocalSearch(
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{n_iter}{(Default = 1) The number of}
+\item{n_iter}{(Default = 1) The number of hill-climbing iterations to run
+within this single call. Each iteration recomputes candidate swaps from
+the current (possibly already-updated, by an earlier iteration in this
+same call) state, and applies the single best non-conflicting swap per
+connected component. This returns early, before using up every
+requested iteration, only once every sample becomes solved -- if some
+samples remain unsolved but no further improving swap exists for them,
+the remaining iterations still run (each cheaply re-discovering that
+there is nothing left to do) rather than being skipped.}
 
 \item{include_ghost}{(Default = FALSE) If TRUE, allow swaps to include ghost samples}
 

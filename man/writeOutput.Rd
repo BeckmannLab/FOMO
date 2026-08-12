@@ -8,7 +8,7 @@ writeOutput(object, file)
 }
 \arguments{
 \item{object}{Either a MislabelSolver object, or a named list of data frames
-(i.e. the return value of \code{\link[=collateOutput]{collateOutput()}}.}
+(i.e. the return value of \code{\link[=collateOutput]{collateOutput()}}).}
 
 \item{file}{The file name to write to. This should end in ".xlsx".}
 }
