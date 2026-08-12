@@ -700,6 +700,20 @@ solveLocalSearch <- function(
 #'   and the object is returned in its current, incompletely solved state.
 #' @param seed (Default = 1) The random seed, passed to `set.seed()`, used
 #'   for reproducibility.
+#' @param global_max_genotypes,global_ghost_penalty,global_deletion_penalty
+#'   Passed to [solveGlobalSearch()] as its `max_genotypes`, `ghost_penalty`,
+#'   and `deletion_penalty` arguments respectively (only relevant when
+#'   `"global"` is in `use_solvers`); see that function's documentation for
+#'   what each one controls.
+#' @param local_iter_per_cycle (Default = 1) Passed to whichever of
+#'   [solveLocalSearch()]/[solveLocalSearchOld()] is in use (per
+#'   `use_solvers`) as its `n_iter` argument (only relevant when `"local"`
+#'   or `"local_old"` is in `use_solvers`); see that function's
+#'   documentation for what it controls. Note that, unlike calling
+#'   [solveLocalSearch()] directly, this does not control the *total*
+#'   number of local search iterations solveEnsemble() runs -- it controls
+#'   how many local search iterations run per cycle, i.e. in between each
+#'   round of the other solvers in `use_solvers`.
 #'
 #' @return A MislabelSolver object
 #'
@@ -709,7 +723,11 @@ solveEnsemble <- function(
     object,
     use_solvers = c("majority", "global", "local"),
     time_limit = 2 * 60 * 60,
-    seed = 1
+    seed = 1,
+    global_max_genotypes = 8,
+    global_ghost_penalty = 1.5,
+    global_deletion_penalty = 4,
+    local_iter_per_cycle = 1
 ) {
     valid_solvers <- c(
         "majority",
@@ -773,13 +791,23 @@ solveEnsemble <- function(
 
         run_global <- "global" %in% use_solvers
         if (run_global) {
-            object <- solveGlobalSearch(object)
+            object <- solveGlobalSearch(
+                object,
+                max_genotypes = global_max_genotypes,
+                ghost_penalty = global_ghost_penalty,
+                deletion_penalty = global_deletion_penalty
+            )
         }
         if ("majority" %in% use_solvers) {
             object <- solveMajoritySearch(object)
         }
         if (run_global) {
-            object <- solveGlobalSearch(object)
+            object <- solveGlobalSearch(
+                object,
+                max_genotypes = global_max_genotypes,
+                ghost_penalty = global_ghost_penalty,
+                deletion_penalty = global_deletion_penalty
+            )
         }
 
         global_relabel_data <- object@.solve_state$unsolved_relabel_data
@@ -791,7 +819,7 @@ solveEnsemble <- function(
             }
             object <- local_solver(
                 object,
-                n_iter = 1,
+                n_iter = local_iter_per_cycle,
                 include_ghost = TRUE,
                 filter_concordant_vertices = TRUE
             )
@@ -809,7 +837,7 @@ solveEnsemble <- function(
                 ) {
                     object <- local_solver(
                         object,
-                        n_iter = 1,
+                        n_iter = local_iter_per_cycle,
                         include_ghost = TRUE,
                         filter_concordant_vertices = FALSE
                     )

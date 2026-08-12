@@ -8,7 +8,11 @@ solveEnsemble(
   object,
   use_solvers = c("majority", "global", "local"),
   time_limit = 2 * 60 * 60,
-  seed = 1
+  seed = 1,
+  global_max_genotypes = 8,
+  global_ghost_penalty = 1.5,
+  global_deletion_penalty = 4,
+  local_iter_per_cycle = 1
 )
 }
 \arguments{
@@ -36,6 +40,21 @@ and the object is returned in its current, incompletely solved state.}
 
 \item{seed}{(Default = 1) The random seed, passed to \code{set.seed()}, used
 for reproducibility.}
+
+\item{global_max_genotypes, global_ghost_penalty, global_deletion_penalty}{Passed to \code{\link[=solveGlobalSearch]{solveGlobalSearch()}} as its \code{max_genotypes}, \code{ghost_penalty},
+and \code{deletion_penalty} arguments respectively (only relevant when
+\code{"global"} is in \code{use_solvers}); see that function's documentation for
+what each one controls.}
+
+\item{local_iter_per_cycle}{(Default = 1) Passed to whichever of
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}/\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} is in use (per
+\code{use_solvers}) as its \code{n_iter} argument (only relevant when \code{"local"}
+or \code{"local_old"} is in \code{use_solvers}); see that function's
+documentation for what it controls. Note that, unlike calling
+\code{\link[=solveLocalSearch]{solveLocalSearch()}} directly, this does not control the \emph{total}
+number of local search iterations solveEnsemble() runs -- it controls
+how many local search iterations run per cycle, i.e. in between each
+round of the other solvers in \code{use_solvers}.}
 }
 \value{
 A MislabelSolver object
