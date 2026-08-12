@@ -713,7 +713,13 @@ solveLocalSearch <- function(
 #'   [solveLocalSearch()] directly, this does not control the *total*
 #'   number of local search iterations solveEnsemble() runs -- it controls
 #'   how many local search iterations run per cycle, i.e. in between each
-#'   round of the other solvers in `use_solvers`.
+#'   round of the other solvers in `use_solvers`. Ignored (with a message)
+#'   if `use_solvers` contains only `"local"`/`"local_old"` and neither
+#'   `"majority"` nor `"global"`, since in that case local search is the
+#'   only thing the ensemble loop does anyway; a large internal default is
+#'   used for `n_iter` instead so the ensemble loop still periodically
+#'   returns control to itself (to check `time_limit`, etc.) without the
+#'   overhead of doing so after every single local search iteration.
 #'
 #' @return A MislabelSolver object
 #'
@@ -768,6 +774,36 @@ solveEnsemble <- function(
     )
 
     set.seed(seed)
+
+    ## If local search is the only solver in use (no "majority" and no
+    ## "global"), nothing else in the outer while loop below does anything
+    ## on any iteration, so there's no benefit to returning control to it
+    ## after only local_iter_per_cycle local search iterations -- doing so
+    ## only adds the outer loop's own per-iteration overhead (the
+    ## identical() comparisons below, mainly) with nothing to show for it.
+    ## Give local search a much larger iteration budget instead in that
+    ## case, regardless of what local_iter_per_cycle was set to.
+    ## Deliberately a large, finite value rather than Inf or
+    ## .Machine$integer.max: the outer loop is still what enforces
+    ## time_limit and emits its own progress messages, and local search
+    ## isn't proven to always converge within a bounded number of
+    ## iterations, so control still needs to come back to the outer loop
+    ## periodically -- aiming for roughly once a minute -- rather than
+    ## potentially running unchecked for a very long time.
+    only_local_in_use <- all(use_solvers %in% c("local", "local_old"))
+    effective_local_iter_per_cycle <- local_iter_per_cycle
+    if (only_local_in_use) {
+        effective_local_iter_per_cycle <- 1000L
+        message(
+            "'use_solvers' contains only local search; overriding ",
+            "'local_iter_per_cycle' (",
+            local_iter_per_cycle,
+            ") with ",
+            effective_local_iter_per_cycle,
+            " for this solveEnsemble() call."
+        )
+    }
+
     start_time <- Sys.time()
     while (TRUE) {
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
@@ -819,7 +855,7 @@ solveEnsemble <- function(
             }
             object <- local_solver(
                 object,
-                n_iter = local_iter_per_cycle,
+                n_iter = effective_local_iter_per_cycle,
                 include_ghost = TRUE,
                 filter_concordant_vertices = TRUE
             )
@@ -837,7 +873,7 @@ solveEnsemble <- function(
                 ) {
                     object <- local_solver(
                         object,
-                        n_iter = local_iter_per_cycle,
+                        n_iter = effective_local_iter_per_cycle,
                         include_ghost = TRUE,
                         filter_concordant_vertices = FALSE
                     )

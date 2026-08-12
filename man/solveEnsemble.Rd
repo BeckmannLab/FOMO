@@ -54,7 +54,13 @@ documentation for what it controls. Note that, unlike calling
 \code{\link[=solveLocalSearch]{solveLocalSearch()}} directly, this does not control the \emph{total}
 number of local search iterations solveEnsemble() runs -- it controls
 how many local search iterations run per cycle, i.e. in between each
-round of the other solvers in \code{use_solvers}.}
+round of the other solvers in \code{use_solvers}. Ignored (with a message)
+if \code{use_solvers} contains only \code{"local"}/\code{"local_old"} and neither
+\code{"majority"} nor \code{"global"}, since in that case local search is the
+only thing the ensemble loop does anyway; a large internal default is
+used for \code{n_iter} instead so the ensemble loop still periodically
+returns control to itself (to check \code{time_limit}, etc.) without the
+overhead of doing so after every single local search iteration.}
 }
 \value{
 A MislabelSolver object
