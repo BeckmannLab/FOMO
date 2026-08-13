@@ -115,7 +115,10 @@ importFrom(utils,
   head
 )
 importFrom(visNetwork,visIgraph)
-importFrom(withr,with_seed)
+importFrom(withr,
+  local_seed,
+  with_seed
+)
 importFrom(writexl,
   write_xlsx,
   xl_sheet

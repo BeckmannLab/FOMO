@@ -84,6 +84,7 @@
 #' @importFrom utils globalVariables
 #' @importFrom utils head
 #' @importFrom visNetwork visIgraph
+#' @importFrom withr local_seed
 #' @importFrom withr with_seed
 #' @importFrom writexl write_xlsx
 #' @importFrom writexl xl_sheet

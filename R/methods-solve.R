@@ -32,7 +32,6 @@
 #' @export
 #'
 solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
-    set.seed(1)
     message("Starting majority search")
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         message("0 samples relabeled")
@@ -136,7 +135,6 @@ solveGlobalSearch <- function(
     ghost_penalty = 1.5,
     deletion_penalty = 4
 ) {
-    set.seed(1)
     message("Starting global search")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
@@ -443,7 +441,6 @@ solveLocalSearch <- function(
     include_ghost = FALSE,
     filter_concordant_vertices = FALSE
 ) {
-    set.seed(1)
     message("Starting local search")
 
     for (i in 1:n_iter) {
@@ -593,7 +590,6 @@ solveLocalSearchOld <- function(
     include_ghost = FALSE,
     filter_concordant_vertices = FALSE
 ) {
-    set.seed(1)
     message("Starting local search (old)")
 
     for (i in 1:n_iter) {
@@ -744,8 +740,9 @@ solveLocalSearchOld <- function(
 #'   MislabelSolver object is returned in its current, incompletely solved
 #'   state. Note that FOMO will not come anywhere near this time limit for most
 #'   real world data sets, so users generally should not need to modify this.
-#' @param seed The random seed, passed to `set.seed()`, used for
-#'   reproducibility.
+#' @param seed The random seed to use for this run. The seed defaults to 1,
+#'   which means this function is reproducible by default. You can disable this
+#'   behavior by setting the seed to `NULL`.
 #' @param global_max_genotypes,global_ghost_penalty,global_deletion_penalty
 #'   Passed to [solveGlobalSearch()] as its `max_genotypes`, `ghost_penalty`,
 #'   and `deletion_penalty` arguments respectively (only used if `use_solvers`
@@ -757,8 +754,7 @@ solveLocalSearchOld <- function(
 #'   [solveLocalSearch()] directly, this does not control the *total* number of
 #'   local search iterations `solveEnsemble()` runs; it controls how many local
 #'   search iterations run per cycle, i.e. in between each round of the other
-#'   solvers in `use_solvers`. As such, it is ignored if `use_solvers` contains
-#'   only `"local"`.
+#'   solvers in `use_solvers`.
 #'
 #' @return A MislabelSolver object with all detected correctable mislabeled
 #'   samples relabeled (unless the time limit is reached).
@@ -811,12 +807,13 @@ solveEnsemble <- function(
         msg = "'time_limit' must be a single non-negative number (of seconds)"
     )
 
-    assert_that(
-        is.numeric(seed) && length(seed) == 1 && !is.na(seed),
-        msg = "'seed' must be a single number"
-    )
-
-    set.seed(seed)
+    if (!is.null(seed)) {
+        assert_that(
+            is.numeric(seed) && length(seed) == 1 && !is.na(seed),
+            msg = "'seed' must be a single number"
+        )
+        local_seed(seed)
+    }
 
     ## If local search is the only solver in use, then the outer while loop no
     ## longer alternates between solvers, and its only purpose is to enforce the
