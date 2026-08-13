@@ -403,7 +403,9 @@ collateOutput <- function(object) {
     component_summary <- sample_summary |>
         group_by(.data$Connected_Component_ID) |>
         summarize(
-            n_Genotype_Groups = length(unique(.data$Genotype_Group_ID)),
+            n_Genotype_Groups = length(unique(na.omit(
+                .data$Genotype_Group_ID
+            ))),
             n_Subjects = length(unique(.data$Initial_Subject_ID)),
             n_Samples_total = n(),
             Same_Number_of_Genotypes_And_Subjects = .data$n_Genotype_Groups ==
@@ -455,7 +457,9 @@ collateOutput <- function(object) {
     dataset_summary <- sample_summary |>
         summarize(
             n_Components = length(unique(.data$Connected_Component_ID)),
-            n_Genotype_Groups = length(unique(.data$Genotype_Group_ID)),
+            n_Genotype_Groups = length(unique(na.omit(
+                .data$Genotype_Group_ID
+            ))),
             n_Subjects = length(unique(.data$Initial_Subject_ID)),
             n_Samples_total = n(),
             n_Samples_no_review_needed = sum(
