@@ -1,32 +1,29 @@
 #' Majority-based Sample Relabeling
 #'
-#' This heuristic function locks in a Genotype_Group_ID <-> Subject_ID
-#' pairing wherever the two agree on who the majority partner is: a
-#' majority of the samples currently claiming a given Genotype_Group_ID
-#' must share the same Subject_ID, \emph{and} a majority of the samples
-#' currently claiming that Subject_ID must share that same
-#' Genotype_Group_ID. Only pairings satisfying both directions of majority
-#' agreement are accepted; a Genotype_Group_ID with a clear majority
-#' Subject_ID that doesn't itself have a majority pointing back to that
-#' Genotype_Group_ID is left alone for a later solver (e.g.
-#' [solveGlobalSearch()] or [solveLocalSearch()]) to resolve instead.
-#' Samples that disagree with an accepted pairing are then relabeled to
-#' match it.
+#' This heuristic algorithm aims to quickly correct "low-hanging fruit" mislabel
+#' situations, in which a majority of samples for each subject are labeled
+#' correctly. First, the algorithm "locks" in a Genotype_Group_ID <-> Subject_ID
+#' pairing wherever the two agree on who the majority partner is: a majority of
+#' the samples currently claiming a given Genotype_Group_ID must share the same
+#' Subject_ID, *and* a majority of the samples currently claiming that
+#' Subject_ID must share that same Genotype_Group_ID. Samples that disagree with
+#' a locked pairing are then relabeled to match it.
 #'
-#' This is the cheapest and least ambiguous of the solvers -- it never needs
-#' to search or score alternatives, only count votes -- so
-#' [solveEnsemble()] always runs it first (and again after every other
-#' solver call) to lock in whatever it can before falling back to costlier
-#' search strategies.
+#' This is the quickest solver, because it never needs to search or score
+#' alternatives, only count votes. Conversely, it is the least flexible, so it
+#' relies on other solvers (*via* [solveEnsemble()]) to handle the complex cases
+#' that it cannot.
+#'
+#' Use via [solveEnsemble()] rather than calling this directly, unless you are
+#' composing your own solver loop.
 #'
 #' @param object A MislabelSolver object
-#' @param unambiguous_only (Default = FALSE) If TRUE, restrict relabeling to
-#'   only the clearest cases: candidate relabels that would require
-#'   inventing a placeholder ("duplicate that doesn't exist") label or using
-#'   up a ghost (ungenotyped) sample are skipped, as are any samples that
-#'   have more than one possible real relabel target to choose between.
-#'   Anything skipped this way is left for a later solver to attempt
-#'   instead.
+#' @param unambiguous_only If TRUE, restrict relabeling to only the clearest
+#'   cases. Candidate relabels that would require inventing a placeholder
+#'   ("duplicate that doesn't exist") label or using up a ghost (ungenotyped)
+#'   sample are skipped, as are any samples that have more than one possible
+#'   real relabel target to choose between. Anything skipped this way is left
+#'   for a later solver to attempt instead.
 #'
 #' @return A MislabelSolver object
 #'
@@ -94,37 +91,496 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
 
     ## 3. Relabel samples and update solve state
     object <- .relabel_samples(object, relabels, solver_name = "majority")
-    # print(paste(nrow(relabels), "samples relabeled"))
+    return(object)
+}
+
+#' Global Search Sample Relabeling
+#'
+#' This global search function permutes over all possible assignments of
+#' Subject_IDs to Genotype_Group_IDs, then picks the assignment that implies the
+#' fewest number of sample mislabels and deletions. As such, it is guaranteed to
+#' find the optimal assignment given the selected scoring penalties. However,
+#' since the running time is factorial in the number of genotype groups, it is
+#' limited to only small connected components (by default, those involving no
+#' more than 8 genotype groups).
+#'
+#' When choosing penalty values, keep in mind that the penalty for a relabeled
+#' normal sample is always 1, and the other penalties are set relative to this.
+#'
+#' Use via [solveEnsemble()] rather than calling this directly, unless you are
+#' composing your own solver loop.
+#'
+#' @param object A MislabelSolver object
+#' @param max_genotypes The number of combinations scales in factorial with the
+#'   number of genotypes in the largest connected component. The algorithm will
+#'   skip over all components that exceed this size.
+#' @param ghost_penalty The penalty for relabeling one ghost (placeholder)
+#'   sample rather than a real one. Must be positive number. The ghost penalty
+#'   should be strictly greater than 1, since otherwise the algorithm would
+#'   prefer relabeling to a ghost sample even when a valid non-ghost sample swap
+#'   is already available.
+#' @param deletion_penalty The penalty for a label or genotype deletion (giving
+#'   up on reconciling that sample entirely). Must be a positive number. The
+#'   deletion penalty should be greater than twice the relabel penalty (i.e.
+#'   greater than 2) *and* greater `ghost_penalty`, since otherwise the
+#'   algorithm may prefer deleting samples even when a valid non-ghost sample
+#'   swap or ghost sample is already available.
+#'
+#' @return A MislabelSolver object, potentially with some samples relabeled.
+#'
+#' @export
+#'
+solveGlobalSearch <- function(
+    object,
+    max_genotypes = 8,
+    ghost_penalty = 1.5,
+    deletion_penalty = 4
+) {
+    set.seed(1)
+    message("Starting global search")
+    .validate_search_penalties(ghost_penalty, deletion_penalty)
+    if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+        message("0 samples relabeled")
+        return(object)
+    }
+
+    putative_subjects <- object@.solve_state$putative_subjects
+
+    ## 1. Update putative subjects
+    component_ids <- sort(unique(
+        object@.solve_state$unsolved_relabel_data$Component_ID
+    ))
+    for (component_id in component_ids) {
+        cc_unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
+            filter(.data$Component_ID == component_id)
+        cc_unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
+            filter(.data$Component_ID == component_id)
+        cc_sample_ids <- c(
+            cc_unsolved_relabel_data$Sample_ID,
+            cc_unsolved_ghost_data$Sample_ID
+        )
+        cc_swap_cat_ids <- unique(c(
+            cc_unsolved_relabel_data$SwapCat_ID,
+            cc_unsolved_ghost_data$SwapCat_ID
+        ))
+        cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
+        cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
+
+        ## For now, pass out of components where number of Genotype_Group(s) is
+        ## greater than number of Subject_ID(s). In this case there will be one
+        ## GG with no assigned subject ID.
+        if (length(cc_genotypes) > length(cc_subjects)) {
+            next
+        }
+
+        ## Lock genotypes that already have a putative subject assigned, and
+        ## find all possible permutations for free genotypes
+        locked_genotypes <- intersect(
+            putative_subjects$Genotype_Group_ID,
+            cc_genotypes
+        )
+        locked_subjects <- intersect(putative_subjects$Subject_ID, cc_subjects)
+        free_genotypes <- setdiff(cc_genotypes, locked_genotypes)
+        free_subjects <- setdiff(cc_subjects, locked_subjects)
+
+        ## Pass out of components if they have too many genotypes
+        if (
+            max(length(free_genotypes), length(free_subjects)) > max_genotypes
+        ) {
+            next
+        }
+
+        if (length(free_genotypes) > 0 && length(free_subjects) > 0) {
+            n <- length(free_subjects)
+            r <- length(free_genotypes)
+            perm_genotypes <- permutations(n, r, free_subjects)
+            colnames(perm_genotypes) <- sort(free_genotypes)
+            n_perm <- nrow(perm_genotypes)
+            for (locked_genotype_id in locked_genotypes) {
+                locked_subject_id <- putative_subjects[
+                    putative_subjects$Genotype_Group_ID == locked_genotype_id,
+                    "Subject_ID"
+                ][[1]]
+                new_perm_col <- matrix(
+                    data = locked_subject_id,
+                    ncol = 1,
+                    nrow = n_perm,
+                    dimnames = list(NULL, locked_genotype_id)
+                )
+                perm_genotypes <- cbind(perm_genotypes, new_perm_col)
+            }
+        } else {
+            locked_putative_subjects <- putative_subjects[
+                putative_subjects$Genotype_Group_ID %in% locked_genotypes,
+            ]
+            perm_genotypes <- t(locked_putative_subjects$Subject_ID)
+            colnames(
+                perm_genotypes
+            ) <- locked_putative_subjects$Genotype_Group_ID
+        }
+        perm_genotypes <- as.matrix(
+            perm_genotypes,
+            dimnames = c("Permutation_ID", "Genotype_Group_ID")
+        )
+        n_perms <- nrow(perm_genotypes)
+        permutation_ids <- str_c(
+            "Permutation",
+            formatC(
+                seq_len(n_perms),
+                width = str_length(n_perms),
+                format = "d",
+                flag = "0"
+            )
+        )
+        rownames(perm_genotypes) <- permutation_ids
+
+        ## For each Genotype_Group_ID/Subject_ID permutation, determine
+        ## 1. The number of existing samples to relabel
+        ## 2. The number of ghost samples needed to add
+        ## 3. The number of indels required after ghost samples are included
+        label_counts <- cc_unsolved_relabel_data |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
+            summarize(n_labels = n(), .groups = "drop")
+        ghost_label_counts <- cc_unsolved_ghost_data |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
+            summarize(n_ghost_labels = n(), .groups = "drop")
+        genotype_counts <- cc_unsolved_relabel_data |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(.data$Genotype_Group_ID, .data$SwapCat_ID) |>
+            summarize(n_in_genotype = n(), .groups = "drop")
+        genotype_subject_concordant_counts <- cc_unsolved_relabel_data |>
+            select(
+                "Sample_ID",
+                "Subject_ID",
+                "Genotype_Group_ID",
+                "SwapCat_ID"
+            ) |>
+            group_by(
+                .data$Subject_ID,
+                .data$Genotype_Group_ID,
+                .data$SwapCat_ID
+            ) |>
+            summarize(n_samples_correct = n(), .groups = "drop")
+
+        ## Base-R vectorized locked/free-aware scoring; see
+        ## .score_permutations_fast() in helpers-solve.R
+        permutation_stats <- .score_permutations_fast(
+            perm_genotypes,
+            free_genotypes,
+            locked_genotypes,
+            cc_swap_cat_ids,
+            label_counts,
+            ghost_label_counts,
+            genotype_counts,
+            genotype_subject_concordant_counts,
+            ghost_penalty = ghost_penalty,
+            deletion_penalty = deletion_penalty
+        )
+
+        best_permutation <- perm_genotypes[
+            permutation_stats$Permutation_ID[1],
+            ,
+            drop = FALSE
+        ]
+
+        if (nrow(permutation_stats) > 1) {
+            best_score <- permutation_stats$perm_score[1]
+            tied_permutation_stats <- permutation_stats |>
+                filter(.data$perm_score == best_score)
+            if (nrow(tied_permutation_stats) > 1) {
+                tied_permutations <- perm_genotypes[
+                    tied_permutation_stats$Permutation_ID,
+                    ,
+                    drop = FALSE
+                ]
+                for (curr_genotype_group in colnames(tied_permutations)) {
+                    if (
+                        !(curr_genotype_group %in%
+                            names(object@.solve_state$ambiguous_subjects))
+                    ) {
+                        object@.solve_state$ambiguous_subjects[[
+                            curr_genotype_group
+                        ]] <- tied_permutations[, curr_genotype_group]
+                    } else {
+                        object@.solve_state$ambiguous_subjects[[
+                            curr_genotype_group
+                        ]] <-
+                            unique(c(
+                                object@.solve_state$ambiguous_subjects[[
+                                    curr_genotype_group
+                                ]],
+                                tied_permutations[curr_genotype_group]
+                            ))
+                    }
+                }
+            }
+        }
+
+        new_putative_subjects <- best_permutation |>
+            t() |>
+            as.data.frame() |>
+            rownames_to_column("X") |>
+            relocate("X")
+        colnames(new_putative_subjects) <- c("Genotype_Group_ID", "Subject_ID")
+        rownames(new_putative_subjects) <- NULL
+
+        ## Also update putative_subjects when a Subject_ID in the component
+        ## doesn't have a Genotype_Group_ID, or vice versa
+        if (length(cc_genotypes) > length(cc_subjects)) {
+            unmatched_genotypes <- setdiff(
+                cc_genotypes,
+                new_putative_subjects$Genotype_Group_ID
+            )
+            new_putative_subjects <- rbind(
+                new_putative_subjects,
+                data.frame(
+                    Genotype_Group_ID = unmatched_genotypes,
+                    Subject_ID = NA_character_
+                )
+            )
+        }
+        if (length(cc_genotypes) < length(cc_subjects)) {
+            unmatched_subjects <- setdiff(
+                cc_subjects,
+                new_putative_subjects$Subject_ID
+            )
+            new_putative_subjects <- rbind(
+                new_putative_subjects,
+                data.frame(
+                    Genotype_Group_ID = NA_character_,
+                    Subject_ID = unmatched_subjects
+                )
+            )
+        }
+        new_putative_subjects <- new_putative_subjects |>
+            anti_join(
+                object@.solve_state$putative_subjects,
+                by = c("Genotype_Group_ID", "Subject_ID")
+            )
+        object <- .update_putative_subjects(object, new_putative_subjects)
+    }
+
+    ## Find relabel cycles
+    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
+    unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data
+    putative_subjects <- object@.solve_state$putative_subjects
+    relabels <- .find_relabel_cycles_from_putative_subjects(
+        unsolved_relabel_data,
+        putative_subjects,
+        unsolved_ghost_data,
+        allow_unknowns = TRUE
+    )
+
+    ## Relabel samples and update solve state
+    object <- .relabel_samples(object, relabels, solver_name = "global")
+    return(object)
+}
+
+#' Local Search Sample Relabeling
+#'
+#' This search function looks through all possible swaps of 2 samples, and
+#' selects the swap that minimizes the sum of within-genotype entropies within
+#' each connected component of the mislabel network. Each iteration relabels up
+#' to one pair of samples within each component.
+#'
+#' Each candidate swap's entropy delta is evaluated with a closed-form update.
+#' The old, much slower algorithm, which rebuilds and rescans the full vote
+#' vector for the affected genotype(s), is still available in
+#' [solveLocalSearchOld()]. The new algorithm is 9-380x faster on synthetic
+#' components ranging from 60 to 3,000 candidate subjects in testing.
+#'
+#' The closed-form update is algebraically equivalent to
+#' [solveLocalSearchOld()]'s entropy formula, but it can produce numerically
+#' different resuts due to the finite presicion of floating point numbers.
+#' Generally the difference is less than 1e-9. This can cause the two functions
+#' to choose different "best" swaps when two or more candidates are tied or
+#' nearly tied. If you need results that exactly match [solveLocalSearchOld()],
+#' use that function instead.
+#'
+#' Use via [solveEnsemble()] rather than calling this directly, unless you are
+#' composing your own solver loop.
+#'
+#' @param object A MislabelSolver object
+#' @param n_iter The number of hill-climbing iterations to run within this
+#'   single call. Each iteration recomputes candidate swaps from the current
+#'   (possibly already-updated, by an earlier iteration in this same call)
+#'   state, and applies the single best non-conflicting swap per connected
+#'   component. This returns early, before using up every requested iteration,
+#'   only once every sample becomes solved, or no further entropy-improving
+#'   swaps can be found.
+#' @param include_ghost If TRUE, allow swaps to include ghost samples
+#' @param filter_concordant_vertices If TRUE, filter out samples with at least
+#'   one concordant edge. This reduces the search space but misses cases where
+#'   multiple pairs of samples are swapped between the same subjects.
+#'
+#' @return A MislabelSolver object, potentially with some samples relabeled.
+#'
+#' @seealso [solveLocalSearchOld()], the original (exact) version of this
+#'   algorithm, retained for cases needing bit-exact reproducibility
+#'
+#' @export
+#'
+solveLocalSearch <- function(
+    object,
+    n_iter = 1,
+    include_ghost = FALSE,
+    filter_concordant_vertices = FALSE
+) {
+    set.seed(1)
+    message("Starting local search")
+
+    for (i in 1:n_iter) {
+        message(paste(
+            "Local search iteration (",
+            i,
+            " of ",
+            n_iter,
+            "):: 'include_ghost'=",
+            include_ghost,
+            ", 'filter_concordant_vertices'=",
+            filter_concordant_vertices,
+            sep = ""
+        ))
+        unsolved_all_data <- rbind(
+            object@.solve_state$unsolved_relabel_data,
+            object@.solve_state$unsolved_ghost_data
+        )
+        if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+            # All components already solved
+            message("0 samples relabeled")
+            return(object)
+        }
+        votes <- table(
+            object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
+            object@.solve_state$unsolved_relabel_data$Subject_ID
+        )
+
+        neighbors <- .find_neighbors(
+            object,
+            include_ghost,
+            filter_concordant_vertices
+        ) |>
+            left_join(
+                unsolved_all_data[, c(
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID"
+                )],
+                by = c("Sample_A" = "Sample_ID")
+            ) |>
+            rename(
+                Subject_A = "Subject_ID",
+                Genotype_Group_A = "Genotype_Group_ID"
+            ) |>
+            left_join(
+                unsolved_all_data[, c(
+                    "Sample_ID",
+                    "Subject_ID",
+                    "Genotype_Group_ID",
+                    "Component_ID"
+                )],
+                by = c("Sample_B" = "Sample_ID")
+            ) |>
+            rename(
+                Subject_B = "Subject_ID",
+                Genotype_Group_B = "Genotype_Group_ID"
+            )
+
+        message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
+        all_component_ids <- sort(unique(
+            object@.solve_state$unsolved_relabel_data$Component_ID
+        ))
+        relabels <- data.frame(matrix(
+            data = NA,
+            nrow = length(all_component_ids),
+            ncol = 2,
+            dimnames = list(c(), c("relabel_from", "relabel_to"))
+        ))
+        curr_idx <- 1
+        for (curr_component_id in all_component_ids) {
+            cc_neighbors <- neighbors |>
+                filter(.data$Component_ID == curr_component_id)
+
+            if (nrow(cc_neighbors) == 0) {
+                next
+            }
+            ## Closed-form vectorized delta instead of mapply(.calc_swapped_delta_entropy, ...);
+            ## see .calc_swapped_delta_entropy_fast() in helpers-solve.R for the derivation.
+            cc_neighbor_objectives <- cc_neighbors |>
+                mutate(
+                    delta = .calc_swapped_delta_entropy_fast(
+                        votes,
+                        .data$Subject_A,
+                        .data$Genotype_Group_A,
+                        .data$Subject_B,
+                        .data$Genotype_Group_B
+                    )
+                )
+            cc_relabels <- cc_neighbor_objectives |>
+                filter(.data$delta > 0, .data$delta == max(.data$delta))
+            if (nrow(cc_relabels) == 0) {
+                next
+            }
+            cc_relabels <- cc_relabels |>
+                sample_n(1) |>
+                transmute(
+                    relabel_from = .data$Sample_A,
+                    relabel_to = .data$Sample_B
+                )
+            relabels[curr_idx, c("relabel_from", "relabel_to")] <- cc_relabels
+            curr_idx <- curr_idx + 1
+        }
+
+        relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
+        relabels <- rbind(
+            relabels,
+            data.frame(
+                relabel_from = relabels$relabel_to,
+                relabel_to = relabels$relabel_from
+            )
+        )
+        object <- .relabel_samples(object, relabels, solver_name = "local")
+        if (nrow(relabels) == 0) {
+            # If nothing was relabeled in this iteration, then the algorithm has
+            # converged and further iterations are not needed.
+            break
+        }
+    }
+
     return(object)
 }
 
 #' Local Search Sample Relabeling (Original Algorithm)
 #'
-#' This search function looks through all possible swaps of 2 samples, and selects
-#' the swap that minimizes the sum of within-genotype entropies.
+#' This search function looks through all possible swaps of 2 samples, and
+#' selects the swap that minimizes the sum of within-genotype entropies.
 #'
-#' This is the original local search algorithm. It is no longer the
-#' default -- [solveLocalSearch()] now is -- because its closed-form
-#' entropy update is not always bit-exact and can therefore occasionally
-#' select a different swap than this function on a near-tie (see
-#' [solveLocalSearch()] for the full explanation). Use this version if you
-#' need results that are guaranteed identical to this exact algorithm.
+#' This is the original local search algorithm. It is superseded by
+#' [solveLocalSearch()], which implements an optimized version of the same
+#' algorithm. The new algorithm is algebraically but not numerically equivalent,
+#' so the old algorithm is still provided. It should only be used if you need to
+#' reproduce results generated using the old algorithm.
 #'
-#' @param object A MislabelSolver object
-#' @param n_iter (Default = 1) The number of hill-climbing iterations to run
-#'   within this single call. Each iteration recomputes candidate swaps from
-#'   the current (possibly already-updated, by an earlier iteration in this
-#'   same call) state, and applies the single best non-conflicting swap per
-#'   connected component. This returns early, before using up every
-#'   requested iteration, only once every sample becomes solved -- if some
-#'   samples remain unsolved but no further improving swap exists for them,
-#'   the remaining iterations still run (each cheaply re-discovering that
-#'   there is nothing left to do) rather than being skipped.
-#' @param include_ghost (Default = FALSE) If TRUE, allow swaps to include ghost samples
-#' @param filter_concordant_vertices (Default = FALSE) If TRUE, filter out samples
-#'                                   with at least one concordant edge
+#' @inheritParams solveLocalSearch
 #'
-#' @return A MislabelSolver object
+#' @return A MislabelSolver object, potentially with some samples relabeled.
 #'
 #' @seealso [solveLocalSearch()], the standard (faster) version of this
 #'   algorithm used by default.
@@ -255,479 +711,11 @@ solveLocalSearchOld <- function(
             )
         )
         object <- .relabel_samples(object, relabels, solver_name = "local_old")
-        # print(paste(nrow(relabels), "samples relabeled"))
-    }
-
-    return(object)
-}
-
-#' Global Search Sample Relabeling
-#'
-#' This global search function permutes over all combinations of assigning a
-#' Subject_ID to a Genotype_Group_ID, then picks the assignment that implies
-#' the fewest number of sample mislabels and deletions. Scores permutations
-#' efficiently: (1) a component's *locked* genotype columns (already
-#' resolved before global search reached this component) are constant
-#' across every permutation, so their score contribution is computed once
-#' from a single row rather than recomputed on every one of up to 8! =
-#' 40,320 permutation rows; (2) the per-swap-category scoring itself is
-#' done with named-vector lookups and `rowsum()` rather than
-#' `left_join()`/`group_by()`/`summarize()`, since profiling showed cost
-#' dominated by join/data-mask overhead rather than the arithmetic itself.
-#'
-#' Use via `solveEnsemble(object, use_solvers = c("majority",
-#' "global", "local"))` rather than calling this directly,
-#' unless you are composing your own solver loop.
-#'
-#' @param object A MislabelSolver object
-#' @param max_genotypes (Default = 8) The number of combinations scales in factorial
-#'                      with the number of genotypes in the largest connected component.
-#'                      The algorithm will skip over all components that exceed this size.
-#' @param ghost_penalty (Default = 1.5) The score charged, per sample, for relabeling
-#'                      to a ghost (placeholder) sample rather than a real one. The
-#'                      ordinary relabel penalty is fixed at 1, since all penalties are
-#'                      relative to it. Must be a single positive numeric value; a
-#'                      warning is issued if it is not strictly greater than 1, since
-#'                      otherwise the algorithm may prefer relabeling to a ghost sample
-#'                      even when a valid non-ghost sample swap is already available.
-#' @param deletion_penalty (Default = 4) The score charged, per sample, for a label or
-#'                      genotype deletion (giving up on reconciling that sample
-#'                      entirely). Must be a single positive numeric value; a warning
-#'                      is issued if it is not strictly greater than *both* twice the
-#'                      relabel penalty (i.e. 2) and `ghost_penalty`, since otherwise
-#'                      the algorithm may prefer inserting/deleting samples even when a
-#'                      valid non-ghost sample swap, or an available ghost sample, is
-#'                      already available -- these are two independent comparisons
-#'                      (against a plain swap, and against an available ghost) and
-#'                      `deletion_penalty` needs to clear both; see the comment above
-#'                      `.validate_search_penalties()` in `helpers-solve.R` for the
-#'                      worked examples behind both bars, and why neither -- nor their
-#'                      combination -- is a hard guarantee for every possible
-#'                      component, just the bar cleared by the simplest, most common
-#'                      cases. (This default was doubled from 2 to 4 when a
-#'                      double-counting bug was fixed: a single orphaned sample -- e.g.
-#'                      one displaced by relabeling another sample to a duplicate of it
-#'                      -- was previously counted as both a genotype deletion and a
-#'                      label deletion and penalized for both, so the default was
-#'                      doubled to keep the effective per-sample deletion cost, and
-#'                      hence overall solver behavior, unchanged from earlier package
-#'                      versions in the common case.)
-#'
-#' @return A MislabelSolver object
-#'
-#' @export
-#'
-solveGlobalSearch <- function(
-    object,
-    max_genotypes = 8,
-    ghost_penalty = 1.5,
-    deletion_penalty = 4
-) {
-    set.seed(1)
-    message("Starting global search")
-    .validate_search_penalties(ghost_penalty, deletion_penalty)
-    if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-        message("0 samples relabeled")
-        return(object)
-    }
-
-    putative_subjects <- object@.solve_state$putative_subjects
-
-    component_ids <- sort(unique(
-        object@.solve_state$unsolved_relabel_data$Component_ID
-    ))
-    for (component_id in component_ids) {
-        cc_unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
-            filter(.data$Component_ID == component_id)
-        cc_unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
-            filter(.data$Component_ID == component_id)
-        cc_sample_ids <- c(
-            cc_unsolved_relabel_data$Sample_ID,
-            cc_unsolved_ghost_data$Sample_ID
-        )
-        cc_swap_cat_ids <- unique(c(
-            cc_unsolved_relabel_data$SwapCat_ID,
-            cc_unsolved_ghost_data$SwapCat_ID
-        ))
-        cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
-        cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
-
-        if (length(cc_genotypes) > length(cc_subjects)) {
-            next
+        if (nrow(relabels) == 0) {
+            # If nothing was relabeled in this iteration, then the algorithm has
+            # converged and further iterations are not needed.
+            break
         }
-
-        locked_genotypes <- intersect(
-            putative_subjects$Genotype_Group_ID,
-            cc_genotypes
-        )
-        locked_subjects <- intersect(putative_subjects$Subject_ID, cc_subjects)
-        free_genotypes <- setdiff(cc_genotypes, locked_genotypes)
-        free_subjects <- setdiff(cc_subjects, locked_subjects)
-
-        if (
-            length(free_genotypes) > max_genotypes |
-                length(free_subjects) > max_genotypes
-        ) {
-            next
-        }
-
-        if (length(free_genotypes) > 0 & length(free_subjects) > 0) {
-            n <- length(free_subjects)
-            r <- length(free_genotypes)
-            perm_genotypes <- permutations(n, r, free_subjects)
-            colnames(perm_genotypes) <- sort(free_genotypes)
-            n_perm <- nrow(perm_genotypes)
-            for (locked_genotype_id in locked_genotypes) {
-                locked_subject_id <- putative_subjects[
-                    putative_subjects$Genotype_Group_ID == locked_genotype_id,
-                    "Subject_ID"
-                ][[1]]
-                new_perm_col <- matrix(
-                    data = locked_subject_id,
-                    ncol = 1,
-                    nrow = n_perm,
-                    dimnames = list(NULL, locked_genotype_id)
-                )
-                perm_genotypes <- cbind(perm_genotypes, new_perm_col)
-            }
-        } else {
-            locked_putative_subjects <- putative_subjects[
-                putative_subjects$Genotype_Group_ID %in% locked_genotypes,
-            ]
-            perm_genotypes <- t(locked_putative_subjects$Subject_ID)
-            colnames(
-                perm_genotypes
-            ) <- locked_putative_subjects$Genotype_Group_ID
-        }
-        perm_genotypes <- as.matrix(
-            perm_genotypes,
-            dimnames = c("Permutation_ID", "Genotype_Group_ID")
-        )
-        n_perms <- nrow(perm_genotypes)
-        permutation_ids <- str_c(
-            "Permutation",
-            formatC(
-                seq_len(n_perms),
-                width = str_length(n_perms),
-                format = "d",
-                flag = "0"
-            )
-        )
-        rownames(perm_genotypes) <- permutation_ids
-
-        label_counts <- cc_unsolved_relabel_data |>
-            select(
-                "Sample_ID",
-                "Subject_ID",
-                "Genotype_Group_ID",
-                "SwapCat_ID"
-            ) |>
-            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
-            summarize(n_labels = n(), .groups = "drop")
-        ghost_label_counts <- cc_unsolved_ghost_data |>
-            select(
-                "Sample_ID",
-                "Subject_ID",
-                "Genotype_Group_ID",
-                "SwapCat_ID"
-            ) |>
-            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
-            summarize(n_ghost_labels = n(), .groups = "drop")
-        genotype_counts <- cc_unsolved_relabel_data |>
-            select(
-                "Sample_ID",
-                "Subject_ID",
-                "Genotype_Group_ID",
-                "SwapCat_ID"
-            ) |>
-            group_by(.data$Genotype_Group_ID, .data$SwapCat_ID) |>
-            summarize(n_in_genotype = n(), .groups = "drop")
-        genotype_subject_concordant_counts <- cc_unsolved_relabel_data |>
-            select(
-                "Sample_ID",
-                "Subject_ID",
-                "Genotype_Group_ID",
-                "SwapCat_ID"
-            ) |>
-            group_by(
-                .data$Subject_ID,
-                .data$Genotype_Group_ID,
-                .data$SwapCat_ID
-            ) |>
-            summarize(n_samples_correct = n(), .groups = "drop")
-
-        ## Base-R vectorized locked/free-aware scoring; see .score_permutations_fast() in helpers-solve.R
-        permutation_stats <- .score_permutations_fast(
-            perm_genotypes,
-            free_genotypes,
-            locked_genotypes,
-            cc_swap_cat_ids,
-            label_counts,
-            ghost_label_counts,
-            genotype_counts,
-            genotype_subject_concordant_counts,
-            ghost_penalty = ghost_penalty,
-            deletion_penalty = deletion_penalty
-        )
-
-        best_permutation <- perm_genotypes[
-            permutation_stats$Permutation_ID[1],
-            ,
-            drop = FALSE
-        ]
-
-        if (nrow(permutation_stats) > 1) {
-            best_score <- permutation_stats$perm_score[1]
-            tied_permutation_stats <- permutation_stats |>
-                filter(.data$perm_score == best_score)
-            if (nrow(tied_permutation_stats) > 1) {
-                tied_permutations <- perm_genotypes[
-                    tied_permutation_stats$Permutation_ID,
-                    ,
-                    drop = FALSE
-                ]
-                for (curr_genotype_group in colnames(tied_permutations)) {
-                    if (
-                        !(curr_genotype_group %in%
-                            names(object@.solve_state$ambiguous_subjects))
-                    ) {
-                        object@.solve_state$ambiguous_subjects[[
-                            curr_genotype_group
-                        ]] <- tied_permutations[, curr_genotype_group]
-                    } else {
-                        object@.solve_state$ambiguous_subjects[[
-                            curr_genotype_group
-                        ]] <-
-                            unique(c(
-                                object@.solve_state$ambiguous_subjects[[
-                                    curr_genotype_group
-                                ]],
-                                tied_permutations[curr_genotype_group]
-                            ))
-                    }
-                }
-            }
-        }
-
-        new_putative_subjects <- best_permutation |>
-            t() |>
-            as.data.frame() |>
-            rownames_to_column("X") |>
-            relocate("X")
-        colnames(new_putative_subjects) <- c("Genotype_Group_ID", "Subject_ID")
-        rownames(new_putative_subjects) <- NULL
-
-        if (length(cc_genotypes) > length(cc_subjects)) {
-            unmatched_genotypes <- setdiff(
-                cc_genotypes,
-                new_putative_subjects$Genotype_Group_ID
-            )
-            new_putative_subjects <- rbind(
-                new_putative_subjects,
-                data.frame(
-                    Genotype_Group_ID = unmatched_genotypes,
-                    Subject_ID = NA_character_
-                )
-            )
-        }
-        if (length(cc_genotypes) < length(cc_subjects)) {
-            unmatched_subjects <- setdiff(
-                cc_subjects,
-                new_putative_subjects$Subject_ID
-            )
-            new_putative_subjects <- rbind(
-                new_putative_subjects,
-                data.frame(
-                    Genotype_Group_ID = NA_character_,
-                    Subject_ID = unmatched_subjects
-                )
-            )
-        }
-        new_putative_subjects <- new_putative_subjects |>
-            anti_join(
-                object@.solve_state$putative_subjects,
-                by = c("Genotype_Group_ID", "Subject_ID")
-            )
-        object <- .update_putative_subjects(object, new_putative_subjects)
-    }
-
-    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
-    unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data
-    putative_subjects <- object@.solve_state$putative_subjects
-    relabels <- .find_relabel_cycles_from_putative_subjects(
-        unsolved_relabel_data,
-        putative_subjects,
-        unsolved_ghost_data,
-        allow_unknowns = TRUE
-    )
-
-    object <- .relabel_samples(object, relabels, solver_name = "global")
-    return(object)
-}
-
-#' Local Search Sample Relabeling
-#'
-#' This search function looks through all possible swaps of 2 samples, and
-#' selects the swap that minimizes the sum of within-genotype entropies.
-#' Evaluates each candidate swap's entropy delta with a closed-form update
-#' instead of rebuilding and rescanning the full vote vector for the
-#' affected genotype(s); see [solveLocalSearchOld()], which does the
-#' latter and whose cost scales with the width of the votes table -- one
-#' column per distinct `Subject_ID` across the *whole* unsolved dataset,
-#' not just the candidate swap's own component -- so the speedup from
-#' avoiding that rescan grows with dataset size: 9-380x faster than
-#' [solveLocalSearchOld()] on synthetic components ranging from 60 to
-#' 3,000 candidate subjects in testing.
-#'
-#' The closed-form update is algebraically exact (an exact rearrangement of
-#' [solveLocalSearchOld()]'s entropy formula, true under infinite-precision
-#' arithmetic), but it is not a bit-exact re-derivation of it, because it
-#' evaluates `log()` on different arguments than the original (see the
-#' comment above `.calc_swapped_delta_entropy_fast()` in `helpers-solve.R`
-#' for the full explanation). In practice this means entropy deltas from the
-#' two functions typically agree to about 1e-9 or tighter, not to the last
-#' bit. That is inconsequential on its own, but because [solveLocalSearchOld()]
-#' selects a single best swap per component via `delta == max(delta)`, a
-#' difference this small can occasionally change which swap wins a near-tie
-#' -- so on rare inputs, this function's swap selections (and hence its
-#' output) can differ slightly from [solveLocalSearchOld()]'s, even though
-#' both are picking from among equally-good (or all but indistinguishably
-#' good) options. If you need results that exactly match
-#' [solveLocalSearchOld()], use that function instead.
-#'
-#' Use via `solveEnsemble(object, use_solvers = c("majority", "global",
-#' "local"))` rather than calling this directly, unless you are
-#' composing your own solver loop.
-#'
-#' @inheritParams solveLocalSearchOld
-#'
-#' @return A MislabelSolver object
-#'
-#' @seealso [solveLocalSearchOld()], the original (exact) version of this
-#'   algorithm, retained for cases needing bit-exact reproducibility.
-#'
-#' @export
-#'
-solveLocalSearch <- function(
-    object,
-    n_iter = 1,
-    include_ghost = FALSE,
-    filter_concordant_vertices = FALSE
-) {
-    set.seed(1)
-    message("Starting local search")
-
-    for (i in 1:n_iter) {
-        message(paste(
-            "Local search iteration (",
-            i,
-            " of ",
-            n_iter,
-            "):: 'include_ghost'=",
-            include_ghost,
-            ", 'filter_concordant_vertices'=",
-            filter_concordant_vertices,
-            sep = ""
-        ))
-        unsolved_all_data <- rbind(
-            object@.solve_state$unsolved_relabel_data,
-            object@.solve_state$unsolved_ghost_data
-        )
-        if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            message("0 samples relabeled")
-            return(object)
-        }
-        votes <- table(
-            object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
-            object@.solve_state$unsolved_relabel_data$Subject_ID
-        )
-
-        neighbors <- .find_neighbors(
-            object,
-            include_ghost,
-            filter_concordant_vertices
-        ) |>
-            left_join(
-                unsolved_all_data[, c(
-                    "Sample_ID",
-                    "Subject_ID",
-                    "Genotype_Group_ID"
-                )],
-                by = c("Sample_A" = "Sample_ID")
-            ) |>
-            rename(
-                Subject_A = "Subject_ID",
-                Genotype_Group_A = "Genotype_Group_ID"
-            ) |>
-            left_join(
-                unsolved_all_data[, c(
-                    "Sample_ID",
-                    "Subject_ID",
-                    "Genotype_Group_ID",
-                    "Component_ID"
-                )],
-                by = c("Sample_B" = "Sample_ID")
-            ) |>
-            rename(
-                Subject_B = "Subject_ID",
-                Genotype_Group_B = "Genotype_Group_ID"
-            )
-
-        message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
-        all_component_ids <- sort(unique(
-            object@.solve_state$unsolved_relabel_data$Component_ID
-        ))
-        relabels <- data.frame(matrix(
-            data = NA,
-            nrow = length(all_component_ids),
-            ncol = 2,
-            dimnames = list(c(), c("relabel_from", "relabel_to"))
-        ))
-        curr_idx <- 1
-        for (curr_component_id in all_component_ids) {
-            cc_neighbors <- neighbors |>
-                filter(.data$Component_ID == curr_component_id)
-
-            if (nrow(cc_neighbors) == 0) {
-                next
-            }
-            ## Closed-form vectorized delta instead of mapply(.calc_swapped_delta_entropy, ...);
-            ## see .calc_swapped_delta_entropy_fast() in helpers-solve.R for the derivation.
-            cc_neighbor_objectives <- cc_neighbors |>
-                mutate(
-                    delta = .calc_swapped_delta_entropy_fast(
-                        votes,
-                        .data$Subject_A,
-                        .data$Genotype_Group_A,
-                        .data$Subject_B,
-                        .data$Genotype_Group_B
-                    )
-                )
-            cc_relabels <- cc_neighbor_objectives |>
-                filter(.data$delta > 0, .data$delta == max(.data$delta))
-            if (nrow(cc_relabels) == 0) {
-                next
-            }
-            cc_relabels <- cc_relabels |>
-                sample_n(1) |>
-                transmute(
-                    relabel_from = .data$Sample_A,
-                    relabel_to = .data$Sample_B
-                )
-            relabels[curr_idx, c("relabel_from", "relabel_to")] <- cc_relabels
-            curr_idx <- curr_idx + 1
-        }
-
-        relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
-        relabels <- rbind(
-            relabels,
-            data.frame(
-                relabel_from = relabels$relabel_to,
-                relabel_to = relabels$relabel_from
-            )
-        )
-        object <- .relabel_samples(object, relabels, solver_name = "local")
-        # print(paste(nrow(relabels), "samples relabeled"))
     }
 
     return(object)
@@ -735,52 +723,48 @@ solveLocalSearch <- function(
 
 #' Ensemble Sample Relabeling
 #'
-#' This ensemble solver uses a combination of majority-search heuristic,
-#' global search, and local search to identify and correct mislabels
+#' This ensemble solver uses a combination of global search, majority-search
+#' heuristic, and local search to identify and correct mislabels. This allows
+#' the ensemble to handle a wider range of mislabel situations than any single
+#' algorithm can by itself. This is therefore the recommended way to run FOMO.
 #'
 #' @param object A MislabelSolver object
-#' @param use_solvers (Default = `c("majority", "global", "local")`) A
-#'   character vector giving the subset of single-method solvers to run on
-#'   each iteration of the ensemble loop. Must be a non-empty subset of
-#'   `"majority"`, `"global"`, `"local"`, and `"local_old"`. Any solver left
-#'   out of `use_solvers` is skipped entirely. For example, setting
-#'   `use_solvers` to `c("global", "majority")` will skip local search.
-#'   `"local"` is [solveLocalSearch()], the standard local search algorithm;
-#'   `"local_old"` is [solveLocalSearchOld()], the original algorithm it
-#'   replaced as the default. The two are alternative implementations of
-#'   the same step and cannot both be requested at once: [solveLocalSearch()]
-#'   is only extremely close (not bit-exact) to [solveLocalSearchOld()] --
-#'   see [solveLocalSearch()] for why that distinction exists -- so use
-#'   `"local_old"` if you need results that exactly match it.
+#' @param use_solvers A character vector giving the subset of single-method
+#'   solvers to run on each iteration of the ensemble loop. Must be a non-empty
+#'   subset of `"majority"`, `"global"`, `"local"`. Any solver left out of
+#'   `use_solvers` is skipped entirely. For example, setting `use_solvers` to
+#'   `c("global", "majority")` will skip local search. Additionally, the old
+#'   local search algorithm ([solveLocalSearchOld()]) can be used instead of the
+#'   new one ([solveLocalSearch()]) by replacing `"local"` with `"local_old"`.
 #' @param time_limit (Default = 7200, i.e. 2 hours) The maximum time, in
-#'   seconds, to let the solver run. Elapsed time is checked once per
-#'   iteration of the while loop; if `time_limit` is reached before the
-#'   solver has converged, the loop is stopped early, a warning is issued,
-#'   and the object is returned in its current, incompletely solved state.
-#' @param seed (Default = 1) The random seed, passed to `set.seed()`, used
-#'   for reproducibility.
+#'   seconds, to let the solver run. Elapsed time is checked once per iteration
+#'   of the while loop, which means that the actual run time may slightly exceed
+#'   the specified limit. If the limit is reached before the solver has
+#'   converged, the loop is terminated early, a warning is issued, and the
+#'   MislabelSolver object is returned in its current, incompletely solved
+#'   state. Note that FOMO will not come anywhere near this time limit for most
+#'   real world data sets, so users generally should not need to modify this.
+#' @param seed The random seed, passed to `set.seed()`, used for
+#'   reproducibility.
 #' @param global_max_genotypes,global_ghost_penalty,global_deletion_penalty
 #'   Passed to [solveGlobalSearch()] as its `max_genotypes`, `ghost_penalty`,
-#'   and `deletion_penalty` arguments respectively (only relevant when
-#'   `"global"` is in `use_solvers`); see that function's documentation for
-#'   what each one controls.
-#' @param local_iter_per_cycle (Default = 1) Passed to whichever of
-#'   [solveLocalSearch()]/[solveLocalSearchOld()] is in use (per
-#'   `use_solvers`) as its `n_iter` argument (only relevant when `"local"`
-#'   or `"local_old"` is in `use_solvers`); see that function's
-#'   documentation for what it controls. Note that, unlike calling
-#'   [solveLocalSearch()] directly, this does not control the *total*
-#'   number of local search iterations solveEnsemble() runs -- it controls
-#'   how many local search iterations run per cycle, i.e. in between each
-#'   round of the other solvers in `use_solvers`. Ignored (with a message)
-#'   if `use_solvers` contains only `"local"`/`"local_old"` and neither
-#'   `"majority"` nor `"global"`, since in that case local search is the
-#'   only thing the ensemble loop does anyway; a large internal default is
-#'   used for `n_iter` instead so the ensemble loop still periodically
-#'   returns control to itself (to check `time_limit`, etc.) without the
-#'   overhead of doing so after every single local search iteration.
+#'   and `deletion_penalty` arguments respectively (only used if `use_solvers`
+#'   includes `"global"`); see that function's documentation for what each one
+#'   controls.
+#' @param local_iter_per_cycle Passed to [solveLocalSearch()] as its `n_iter`
+#'   argument (only used if `use_solvers` includes `"local"`); see that
+#'   function's documentation for what it controls. Note that, unlike calling
+#'   [solveLocalSearch()] directly, this does not control the *total* number of
+#'   local search iterations `solveEnsemble()` runs; it controls how many local
+#'   search iterations run per cycle, i.e. in between each round of the other
+#'   solvers in `use_solvers`. As such, it is ignored if `use_solvers` contains
+#'   only `"local"`.
 #'
-#' @return A MislabelSolver object
+#' @return A MislabelSolver object with all detected correctable mislabeled
+#'   samples relabeled (unless the time limit is reached).
+#'
+#' @seealso [solveMajoritySearch()], [solveGlobalSearch()],
+#'   [solveLocalSearch()], the solvers used in this ensemble algorithm.
 #'
 #' @export
 #'
@@ -835,24 +819,23 @@ solveEnsemble <- function(
     set.seed(seed)
 
     ## If local search is the only solver in use (no "majority" and no
-    ## "global"), nothing else in the outer while loop below does anything
-    ## on any iteration, so there's no benefit to returning control to it
-    ## after only local_iter_per_cycle local search iterations -- doing so
-    ## only adds the outer loop's own per-iteration overhead (the
-    ## identical() comparisons below, mainly) with nothing to show for it.
-    ## Give local search a much larger iteration budget instead in that
-    ## case, regardless of what local_iter_per_cycle was set to.
-    ## Deliberately a large, finite value rather than Inf or
-    ## .Machine$integer.max: the outer loop is still what enforces
-    ## time_limit and emits its own progress messages, and local search
-    ## isn't proven to always converge within a bounded number of
-    ## iterations, so control still needs to come back to the outer loop
-    ## periodically -- aiming for roughly once a minute -- rather than
-    ## potentially running unchecked for a very long time.
+    ## "global"), nothing else in the outer while loop below does anything on
+    ## any iteration, so there's no benefit to returning control to it after
+    ## only local_iter_per_cycle local search iterations -- doing so only adds
+    ## the outer loop's own per-iteration overhead (the identical() comparisons
+    ## below, mainly) with nothing to show for it. Give local search a much
+    ## larger iteration budget instead in that case, regardless of what
+    ## local_iter_per_cycle was set to. Deliberately a large, finite value
+    ## rather than Inf or .Machine$integer.max: the outer loop is still what
+    ## enforces time_limit and emits its own progress messages, and local search
+    ## isn't proven to always converge within a bounded number of iterations, so
+    ## control still needs to come back to the outer loop periodically -- aiming
+    ## for roughly once a minute -- rather than potentially running unchecked
+    ## for a very long time.
     only_local_in_use <- all(use_solvers %in% c("local", "local_old"))
     effective_local_iter_per_cycle <- local_iter_per_cycle
     if (only_local_in_use) {
-        effective_local_iter_per_cycle <- 1000L
+        effective_local_iter_per_cycle <- 100L
         message(
             "'use_solvers' contains only local search; overriding ",
             "'local_iter_per_cycle' (",
@@ -865,16 +848,16 @@ solveEnsemble <- function(
 
     run_global <- "global" %in% use_solvers
 
-    ## Tracks the set of samples available for solveGlobalSearch() to
-    ## analyze (see .global_search_available_samples() in helpers-solve.R)
-    ## as of the last time it actually ran, so it can be skipped below when
-    ## nothing new has become available to it since then -- calling it
-    ## again in that case is guaranteed to be futile: every component it
-    ## would look at now is one it either already fully resolved (and so
-    ## has left the unsolved pool entirely) or already skipped for the
-    ## exact same reason (too large, or more genotypes than subjects) last
-    ## time, and neither of those can change without changing this set.
-    ## Starts empty, before anything has been analyzed.
+    ## Tracks the set of samples available for solveGlobalSearch() to analyze
+    ## (see .global_search_available_samples() in helpers-solve.R) as of the
+    ## last time it actually ran, so it can be skipped below when nothing new
+    ## has become available to it since then -- calling it again in that case is
+    ## guaranteed to be futile: every component it would look at now is one it
+    ## either already fully resolved (and so has left the unsolved pool
+    ## entirely) or already skipped for the exact same reason (too large, or
+    ## more genotypes than subjects) last time, and neither of those can change
+    ## without changing this set. Starts empty, before anything has been
+    ## analyzed.
     global_available_samples <- character(0)
 
     start_time <- Sys.time()
@@ -942,8 +925,7 @@ solveEnsemble <- function(
                 global_available_samples <- current_available_samples
             } else {
                 message(
-                    "Skipping global search: no new samples have become ",
-                    "available to it since it last ran."
+                    "Skipping global search: no new samples have become available to it since it last ran."
                 )
             }
         }

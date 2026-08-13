@@ -10,36 +10,33 @@ solveMajoritySearch(object, unambiguous_only = FALSE)
 \item{object}{A MislabelSolver object}
 
 \item{unambiguous_only}{(Default = FALSE) If TRUE, restrict relabeling to
-only the clearest cases: candidate relabels that would require
-inventing a placeholder ("duplicate that doesn't exist") label or using
-up a ghost (ungenotyped) sample are skipped, as are any samples that
-have more than one possible real relabel target to choose between.
-Anything skipped this way is left for a later solver to attempt
-instead.}
+only the clearest cases. Candidate relabels that would require inventing a
+placeholder ("duplicate that doesn't exist") label or using up a ghost
+(ungenotyped) sample are skipped, as are any samples that have more than
+one possible real relabel target to choose between. Anything skipped this
+way is left for a later solver to attempt instead.}
 }
 \value{
 A MislabelSolver object
 }
 \description{
-This heuristic function locks in a Genotype_Group_ID <-> Subject_ID
-pairing wherever the two agree on who the majority partner is: a
-majority of the samples currently claiming a given Genotype_Group_ID
-must share the same Subject_ID, \emph{and} a majority of the samples
-currently claiming that Subject_ID must share that same
-Genotype_Group_ID. Only pairings satisfying both directions of majority
-agreement are accepted; a Genotype_Group_ID with a clear majority
-Subject_ID that doesn't itself have a majority pointing back to that
-Genotype_Group_ID is left alone for a later solver (e.g.
-\code{\link[=solveGlobalSearch]{solveGlobalSearch()}} or \code{\link[=solveLocalSearch]{solveLocalSearch()}}) to resolve instead.
-Samples that disagree with an accepted pairing are then relabeled to
-match it.
+This heuristic algorithm aims to quickly correct "low-hanging fruit" mislabel
+situations, in which a majority of samples for each subject are labeled
+correctly. First, the algorithm "locks" in a Genotype_Group_ID <-> Subject_ID
+pairing wherever the two agree on who the majority partner is: a majority of
+the samples currently claiming a given Genotype_Group_ID must share the same
+Subject_ID, \emph{and} a majority of the samples currently claiming that
+Subject_ID must share that same Genotype_Group_ID. Samples that disagree with
+a locked pairing are then relabeled to match it.
 }
 \details{
-This is the cheapest and least ambiguous of the solvers -- it never needs
-to search or score alternatives, only count votes -- so
-\code{\link[=solveEnsemble]{solveEnsemble()}} always runs it first (and again after every other
-solver call) to lock in whatever it can before falling back to costlier
-search strategies.
+This is the quickest solver, because it never needs to search or score
+alternatives, only count votes. Conversely, it is the least flexible, so it
+relies on other solvers (\emph{via} \code{\link[=solveEnsemble]{solveEnsemble()}}) to handle the complex cases
+that it cannot.
+
+Use via \code{\link[=solveEnsemble]{solveEnsemble()}} rather than calling this directly, unless you are
+composing your own solver loop.
 }
 \seealso{
 \code{\link[=solveEnsemble]{solveEnsemble()}}, \code{\link[=solveGlobalSearch]{solveGlobalSearch()}}, \code{\link[=solveLocalSearch]{solveLocalSearch()}}

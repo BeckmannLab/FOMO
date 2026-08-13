@@ -14,58 +14,39 @@ solveGlobalSearch(
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{max_genotypes}{(Default = 8) The number of combinations scales in factorial
-with the number of genotypes in the largest connected component.
-The algorithm will skip over all components that exceed this size.}
+\item{max_genotypes}{The number of combinations scales in factorial with the
+number of genotypes in the largest connected component. The algorithm will
+skip over all components that exceed this size.}
 
-\item{ghost_penalty}{(Default = 1.5) The score charged, per sample, for relabeling
-to a ghost (placeholder) sample rather than a real one. The
-ordinary relabel penalty is fixed at 1, since all penalties are
-relative to it. Must be a single positive numeric value; a
-warning is issued if it is not strictly greater than 1, since
-otherwise the algorithm may prefer relabeling to a ghost sample
-even when a valid non-ghost sample swap is already available.}
+\item{ghost_penalty}{The penalty for relabeling one ghost (placeholder)
+sample rather than a real one. Must be positive number. The ghost penalty
+should be strictly greater than 1, since otherwise the algorithm would
+prefer relabeling to a ghost sample even when a valid non-ghost sample swap
+is already available.}
 
-\item{deletion_penalty}{(Default = 4) The score charged, per sample, for a label or
-genotype deletion (giving up on reconciling that sample
-entirely). Must be a single positive numeric value; a warning
-is issued if it is not strictly greater than \emph{both} twice the
-relabel penalty (i.e. 2) and \code{ghost_penalty}, since otherwise
-the algorithm may prefer inserting/deleting samples even when a
-valid non-ghost sample swap, or an available ghost sample, is
-already available -- these are two independent comparisons
-(against a plain swap, and against an available ghost) and
-\code{deletion_penalty} needs to clear both; see the comment above
-\code{.validate_search_penalties()} in \code{helpers-solve.R} for the
-worked examples behind both bars, and why neither -- nor their
-combination -- is a hard guarantee for every possible
-component, just the bar cleared by the simplest, most common
-cases. (This default was doubled from 2 to 4 when a
-double-counting bug was fixed: a single orphaned sample -- e.g.
-one displaced by relabeling another sample to a duplicate of it
--- was previously counted as both a genotype deletion and a
-label deletion and penalized for both, so the default was
-doubled to keep the effective per-sample deletion cost, and
-hence overall solver behavior, unchanged from earlier package
-versions in the common case.)}
+\item{deletion_penalty}{The penalty for a label or genotype deletion (giving
+up on reconciling that sample entirely). Must be a positive number. The
+deletion penalty should be greater than twice the relabel penalty (i.e.
+greater than 2) \emph{and} greater \code{ghost_penalty}, since otherwise the
+algorithm may prefer deleting samples even when a valid non-ghost sample
+swap or ghost sample is already available.}
 }
 \value{
-A MislabelSolver object
+A MislabelSolver object, potentially with some samples relabeled.
 }
 \description{
-This global search function permutes over all combinations of assigning a
-Subject_ID to a Genotype_Group_ID, then picks the assignment that implies
-the fewest number of sample mislabels and deletions. Scores permutations
-efficiently: (1) a component's \emph{locked} genotype columns (already
-resolved before global search reached this component) are constant
-across every permutation, so their score contribution is computed once
-from a single row rather than recomputed on every one of up to 8! =
-40,320 permutation rows; (2) the per-swap-category scoring itself is
-done with named-vector lookups and \code{rowsum()} rather than
-\code{left_join()}/\code{group_by()}/\code{summarize()}, since profiling showed cost
-dominated by join/data-mask overhead rather than the arithmetic itself.
+This global search function permutes over all possible assignments of
+Subject_IDs to Genotype_Group_IDs, then picks the assignment that implies the
+fewest number of sample mislabels and deletions. As such, it is guaranteed to
+find the optimal assignment given the selected scoring penalties. However,
+since the running time is factorial in the number of genotype groups, it is
+limited to only small connected components (by default, those involving no
+more than 8 genotype groups).
 }
 \details{
-Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local"))} rather than calling this directly,
-unless you are composing your own solver loop.
+When choosing penalty values, keep in mind that the penalty for a relabeled
+normal sample is always 1, and the other penalties are set relative to this.
+
+Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local"))} rather than calling this directly, unless you are composing your
+own solver loop.
 }

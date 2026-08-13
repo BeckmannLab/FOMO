@@ -18,54 +18,58 @@ solveEnsemble(
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{use_solvers}{(Default = \code{c("majority", "global", "local")}) A
-character vector giving the subset of single-method solvers to run on
-each iteration of the ensemble loop. Must be a non-empty subset of
-\code{"majority"}, \code{"global"}, \code{"local"}, and \code{"local_old"}. Any solver left
-out of \code{use_solvers} is skipped entirely. For example, setting
-\code{use_solvers} to \code{c("global", "majority")} will skip local search.
-\code{"local"} is \code{\link[=solveLocalSearch]{solveLocalSearch()}}, the standard local search algorithm;
-\code{"local_old"} is \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, the original algorithm it
-replaced as the default. The two are alternative implementations of
-the same step and cannot both be requested at once: \code{\link[=solveLocalSearch]{solveLocalSearch()}}
-is only extremely close (not bit-exact) to \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} --
-see \code{\link[=solveLocalSearch]{solveLocalSearch()}} for why that distinction exists -- so use
-\code{"local_old"} if you need results that exactly match it.}
+\item{use_solvers}{(Default = \code{c("majority", "global", "local")}) A character
+vector giving the subset of single-method solvers to run on each iteration
+of the ensemble loop. Must be a non-empty subset of \code{"majority"},
+\code{"global"}, \code{"local"}, and \code{"local_old"}. Any solver left out of
+\code{use_solvers} is skipped entirely. For example, setting \code{use_solvers} to
+\code{c("global", "majority")} will skip local search. \code{"local"} is
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}, the standard local search algorithm; \code{"local_old"} is
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, the original algorithm it replaced as the default.
+The two are alternative implementations of the same step and cannot both be
+requested at once: \code{\link[=solveLocalSearch]{solveLocalSearch()}} is only extremely close (not
+bit-exact) to \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} -- see \code{\link[=solveLocalSearch]{solveLocalSearch()}} for why
+that distinction exists -- so use \code{"local_old"} if you need results that
+exactly match it.}
 
 \item{time_limit}{(Default = 7200, i.e. 2 hours) The maximum time, in
-seconds, to let the solver run. Elapsed time is checked once per
-iteration of the while loop; if \code{time_limit} is reached before the
-solver has converged, the loop is stopped early, a warning is issued,
-and the object is returned in its current, incompletely solved state.}
+seconds, to let the solver run. Elapsed time is checked once per iteration
+of the while loop; if \code{time_limit} is reached before the solver has
+converged, the loop is stopped early, a warning is issued, and the object
+is returned in its current, incompletely solved state.}
 
-\item{seed}{(Default = 1) The random seed, passed to \code{set.seed()}, used
-for reproducibility.}
+\item{seed}{(Default = 1) The random seed, passed to \code{set.seed()}, used for
+reproducibility.}
 
 \item{global_max_genotypes, global_ghost_penalty, global_deletion_penalty}{Passed to \code{\link[=solveGlobalSearch]{solveGlobalSearch()}} as its \code{max_genotypes}, \code{ghost_penalty},
 and \code{deletion_penalty} arguments respectively (only relevant when
-\code{"global"} is in \code{use_solvers}); see that function's documentation for
-what each one controls.}
+\code{"global"} is in \code{use_solvers}); see that function's documentation for what
+each one controls.}
 
 \item{local_iter_per_cycle}{(Default = 1) Passed to whichever of
-\code{\link[=solveLocalSearch]{solveLocalSearch()}}/\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} is in use (per
-\code{use_solvers}) as its \code{n_iter} argument (only relevant when \code{"local"}
-or \code{"local_old"} is in \code{use_solvers}); see that function's
-documentation for what it controls. Note that, unlike calling
-\code{\link[=solveLocalSearch]{solveLocalSearch()}} directly, this does not control the \emph{total}
-number of local search iterations solveEnsemble() runs -- it controls
-how many local search iterations run per cycle, i.e. in between each
-round of the other solvers in \code{use_solvers}. Ignored (with a message)
-if \code{use_solvers} contains only \code{"local"}/\code{"local_old"} and neither
-\code{"majority"} nor \code{"global"}, since in that case local search is the
-only thing the ensemble loop does anyway; a large internal default is
-used for \code{n_iter} instead so the ensemble loop still periodically
-returns control to itself (to check \code{time_limit}, etc.) without the
-overhead of doing so after every single local search iteration.}
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}/\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} is in use (per \code{use_solvers})
+as its \code{n_iter} argument (only relevant when \code{"local"} or \code{"local_old"} is
+in \code{use_solvers}); see that function's documentation for what it controls.
+Note that, unlike calling \code{\link[=solveLocalSearch]{solveLocalSearch()}} directly, this does not
+control the \emph{total} number of local search iterations solveEnsemble() runs
+-- it controls how many local search iterations run per cycle, i.e. in
+between each round of the other solvers in \code{use_solvers}. Ignored (with a
+message) if \code{use_solvers} contains only \code{"local"}/\code{"local_old"} and neither
+\code{"majority"} nor \code{"global"}, since in that case local search is the only
+thing the ensemble loop does anyway; a large internal default is used for
+\code{n_iter} instead so the ensemble loop still periodically returns control to
+itself (to check \code{time_limit}, etc.) without the overhead of doing so after
+every single local search iteration.}
 }
 \value{
-A MislabelSolver object
+A MislabelSolver object with all detected mislabeled samples
+relabeled.
 }
 \description{
-This ensemble solver uses a combination of majority-search heuristic,
-global search, and local search to identify and correct mislabels
+This ensemble solver uses a combination of majority-search heuristic, global
+search, and local search to identify and correct mislabels
+}
+\seealso{
+\code{\link[=solveMajoritySearch]{solveMajoritySearch()}}, \code{\link[=solveGlobalSearch]{solveGlobalSearch()}},
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}, the solvers used in this ensemble algorithm.
 }

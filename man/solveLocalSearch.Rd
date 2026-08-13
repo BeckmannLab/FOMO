@@ -15,57 +15,49 @@ solveLocalSearch(
 \item{object}{A MislabelSolver object}
 
 \item{n_iter}{(Default = 1) The number of hill-climbing iterations to run
-within this single call. Each iteration recomputes candidate swaps from
-the current (possibly already-updated, by an earlier iteration in this
-same call) state, and applies the single best non-conflicting swap per
-connected component. This returns early, before using up every
-requested iteration, only once every sample becomes solved -- if some
-samples remain unsolved but no further improving swap exists for them,
-the remaining iterations still run (each cheaply re-discovering that
-there is nothing left to do) rather than being skipped.}
+within this single call. Each iteration recomputes candidate swaps from the
+current (possibly already-updated, by an earlier iteration in this same
+call) state, and applies the single best non-conflicting swap per connected
+component. This returns early, before using up every requested iteration,
+only once every sample becomes solved, or no further entropy-improving
+swaps can be found.}
 
-\item{include_ghost}{(Default = FALSE) If TRUE, allow swaps to include ghost samples}
+\item{include_ghost}{(Default = FALSE) If TRUE, allow swaps to include ghost
+samples}
 
-\item{filter_concordant_vertices}{(Default = FALSE) If TRUE, filter out samples
-with at least one concordant edge}
+\item{filter_concordant_vertices}{(Default = FALSE) If TRUE, filter out
+samples with at least one concordant edge. This reduces the search space
+but misses cases where multiple pairs of samples are swapped between the
+same subjects.}
 }
 \value{
-A MislabelSolver object
+A MislabelSolver object, potentially with some samples relabeled.
 }
 \description{
 This search function looks through all possible swaps of 2 samples, and
-selects the swap that minimizes the sum of within-genotype entropies.
-Evaluates each candidate swap's entropy delta with a closed-form update
-instead of rebuilding and rescanning the full vote vector for the
-affected genotype(s); see \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, which does the
-latter and whose cost scales with the width of the votes table -- one
-column per distinct \code{Subject_ID} across the \emph{whole} unsolved dataset,
-not just the candidate swap's own component -- so the speedup from
-avoiding that rescan grows with dataset size: 9-380x faster than
-\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} on synthetic components ranging from 60 to
-3,000 candidate subjects in testing.
+selects the swap that minimizes the sum of within-genotype entropies within
+each connected component of the mislabel network. Each iteration relabels up
+to one pair of samples within each component.
 }
 \details{
-The closed-form update is algebraically exact (an exact rearrangement of
-\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}'s entropy formula, true under infinite-precision
-arithmetic), but it is not a bit-exact re-derivation of it, because it
-evaluates \code{log()} on different arguments than the original (see the
-comment above \code{.calc_swapped_delta_entropy_fast()} in \code{helpers-solve.R}
-for the full explanation). In practice this means entropy deltas from the
-two functions typically agree to about 1e-9 or tighter, not to the last
-bit. That is inconsequential on its own, but because \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}
-selects a single best swap per component via \code{delta == max(delta)}, a
-difference this small can occasionally change which swap wins a near-tie
--- so on rare inputs, this function's swap selections (and hence its
-output) can differ slightly from \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}'s, even though
-both are picking from among equally-good (or all but indistinguishably
-good) options. If you need results that exactly match
-\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, use that function instead.
+Each candidate swap's entropy delta is evaluated with a closed-form update.
+The old, much slower algorithm, which rebuilds and rescans the full vote
+vector for the affected genotype(s), is still available in
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}. The new algorithm is 9-380x faster on synthetic
+components ranging from 60 to 3,000 candidate subjects in testing.
 
-Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local"))} rather than calling this directly, unless you are
+The closed-form update is algebraically equivalent to
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}'s entropy formula, but it can produce numerically
+different resuts due to the finite presicion of floating point numbers.
+Generally the difference is less than 1e-9. This can cause the two functions
+to choose different "best" swaps when two or more candidates are tied or
+nearly tied. If you need results that exactly match \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}},
+use that function instead.
+
+Use via \code{\link[=solveEnsemble]{solveEnsemble()}} rather than calling this directly, unless you are
 composing your own solver loop.
 }
 \seealso{
 \code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}}, the original (exact) version of this
-algorithm, retained for cases needing bit-exact reproducibility.
+algorithm, retained for cases needing bit-exact reproducibility
 }

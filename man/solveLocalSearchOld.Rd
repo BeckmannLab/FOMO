@@ -15,34 +15,34 @@ solveLocalSearchOld(
 \item{object}{A MislabelSolver object}
 
 \item{n_iter}{(Default = 1) The number of hill-climbing iterations to run
-within this single call. Each iteration recomputes candidate swaps from
-the current (possibly already-updated, by an earlier iteration in this
-same call) state, and applies the single best non-conflicting swap per
-connected component. This returns early, before using up every
-requested iteration, only once every sample becomes solved -- if some
-samples remain unsolved but no further improving swap exists for them,
-the remaining iterations still run (each cheaply re-discovering that
-there is nothing left to do) rather than being skipped.}
+within this single call. Each iteration recomputes candidate swaps from the
+current (possibly already-updated, by an earlier iteration in this same
+call) state, and applies the single best non-conflicting swap per connected
+component. This returns early, before using up every requested iteration,
+only once every sample becomes solved, or no further entropy-improving
+swaps can be found.}
 
-\item{include_ghost}{(Default = FALSE) If TRUE, allow swaps to include ghost samples}
+\item{include_ghost}{(Default = FALSE) If TRUE, allow swaps to include ghost
+samples}
 
-\item{filter_concordant_vertices}{(Default = FALSE) If TRUE, filter out samples
-with at least one concordant edge}
+\item{filter_concordant_vertices}{(Default = FALSE) If TRUE, filter out
+samples with at least one concordant edge. This reduces the search space
+but misses cases where multiple pairs of samples are swapped between the
+same subjects.}
 }
 \value{
-A MislabelSolver object
+A MislabelSolver object, potentially with some samples relabeled.
 }
 \description{
-This search function looks through all possible swaps of 2 samples, and selects
-the swap that minimizes the sum of within-genotype entropies.
+This search function looks through all possible swaps of 2 samples, and
+selects the swap that minimizes the sum of within-genotype entropies.
 }
 \details{
-This is the original local search algorithm. It is no longer the
-default -- \code{\link[=solveLocalSearch]{solveLocalSearch()}} now is -- because its closed-form
-entropy update is not always bit-exact and can therefore occasionally
-select a different swap than this function on a near-tie (see
-\code{\link[=solveLocalSearch]{solveLocalSearch()}} for the full explanation). Use this version if you
-need results that are guaranteed identical to this exact algorithm.
+This is the original local search algorithm. It is superseded by
+\code{\link[=solveLocalSearch]{solveLocalSearch()}}, which implements an optimized version of the same
+algorithm. The new algorithm is algebraically but not numerically equivalent,
+so the old algorithm is still provided. It should only be used if you need to
+reproduce results generated using the old algorithm.
 }
 \seealso{
 \code{\link[=solveLocalSearch]{solveLocalSearch()}}, the standard (faster) version of this
