@@ -89,19 +89,19 @@ collateOutput <- function(object) {
             ),
             Mislabeled = .data$Init_Sample_ID != .data$Proposed_Final_Sample_ID,
             ## Which solver step resolved this sample: "majority", "global",
-            ## "local"/"local_old", or "initial" if it was
-            ## already resolved at construction time (e.g. a singleton
-            ## component, or anchor_samples), before any solver ran. NA if
-            ## still unsolved (only possible if solveEnsemble() hit its
-            ## time_limit before converging).
+            ## "local"/"local_old", or "initial" if it was already resolved at
+            ## construction time (e.g. a singleton component, or
+            ## anchor_samples), before any solver ran. NA if still unsolved
+            ## (only possible if solveEnsemble() hit its time_limit before
+            ## converging). TODO I think this comment may be inaccurate.
             .data$Solved_By,
-            ## Which solver most recently changed this sample's label,
-            ## updated every time a relabel happens (unlike Solved_By, which
-            ## is set once, permanently, the moment a component is solved).
-            ## NA if the sample was never relabeled. Can still be non-NA
-            ## even when Init_Sample_ID == Proposed_Final_Sample_ID, in the
-            ## rare case where a later solver reverts an earlier relabel
-            ## back to the original label -- that's expected, not a bug.
+            ## Which solver most recently changed this sample's label, updated
+            ## every time a relabel happens (unlike Solved_By, which is set
+            ## once, permanently, the moment a component is solved). NA if the
+            ## sample was never relabeled. Can still be non-NA even when
+            ## Init_Sample_ID == Proposed_Final_Sample_ID, in the rare case
+            ## where a later solver reverts an earlier relabel back to the
+            ## original label -- that's expected, not a bug.
             .data$Relabeled_By,
             Selected_For_Review = case_when(
                 .data$Ghost & .data$Mislabeled ~ "ghost_relabeled",
