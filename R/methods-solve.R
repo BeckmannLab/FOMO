@@ -818,31 +818,27 @@ solveEnsemble <- function(
 
     set.seed(seed)
 
-    ## If local search is the only solver in use (no "majority" and no
-    ## "global"), nothing else in the outer while loop below does anything on
-    ## any iteration, so there's no benefit to returning control to it after
-    ## only local_iter_per_cycle local search iterations -- doing so only adds
-    ## the outer loop's own per-iteration overhead (the identical() comparisons
-    ## below, mainly) with nothing to show for it. Give local search a much
-    ## larger iteration budget instead in that case, regardless of what
-    ## local_iter_per_cycle was set to. Deliberately a large, finite value
-    ## rather than Inf or .Machine$integer.max: the outer loop is still what
-    ## enforces time_limit and emits its own progress messages, and local search
-    ## isn't proven to always converge within a bounded number of iterations, so
-    ## control still needs to come back to the outer loop periodically -- aiming
-    ## for roughly once a minute -- rather than potentially running unchecked
-    ## for a very long time.
+    ## If local search is the only solver in use, then the outer while loop no
+    ## longer alternates between solvers, and its only purpose is to enforce the
+    ## time limit. Otherwise, returning control to the outer loop only adds
+    ## additional overhead. As such, in this situation we ignore the specfied
+    ## local_iter_per_cycle and instead set it to a large value (unless the
+    ## caller already specfied an even larger value.)
     only_local_in_use <- all(use_solvers %in% c("local", "local_old"))
     effective_local_iter_per_cycle <- local_iter_per_cycle
-    if (only_local_in_use) {
-        effective_local_iter_per_cycle <- 100L
+    accelerated_local_iter_per_cycle <- 100L
+    if (
+        only_local_in_use &&
+            effective_local_iter_per_cycle < accelerated_local_iter_per_cycle
+    ) {
+        effective_local_iter_per_cycle <- accelerated_local_iter_per_cycle
         message(
             "'use_solvers' contains only local search; overriding ",
             "'local_iter_per_cycle' (",
             local_iter_per_cycle,
             ") with ",
             effective_local_iter_per_cycle,
-            " for this solveEnsemble() call."
+            "."
         )
     }
 
