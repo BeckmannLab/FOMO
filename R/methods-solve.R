@@ -857,7 +857,7 @@ solveEnsemble <- function(
     time_limit_exceeded <- FALSE
     while (TRUE) {
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            ## Everything has already been resolved; nothing left to solve.
+            message("All components fully solved. Stopping.")
             break
         }
         if (
@@ -971,6 +971,9 @@ solveEnsemble <- function(
                 ## data is byte-for-byte unchanged from before this
                 ## iteration ran), so further iterations would loop forever
                 ## without converging any further; stop here.
+                message(
+                    "Stopping because the solver has converged. Some samples may remain unsolved."
+                )
                 break
             }
         }
@@ -983,14 +986,18 @@ solveEnsemble <- function(
         run_global &&
             !time_limit_exceeded &&
             # Skip if everything is already solved
-            nrow(object@.solve_state$unsolved_relabel_data) == 0
+            nrow(object@.solve_state$unsolved_relabel_data) > 0
     ) {
+        message("Running final global search")
         object <- solveGlobalSearch(
             object,
             max_genotypes = global_max_genotypes,
             ghost_penalty = global_ghost_penalty,
             deletion_penalty = global_deletion_penalty
         )
+        if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+            message("All components fully solved after final global search.")
+        }
     }
 
     ## After the solve, check if cycles can be broken down
