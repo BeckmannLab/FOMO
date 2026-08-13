@@ -129,7 +129,10 @@ setMethod(
         label_domains = NULL,
         anchor_samples = character(0)
     ) {
-        assert_that(is.data.frame(sample_metadata))
+        assert_that(
+            is.data.frame(sample_metadata),
+            all(c("Sample_ID", "Subject_ID") %in% colnames(sample_metadata))
+        )
         ## Sort deterministically by Sample_ID, so that construction (and
         ## everything derived from it -- relabel_data's row order, and the
         ## placeholder IDs generated just below) does not depend on the row
@@ -141,7 +144,10 @@ setMethod(
         ]
         rownames(sample_metadata) <- NULL
         if (!is.null(label_domains)) {
-            assert_that(is.data.frame(label_domains))
+            assert_that(
+                is.data.frame(label_domains),
+                all(c("Sample_ID", "Label_Domain") %in% colnames(label_domains))
+            )
             label_domains <- label_domains[
                 order(label_domains$Sample_ID),
                 ,
