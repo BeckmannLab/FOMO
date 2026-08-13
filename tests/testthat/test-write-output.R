@@ -9,7 +9,7 @@ test_that("writeOutput() actually succeeds and produces a non-empty .xlsx file",
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     solved <- suppressMessages(solveEnsemble(x))
 
@@ -23,7 +23,7 @@ test_that("writeOutput() also accepts the result of collateOutput() directly", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     solved <- suppressMessages(solveEnsemble(x))
     collated <- collateOutput(solved)

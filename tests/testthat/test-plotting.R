@@ -8,7 +8,7 @@ test_that("plot() runs without error for unsolved and solved views", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     expect_no_error(plot(x, unsolved = TRUE))
     expect_no_error(plot(x, unsolved = FALSE))
@@ -18,7 +18,7 @@ test_that("plot() runs without error with collapse_samples = TRUE", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     expect_no_error(plot(x, unsolved = FALSE, collapse_samples = TRUE))
 })
@@ -27,7 +27,7 @@ test_that("plot() runs without error when queried by each supported field", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     expect_no_error(plot(
         x,
@@ -59,7 +59,7 @@ test_that("plotCorrections() runs without error, with and without a query", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     solved <- suppressMessages(solveEnsemble(x))
     expect_no_error(plotCorrections(solved))

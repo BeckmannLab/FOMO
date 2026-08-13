@@ -42,6 +42,7 @@
 #'
 #' @seealso [writeOutput()]
 collateOutput <- function(object) {
+    object <- fixup_MislabelSolver(object)
     sample_summary <- object@.solve_state$relabel_data |>
         group_by(.data$Genotype_Group_ID, .data$Init_Subject_ID) |>
         mutate(n_agree = n()) |>
@@ -57,7 +58,7 @@ collateOutput <- function(object) {
         transmute(
             Component_ID = .data$Init_Component_ID,
             .data$Genotype_Group_ID,
-            .data$SwapCat_ID,
+            .data$Label_Domain,
             Ghost = is.na(.data$Genotype_Group_ID),
             .data$Init_Subject_ID,
             .data$Init_Sample_ID,
@@ -130,12 +131,11 @@ collateOutput <- function(object) {
             .data$Proposed_Final_Sample_ID
         )
 
-    ## Mislabeled samples in the same genotype group
-    ## with identical swappable categories are
-    ## are ambiguities for one another
+    ## Mislabeled samples in the same genotype group with identical
+    ## label domains are are ambiguities for one another
     ambiguity_summary <- sample_summary |>
         filter(.data$Init_Subject_ID != .data$Inferred_Subject_ID) |>
-        group_by(.data$Genotype_Group_ID, .data$SwapCat_ID) |>
+        group_by(.data$Genotype_Group_ID, .data$Label_Domain) |>
         mutate(
             n_LABELNOTFOUND = sum(str_detect(
                 .data$Proposed_Final_Sample_ID,
@@ -148,14 +148,14 @@ collateOutput <- function(object) {
     ambiguity_summary$All_Valid_Sample_IDs <- NA_character_
     for (i in seq_len(nrow(ambiguity_summary))) {
         genotype_group_id <- ambiguity_summary$Genotype_Group_ID[i]
-        swap_cat_id <- ambiguity_summary$SwapCat_ID[i]
+        label_domain_id <- ambiguity_summary$Label_Domain[i]
         inferred_subject_id <- ambiguity_summary$Inferred_Subject_ID[i]
         has_LABELNOTFOUND <- ambiguity_summary$has_LABELNOTFOUND_Solution[i]
         sample_ambiguities <- ambiguity_summary |>
             filter(
                 .data$Genotype_Group_ID != genotype_group_id,
                 .data$Init_Subject_ID == inferred_subject_id,
-                .data$SwapCat_ID == swap_cat_id
+                .data$Label_Domain == label_domain_id
             ) |>
             pull(.data$Init_Sample_ID)
         if (has_LABELNOTFOUND) {
@@ -164,7 +164,7 @@ collateOutput <- function(object) {
                 str_c(
                     LABEL_NOT_FOUND,
                     inferred_subject_id,
-                    swap_cat_id,
+                    label_domain_id,
                     collapse = "#"
                 )
             )
@@ -285,7 +285,7 @@ collateOutput <- function(object) {
         select(
             Connected_Component_ID = "Component_ID",
             "Genotype_Group_ID",
-            "SwapCat_ID",
+            "Label_Domain",
             Is_Ghost = "Ghost",
             Initial_Subject_ID = "Init_Subject_ID",
             Initial_Sample_ID = "Init_Sample_ID",

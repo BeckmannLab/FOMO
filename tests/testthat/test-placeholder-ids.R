@@ -2,11 +2,11 @@ test_that("placeholder IDs for unresolvable samples are reproducible for the sam
     scenario <- toy_deficit_scenario()
     x1 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     x2 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     putative_subjects <- data.frame(
         Genotype_Group_ID = c("G1", "G2"),
@@ -35,11 +35,11 @@ test_that("placeholder IDs do not depend on input row order", {
     shuffled <- toy_deficit_scenario(shuffle = TRUE)
     x1 <- MislabelSolver(
         sample_metadata = ordered$sample_metadata,
-        swap_cats = ordered$swap_cats
+        label_domains = ordered$label_domains
     )
     x2 <- MislabelSolver(
         sample_metadata = shuffled$sample_metadata,
-        swap_cats = shuffled$swap_cats
+        label_domains = shuffled$label_domains
     )
     putative_subjects <- data.frame(
         Genotype_Group_ID = c("G1", "G2"),
@@ -73,11 +73,11 @@ test_that("placeholder IDs differ for genuinely different input", {
     scenario2 <- toy_deficit_scenario(ids = c("sampleA", "sampleB", "sampleC"))
     x1 <- MislabelSolver(
         sample_metadata = scenario1$sample_metadata,
-        swap_cats = scenario1$swap_cats
+        label_domains = scenario1$label_domains
     )
     x2 <- MislabelSolver(
         sample_metadata = scenario2$sample_metadata,
-        swap_cats = scenario2$swap_cats
+        label_domains = scenario2$label_domains
     )
     putative_subjects <- data.frame(
         Genotype_Group_ID = c("G1", "G2"),
@@ -107,7 +107,7 @@ test_that("constructing a MislabelSolver does not disturb the caller's RNG strea
     set.seed(999)
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     actual_after <- runif(3)
 

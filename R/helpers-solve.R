@@ -334,8 +334,8 @@
             "Relabeled_By",
             "Is_Ghost",
             "Is_Anchor",
-            "SwapCat_ID",
-            "SwapCat_Shape",
+            "Label_Domain",
+            "Label_Domain_Shape",
             "vertex_size_scalar",
             "Placeholder_ID"
         )
@@ -440,7 +440,7 @@
             group_by(
                 .data$Subject_ID,
                 .data$Genotype_Group_ID,
-                .data$SwapCat_ID
+                .data$Label_Domain
             ) |>
             mutate(
                 count = n(),
@@ -448,7 +448,7 @@
                 Is_Ghost = FALSE,
                 Is_Anchor = any(.data$Is_Anchor),
                 ## Include Genotype_Group_ID in the synthetic label so that two
-                ## different groups that happen to share Subject_ID, SwapCat_ID,
+                ## different groups that happen to share Subject_ID, Label_Domain,
                 ## and collapsed size don't collapse to the same vertex name
                 ## (which igraph rejects with "Duplicate vertex names").
                 Sample_ID = if_else(
@@ -458,7 +458,7 @@
                         paste(.data$count, "samples"),
                         .data$Subject_ID,
                         .data$Genotype_Group_ID,
-                        .data$SwapCat_ID,
+                        .data$Label_Domain,
                         sep = "\n"
                     )
                 )
@@ -467,8 +467,8 @@
                 "Sample_ID",
                 "Subject_ID",
                 "Genotype_Group_ID",
-                "SwapCat_ID",
-                "SwapCat_Shape",
+                "Label_Domain",
+                "Label_Domain_Shape",
                 "count",
                 "vertex_size_scalar",
                 "Is_Ghost",
@@ -485,7 +485,7 @@
                 group_by(
                     .data$Subject_ID,
                     .data$Genotype_Group_ID,
-                    .data$SwapCat_ID
+                    .data$Label_Domain
                 ) |>
                 mutate(
                     count = n(),
@@ -498,7 +498,7 @@
                         paste(
                             paste(.data$count, "samples"),
                             .data$Subject_ID,
-                            .data$SwapCat_ID,
+                            .data$Label_Domain,
                             sep = "\n"
                         )
                     )
@@ -507,8 +507,8 @@
                     "Sample_ID",
                     "Subject_ID",
                     "Genotype_Group_ID",
-                    "SwapCat_ID",
-                    "SwapCat_Shape",
+                    "Label_Domain",
+                    "Label_Domain_Shape",
                     "count",
                     "vertex_size_scalar",
                     "Is_Ghost",
@@ -582,7 +582,7 @@
     ## Specify vertex and edge attributes for plotting
     vertex_shapes <- data.frame(Sample_ID = names(V(graph))) |>
         left_join(all_data, by = "Sample_ID") |>
-        pull(.data$SwapCat_Shape)
+        pull(.data$Label_Domain_Shape)
     vertex_size_scalars <- data.frame(Sample_ID = names(V(graph))) |>
         left_join(all_data, by = "Sample_ID") |>
         pull(.data$vertex_size_scalar)
@@ -796,36 +796,36 @@
         return(relabels)
     }
 
-    ## Every mislabeled sample with the same genotype and same swappable category
-    ## must also have the same potential relabels. We search for relabels at
-    ## at the SwapCat_ID/Genotype_Group_ID level
-    mislabeled_genotype_swapcats <- mislabel_data |>
-        select("SwapCat_ID", "Genotype_Group_ID") |>
+    ## Every mislabeled sample with the same genotype and same label
+    ## domain must also have the same potential relabels. We search
+    ## for relabels at at the Label_Domain/Genotype_Group_ID level
+    mislabeled_genotype_label_domains <- mislabel_data |>
+        select("Label_Domain", "Genotype_Group_ID") |>
         distinct() |>
         left_join(putative_subjects, by = "Genotype_Group_ID")
 
     directed_edge_mats <- vector(
         "list",
-        length = nrow(mislabeled_genotype_swapcats)
+        length = nrow(mislabeled_genotype_label_domains)
     )
 
     all_ghost_labels <- character(0)
     all_unknown_labels <- character(0)
 
-    ## Iterate over all SwapCat_ID/Genotype_Group_ID pairs and search for
+    ## Iterate over all Label_Domain/Genotype_Group_ID pairs and search for
     ## potential relabels
-    for (i in seq_len(nrow(mislabeled_genotype_swapcats))) {
-        swap_cat_id <- mislabeled_genotype_swapcats[i, "SwapCat_ID"]
-        genotype_group_id <- mislabeled_genotype_swapcats[
+    for (i in seq_len(nrow(mislabeled_genotype_label_domains))) {
+        label_domain_id <- mislabeled_genotype_label_domains[i, "Label_Domain"]
+        genotype_group_id <- mislabeled_genotype_label_domains[
             i,
             "Genotype_Group_ID"
         ]
-        subject_id <- mislabeled_genotype_swapcats[i, "Subject_ID"]
+        subject_id <- mislabeled_genotype_label_domains[i, "Subject_ID"]
 
-        ## These are all the mislabeled samples for a SwapCat_ID/Genotype_Group_ID pair
+        ## These are all the mislabeled samples for a Label_Domain/Genotype_Group_ID pair
         mislabeled_subset <- mislabel_data |>
             filter(
-                .data$SwapCat_ID == swap_cat_id,
+                .data$Label_Domain == label_domain_id,
                 .data$Genotype_Group_ID == genotype_group_id
             )
         mislabeled_samples <- mislabeled_subset |> pull(.data$Sample_ID)
@@ -834,7 +834,7 @@
         ## The eligible relabels have the putative Subject_ID but are in a different Genotype_Group
         eligible_labels <- unsolved_relabel_data |>
             filter(
-                .data$SwapCat_ID == swap_cat_id,
+                .data$Label_Domain == label_domain_id,
                 .data$Subject_ID == subject_id,
                 .data$Genotype_Group_ID != genotype_group_id
             ) |>
@@ -849,7 +849,7 @@
         if (allow_ghosts && n_label_deficit > 0) {
             ghost_labels <- unsolved_ghost_data |>
                 filter(
-                    .data$SwapCat_ID == swap_cat_id,
+                    .data$Label_Domain == label_domain_id,
                     .data$Subject_ID == subject_id
                 ) |>
                 pull(.data$Sample_ID)
@@ -885,7 +885,7 @@
                 "#",
                 subject_id,
                 "#",
-                swap_cat_id,
+                label_domain_id,
                 "#",
                 chosen_placeholder_ids
             )
@@ -1034,7 +1034,8 @@
     unsolved_all_data <- rbind(unsolved_relabel_data, unsolved_ghost_data)
     putative_subjects <- object@.solve_state$putative_subjects
 
-    ## Criteria 1:  filter only pairs of vertices that are within at exactly 2 edges of each other
+    ## Criteria 1: filter only pairs of vertices that are within at
+    ## exactly 2 edges of each other
     adj_matrix_sparse <- Matrix(as_adjacency_matrix(combined_graph, sparse = TRUE))
     adj_matrix_idx <- Matrix::which(adj_matrix_sparse > 0, arr.ind = TRUE)
     dist_within_2_sparse <- adj_matrix_sparse %*% adj_matrix_sparse
@@ -1065,26 +1066,28 @@
         by = c("Sample_A", "Sample_B")
     )
 
-    ## Criteria 2: filter out pairs of vertices that include elements in anchor_samples
+    ## Criteria 2: filter out pairs of vertices that include elements
+    ## in anchor_samples
     unique_pairs <- unique_pairs[
         !(unique_pairs$Sample_A %in%
             object@anchor_samples |
             unique_pairs$Sample_B %in% object@anchor_samples),
     ]
 
-    ## Criteria 3: filter only pairs of vertices that are within the same swap category
+    ## Criteria 3: filter only pairs of vertices that are within the
+    ## same label domain
     unique_pairs <- unique_pairs |>
         left_join(
-            unsolved_all_data[, c("Sample_ID", "SwapCat_ID")],
+            unsolved_all_data[, c("Sample_ID", "Label_Domain")],
             by = c("Sample_A" = "Sample_ID")
         ) |>
-        rename("SwapCat_A" = "SwapCat_ID") |>
+        rename("Label_Domain_A" = "Label_Domain") |>
         left_join(
-            unsolved_all_data[, c("Sample_ID", "SwapCat_ID")],
+            unsolved_all_data[, c("Sample_ID", "Label_Domain")],
             by = c("Sample_B" = "Sample_ID")
         ) |>
-        rename("SwapCat_B" = "SwapCat_ID") |>
-        filter(.data$SwapCat_A == .data$SwapCat_B) |>
+        rename("Label_Domain_B" = "Label_Domain") |>
+        filter(.data$Label_Domain_A == .data$Label_Domain_B) |>
         select("Sample_A", "Sample_B")
 
     ## Criteria 4: filter out vertices that have at least 1 concordant edge
@@ -1344,7 +1347,7 @@
 ## but those multiply the *same* exact integer by the *same* penalty value
 ## passed to both functions, combined via the identical left-to-right
 ## `a + b + c` expression and the identical across-swap-category accumulation
-## order (both loop over cc_swap_cat_ids, derived the same way from the same
+## order (both loop over cc_label_domain_ids, derived the same way from the same
 ## input, and accumulate via `permutation_stats <- permutation_stats + ...`)
 ## -- so there is no step anywhere in either function where the same
 ## arithmetic operation is ever applied to different operands, or the same
@@ -1362,7 +1365,7 @@
     perm_genotypes,
     free_genotypes,
     locked_genotypes,
-    cc_swap_cat_ids,
+    cc_label_domain_ids,
     label_counts,
     ghost_label_counts,
     genotype_counts,
@@ -1428,25 +1431,25 @@
         dimnames = list(permutation_ids, c(sum_cols, "perm_score"))
     )
 
-    for (swap_cat_id in cc_swap_cat_ids) {
+    for (label_domain_id in cc_label_domain_ids) {
         v_label <- vec_lookup(
-            label_counts[label_counts$SwapCat_ID == swap_cat_id, ],
+            label_counts[label_counts$Label_Domain == label_domain_id, ],
             "Subject_ID",
             "n_labels"
         )
         v_ghost <- vec_lookup(
-            ghost_label_counts[ghost_label_counts$SwapCat_ID == swap_cat_id, ],
+            ghost_label_counts[ghost_label_counts$Label_Domain == label_domain_id, ],
             "Subject_ID",
             "n_ghost_labels"
         )
         v_geno <- vec_lookup(
-            genotype_counts[genotype_counts$SwapCat_ID == swap_cat_id, ],
+            genotype_counts[genotype_counts$Label_Domain == label_domain_id, ],
             "Genotype_Group_ID",
             "n_in_genotype"
         )
         v_conc <- vec_lookup(
             genotype_subject_concordant_counts[
-                genotype_subject_concordant_counts$SwapCat_ID == swap_cat_id,
+                genotype_subject_concordant_counts$Label_Domain == label_domain_id,
             ],
             c("Subject_ID", "Genotype_Group_ID"),
             "n_samples_correct"
@@ -1518,7 +1521,7 @@
             ghost_penalty * total[, "n_samples_to_relabel_ghost"] +
             deletion_penalty *
                 pmax(n_genotype_deletions, total[, "n_label_deletions"])
-        swap_cat_total <- cbind(
+        label_domain_total <- cbind(
             n_samples_correct = total[, "n_samples_correct"],
             n_samples_to_relabel,
             n_samples_to_relabel_ghost = total[, "n_samples_to_relabel_ghost"],
@@ -1531,7 +1534,7 @@
         ## every single-row extraction above (matrix[, "col"] returns an
         ## unnamed scalar when the matrix has exactly one row, unlike the
         ## multi-row case where rownames carry through as names) -- so
-        ## swap_cat_total ends up with no rownames at all despite having the
+        ## label_domain_total ends up with no rownames at all despite having the
         ## right values, and the reindex below then fails with "subscript out
         ## of bounds". Row order is never changed by sweep()/cbind() above, so
         ## it's always safe to relabel directly from permutation_ids.
@@ -1548,9 +1551,9 @@
         ## require rewriting those pmax()/pmin() calls too, for no benefit
         ## over just reasserting the (known-correct) rownames once, in one
         ## place, right before they matter.
-        rownames(swap_cat_total) <- permutation_ids
+        rownames(label_domain_total) <- permutation_ids
         permutation_stats <- permutation_stats +
-            swap_cat_total[
+            label_domain_total[
                 rownames(permutation_stats),
                 colnames(permutation_stats)
             ]

@@ -22,10 +22,10 @@ Sample_ID column in 'sample_metadata'. Must be square, must be symmetric.
 Any Sample_ID(s) that don't have row/columns in this matrix will be
 tagged as phantom samples.}
 
-\item{\code{swap_cats}}{(Optional) A data.frame with one row per sample specifying the SwapCat_ID,
-where by experimental design only samples with the same SwapCat_ID may be
+\item{\code{label_domains}}{(Optional) A data.frame with one row per sample specifying the Label_Domain,
+where by experimental design only samples with the same Label_Domain may be
 swapped for one another. For example, assay type or batch ID information
-can be used to categorize Sample_ID(s) into SwapCat_ID(s)}
+can be used to categorize Sample_ID(s) into Label_Domain(s)}
 
 \item{\code{anchor_samples}}{(Optional) A character vector of Sample_ID(s) where the label is known to be correct}
 

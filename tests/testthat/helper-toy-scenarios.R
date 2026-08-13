@@ -14,12 +14,12 @@ toy_swap_scenario <- function(ids = c("sample1", "sample2", "sample3")) {
         Genotype_Group_ID = c("G1", "G1", "G2"),
         stringsAsFactors = FALSE
     )
-    swap_cats <- data.frame(
+    label_domains <- data.frame(
         Sample_ID = ids,
-        SwapCat_ID = "omic1",
+        Label_Domain = "omic1",
         stringsAsFactors = FALSE
     )
-    list(sample_metadata = sample_metadata, swap_cats = swap_cats)
+    list(sample_metadata = sample_metadata, label_domains = label_domains)
 }
 
 ## G1 has two real samples, both incorrectly reporting S2; G2 has one real
@@ -37,15 +37,15 @@ toy_deficit_scenario <- function(
         Genotype_Group_ID = c("G1", "G1", "G2"),
         stringsAsFactors = FALSE
     )
-    swap_cats <- data.frame(
+    label_domains <- data.frame(
         Sample_ID = ids,
-        SwapCat_ID = "omic1",
+        Label_Domain = "omic1",
         stringsAsFactors = FALSE
     )
     if (shuffle) {
         ord <- rev(seq_len(nrow(sample_metadata)))
         sample_metadata <- sample_metadata[ord, ]
-        swap_cats <- swap_cats[ord, ]
+        label_domains <- label_domains[ord, ]
     }
-    list(sample_metadata = sample_metadata, swap_cats = swap_cats)
+    list(sample_metadata = sample_metadata, label_domains = label_domains)
 }

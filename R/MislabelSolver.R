@@ -22,10 +22,10 @@
 #'                       Sample_ID column in 'sample_metadata'. Must be square, must be symmetric.
 #'                       Any Sample_ID(s) that don't have row/columns in this matrix will be
 #'                       tagged as phantom samples.
-#' @slot swap_cats (Optional) A data.frame with one row per sample specifying the SwapCat_ID,
-#'                 where by experimental design only samples with the same SwapCat_ID may be
+#' @slot label_domains (Optional) A data.frame with one row per sample specifying the Label_Domain,
+#'                 where by experimental design only samples with the same Label_Domain may be
 #'                 swapped for one another. For example, assay type or batch ID information
-#'                 can be used to categorize Sample_ID(s) into SwapCat_ID(s)
+#'                 can be used to categorize Sample_ID(s) into Label_Domain(s)
 #' @slot anchor_samples (Optional) A character vector of Sample_ID(s) where the label is known to be correct
 #' @slot .solve_state A purely internal slot, used to keep track of sample relabels
 #'
@@ -38,13 +38,13 @@ setClass(
     representation(
         sample_metadata = "data.frame",
         genotype_matrix = "ANY",
-        swap_cats = "data.frame",
+        label_domains = "data.frame",
         anchor_samples = "character",
         .solve_state = "list"
     ),
     prototype(
         genotype_matrix = NULL,
-        swap_cats = NULL,
+        label_domains = NULL,
         anchor_samples = character(0)
     )
 )
@@ -58,14 +58,14 @@ setClass(
 #' @param genotype_matrix (Optional) A numeric or logical matrix specifiying whether a pair of
 #'                       samples came from the same person. Row and column names must come from
 #'                       Sample_ID column in 'sample_metadata'. Must be square, must be symmetric
-#' @param swap_cats (Optional) A data.frame with one row per sample specifying the SwapCat_ID,
-#'                  where by experimental design only samples with the same SwapCat_ID may be
+#' @param label_domains (Optional) A data.frame with one row per sample specifying the Label_Domain,
+#'                  where by experimental design only samples with the same Label_Domain may be
 #'                  swapped for one another. For example, assay type or batch ID information
-#'                  can be used to categorize Sample_ID(s) into SwapCat_ID(s)
+#'                  can be used to categorize Sample_ID(s) into Label_Domain(s)
 #' @param anchor_samples (Optional) A character vector of Sample_ID(s) where the label is known to be correct
 #'
 #' @details
-#' \code{sample_metadata} and \code{swap_cats} are sorted by \code{Sample_ID}
+#' \code{sample_metadata} and \code{label_domains} are sorted by \code{Sample_ID}
 #' internally, so the constructed object (and everything later solved from
 #' it) does not depend on the row order they happen to be provided in. One
 #' consequence of this: when a sample's mislabel can only be resolved by
@@ -83,7 +83,7 @@ setClass(
 MislabelSolver <- function(
     sample_metadata,
     genotype_matrix = NULL,
-    swap_cats = NULL,
+    label_domains = NULL,
     anchor_samples = character(0)
 ) {
     ## Convert and validate inputs
@@ -100,12 +100,12 @@ MislabelSolver <- function(
             left_join(genotype_df, by = "Sample_ID")
     }
 
-    if (is.null(swap_cats)) {
-        swap_cats <- sample_metadata[, "Sample_ID", drop = FALSE]
-        swap_cats$SwapCat_ID <- "SwapCat1"
+    if (is.null(label_domains)) {
+        label_domains <- sample_metadata[, "Sample_ID", drop = FALSE]
+        label_domains$Label_Domain <- "Label_Domain1"
     }
-    swap_cats <- as.data.frame(lapply(swap_cats, as.character))
-    .validate_swap_cats(sample_metadata, swap_cats)
+    label_domains <- as.data.frame(lapply(label_domains, as.character))
+    .validate_label_domains(sample_metadata, label_domains)
 
     anchor_samples <- unique(as.character(anchor_samples))
     .validate_anchor_samples(sample_metadata, anchor_samples)
@@ -114,7 +114,7 @@ MislabelSolver <- function(
         "MislabelSolver",
         sample_metadata,
         genotype_matrix,
-        swap_cats,
+        label_domains,
         anchor_samples
     ))
 }
@@ -126,21 +126,21 @@ setMethod(
         .Object,
         sample_metadata,
         genotype_matrix = NULL,
-        swap_cats = NULL,
+        label_domains = NULL,
         anchor_samples = character(0)
     ) {
         ## Sort deterministically by Sample_ID, so that construction (and
         ## everything derived from it -- relabel_data's row order, and the
         ## placeholder IDs generated just below) does not depend on the row
-        ## order 'sample_metadata'/'swap_cats' happened to be provided in.
+        ## order 'sample_metadata'/'label_domains' happened to be provided in.
         sample_metadata <- sample_metadata[
             order(sample_metadata$Sample_ID),
             ,
             drop = FALSE
         ]
         rownames(sample_metadata) <- NULL
-        swap_cats <- swap_cats[order(swap_cats$Sample_ID), , drop = FALSE]
-        rownames(swap_cats) <- NULL
+        label_domains <- label_domains[order(label_domains$Sample_ID), , drop = FALSE]
+        rownames(label_domains) <- NULL
 
         ## Pre-generate a random placeholder Sample_ID for every sample, once,
         ## up front, for .find_relabel_cycles_from_putative_subjects() to use
@@ -160,7 +160,7 @@ setMethod(
         ## solveGlobalSearch()/solveLocalSearch() use for their own purposes.
         input_seed <- .hash_to_seed(list(
             sample_metadata = sample_metadata,
-            swap_cats = swap_cats
+            label_domains = label_domains
         ))
         placeholder_ids <- with_seed(
             input_seed,
@@ -168,23 +168,24 @@ setMethod(
         )
         names(placeholder_ids) <- sample_metadata$Sample_ID
 
-        ## Provided there are enough shapes, assign a unique shape to each SwapCat_ID
-        all_swap_cat_ids <- names(sort(
-            table(swap_cats$SwapCat_ID),
+        ## Provided there are enough shapes, assign a unique shape to
+        ## each Label_Domain
+        all_label_domain_ids <- names(sort(
+            table(label_domains$Label_Domain),
             decreasing = TRUE
         ))
-        swap_cat_shapes <- data.frame(
-            SwapCat_ID = all_swap_cat_ids,
-            SwapCat_Shape = "dot",
+        label_domain_shapes <- data.frame(
+            Label_Domain = all_label_domain_ids,
+            Label_Domain_Shape = "dot",
             vertex_size_scalar = 1
         )
-        if (length(all_swap_cat_ids) <= length(VISNETWORK_SWAPCAT_SHAPES)) {
-            swap_cat_shapes$SwapCat_Shape <- VISNETWORK_SWAPCAT_SHAPES[seq_along(
-                all_swap_cat_ids
+        if (length(all_label_domain_ids) <= length(VISNETWORK_LABEL_DOMAIN_SHAPES)) {
+            label_domain_shapes$Label_Domain_Shape <- VISNETWORK_LABEL_DOMAIN_SHAPES[seq_along(
+                all_label_domain_ids
             )]
         }
-        swap_cats <- swap_cats |>
-            left_join(swap_cat_shapes, by = "SwapCat_ID")
+        label_domains <- label_domains |>
+            left_join(label_domain_shapes, by = "Label_Domain")
 
         ## Initialize object 'solve_state'
         relabel_data <- sample_metadata |>
@@ -197,7 +198,7 @@ setMethod(
                 Relabeled_By = NA_character_,
                 Placeholder_ID = placeholder_ids[.data$Sample_ID]
             ) |>
-            left_join(swap_cats, by = "Sample_ID")
+            left_join(label_domains, by = "Sample_ID")
         unsolved_relabel_data <- relabel_data |>
             filter(!is.na(.data$Genotype_Group_ID))
         unsolved_ghost_data <- relabel_data |>
@@ -208,7 +209,7 @@ setMethod(
         )
         lnf_counts <- data.frame(
             Subject_ID = character(0),
-            SwapCatID = character(0),
+            Label_Domain = character(0),
             count = integer(0)
         )
         ambiguous_subjects <- list()
@@ -223,7 +224,7 @@ setMethod(
 
         .Object@sample_metadata <- sample_metadata
         .Object@genotype_matrix <- genotype_matrix
-        .Object@swap_cats <- swap_cats
+        .Object@label_domains <- label_domains
         .Object@anchor_samples <- anchor_samples
         .Object@.solve_state <- solve_state
 

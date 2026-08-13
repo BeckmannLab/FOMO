@@ -2,7 +2,7 @@ test_that("use_solvers with only 'local' overrides local_iter_per_cycle with a m
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     expect_message(
         solveEnsemble(x, use_solvers = "local", local_iter_per_cycle = 2),
@@ -18,7 +18,7 @@ test_that("use_solvers with only 'local_old' also overrides local_iter_per_cycle
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     expect_message(
         solveEnsemble(x, use_solvers = "local_old", local_iter_per_cycle = 2),
@@ -30,11 +30,11 @@ test_that("the local-only override is not applied when 'global' or 'majority' is
     scenario <- toy_swap_scenario()
     x1 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     x2 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
 
     msgs1 <- testthat::capture_messages(
@@ -51,11 +51,11 @@ test_that("use_solvers with only local search still reaches the correct resoluti
     scenario <- toy_swap_scenario()
     x1 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     x2 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
 
     r1 <- suppressMessages(solveEnsemble(x1, use_solvers = "local"))

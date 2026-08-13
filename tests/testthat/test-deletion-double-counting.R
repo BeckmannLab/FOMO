@@ -2,7 +2,7 @@ test_that("global search does not double-count a single orphaned sample's deleti
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     solved <- suppressMessages(solveGlobalSearch(x))
     rd <- solved@.solve_state$relabel_data[, c(

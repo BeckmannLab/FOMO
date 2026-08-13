@@ -157,9 +157,9 @@ solveGlobalSearch <- function(
             cc_unsolved_relabel_data$Sample_ID,
             cc_unsolved_ghost_data$Sample_ID
         )
-        cc_swap_cat_ids <- unique(c(
-            cc_unsolved_relabel_data$SwapCat_ID,
-            cc_unsolved_ghost_data$SwapCat_ID
+        cc_label_domain_ids <- unique(c(
+            cc_unsolved_relabel_data$Label_Domain,
+            cc_unsolved_ghost_data$Label_Domain
         ))
         cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
         cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
@@ -241,39 +241,39 @@ solveGlobalSearch <- function(
                 "Sample_ID",
                 "Subject_ID",
                 "Genotype_Group_ID",
-                "SwapCat_ID"
+                "Label_Domain"
             ) |>
-            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
+            group_by(.data$Subject_ID, .data$Label_Domain) |>
             summarize(n_labels = n(), .groups = "drop")
         ghost_label_counts <- cc_unsolved_ghost_data |>
             select(
                 "Sample_ID",
                 "Subject_ID",
                 "Genotype_Group_ID",
-                "SwapCat_ID"
+                "Label_Domain"
             ) |>
-            group_by(.data$Subject_ID, .data$SwapCat_ID) |>
+            group_by(.data$Subject_ID, .data$Label_Domain) |>
             summarize(n_ghost_labels = n(), .groups = "drop")
         genotype_counts <- cc_unsolved_relabel_data |>
             select(
                 "Sample_ID",
                 "Subject_ID",
                 "Genotype_Group_ID",
-                "SwapCat_ID"
+                "Label_Domain"
             ) |>
-            group_by(.data$Genotype_Group_ID, .data$SwapCat_ID) |>
+            group_by(.data$Genotype_Group_ID, .data$Label_Domain) |>
             summarize(n_in_genotype = n(), .groups = "drop")
         genotype_subject_concordant_counts <- cc_unsolved_relabel_data |>
             select(
                 "Sample_ID",
                 "Subject_ID",
                 "Genotype_Group_ID",
-                "SwapCat_ID"
+                "Label_Domain"
             ) |>
             group_by(
                 .data$Subject_ID,
                 .data$Genotype_Group_ID,
-                .data$SwapCat_ID
+                .data$Label_Domain
             ) |>
             summarize(n_samples_correct = n(), .groups = "drop")
 
@@ -283,7 +283,7 @@ solveGlobalSearch <- function(
             perm_genotypes,
             free_genotypes,
             locked_genotypes,
-            cc_swap_cat_ids,
+            cc_label_domain_ids,
             label_counts,
             ghost_label_counts,
             genotype_counts,
@@ -774,6 +774,7 @@ solveEnsemble <- function(
     global_deletion_penalty = 4,
     local_iter_per_cycle = 1
 ) {
+    object <- fixup_MislabelSolver(object)
     valid_solvers <- c(
         "majority",
         "global",

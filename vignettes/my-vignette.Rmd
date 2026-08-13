@@ -99,29 +99,29 @@ mislabel_solver <- MislabelSolver(sample_metadata=sample_metadata_input,
 
 ```
 
-### param 3 (optional): swap_cats
+### param 3 (optional): label_domains
 
-The researcher has the option to provide the argument swap_cats (for swappable
-categories), which is a data.frame with two columns: one for Sample_ID which 
-should match the Sample_ID column in sample_metadata, and another for SwapCat_ID 
+The researcher has the option to provide the argument label_domains (for label 
+domains), which is a data.frame with two columns: one for Sample_ID which 
+should match the Sample_ID column in sample_metadata, and another for Label_Domain 
 which groups together the Sample_ID(s) which may be swapped for one another. For 
 example, if a dataset involves several assay modalities, the modality of each 
-sample would be a swappable category provided that sample swaps can only 
+sample would be a label domain provided that sample swaps can only 
 occur between samples of the same modality. While this input is optional, the 
 additional information provided can help guide and constrain the solver.
 
 ```{r}
 
-swap_cats_input <- data.frame(
+label_domains_input <- data.frame(
     # generally comes from metadata records
     Sample_ID = c("A_1", "A_2", "A_3", "B_1", "B_2", "B_3", "C_1", "C_2", "C_3"),
     # generally comes from metadata records
-    SwapCat_ID = c("WGS", "RNA", "RNA", "RNA", "RNA", "WGS", "RNA", "WGS", "RNA")
+    Label_Domain = c("WGS", "RNA", "RNA", "RNA", "RNA", "WGS", "RNA", "WGS", "RNA")
 )
 
 mislabel_solver <- MislabelSolver(sample_metadata=sample_metadata_input, 
                                   genotype_matrix=genotype_matrix_input,
-                                  swap_cats=swap_cats_input)
+                                  label_domains=label_domains_input)
 
 ```
 
@@ -138,7 +138,7 @@ anchor_samples_input <- c("C_3")
 
 mislabel_solver <- MislabelSolver(sample_metadata=sample_metadata_input, 
                                   genotype_matrix=genotype_matrix_input,
-                                  swap_cats=swap_cats_input,
+                                  label_domains=label_domains_input,
                                   anchor_samples=anchor_samples_input)
 
 ```
@@ -160,7 +160,7 @@ genotype_matrix_input <- genotype_matrix_input[!(rownames(genotype_matrix_input)
 
 mislabel_solver <- MislabelSolver(sample_metadata=sample_metadata_input, 
                                   genotype_matrix=genotype_matrix_input,
-                                  swap_cats=swap_cats_input,
+                                  label_domains=label_domains_input,
                                   anchor_samples=anchor_samples_input)
 
 ```
@@ -178,7 +178,7 @@ Blue edges indicate that the two samples share a common subject label
 Grey edges indicate that the two samples sahre a common subject label, but at least one of the two samples is a ghost
 Orange edges indicate that the two samples share a common genotype
 Green edges indicate that the two samples share both a common genotype and label
-Node shapes correspond to swappable categories
+Node shapes correspond to label domains
 
 ```{r}
 

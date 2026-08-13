@@ -9,11 +9,11 @@ test_that("global_ghost_penalty/global_deletion_penalty are passed through to so
     scenario <- toy_swap_scenario()
     x1 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     x2 <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
 
     suppressWarnings({
@@ -40,7 +40,7 @@ test_that("global_max_genotypes is passed through to solveGlobalSearch(), suppre
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     n_unsolved_before <- nrow(x@.solve_state$unsolved_relabel_data)
 
@@ -64,7 +64,7 @@ test_that("local_iter_per_cycle is passed through to the local solver as n_iter"
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     ## toy_swap_scenario() is fully resolved by global search alone, so by
     ## the time local search runs there is nothing left for it to do -- but

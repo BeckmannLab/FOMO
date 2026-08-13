@@ -6,11 +6,11 @@
 #' @param y Ignored (included for compatibility with generic \code{plot} function).
 #' @param unsolved If \code{TRUE}, plots only samples that are in unsolved components
 #' @param collapse_samples If \code{TRUE}, combines samples that are identical in
-#'   \emph{all three} of Subject_ID, Genotype_Group_ID, and SwapCat_ID into a
+#'   \emph{all three} of Subject_ID, Genotype_Group_ID, and Label_Domain into a
 #'   single plotted vertex, labeled with the sample count and the shared
-#'   Subject_ID/Genotype_Group_ID/SwapCat_ID values (e.g. a vertex for 3
+#'   Subject_ID/Genotype_Group_ID/Label_Domain values (e.g. a vertex for 3
 #'   collapsed samples sharing Subject_ID "S1", Genotype_Group_ID "G1", and
-#'   SwapCat_ID "omic1").
+#'   Label_Domain "omic1").
 #'   Ignored (with a warning) if \code{x} was built with a \code{genotype_matrix} rather than a \code{Genotype_Group_ID} column,
 #'   since collapsed samples can no longer be matched back to rows/columns of the matrix.
 #' @param query_by Specifies the field by which to query samples for plotting. Options are: "Init_Component_ID", "Component_ID", "Subject_ID", "Genotype_Group_ID", and "Sample_ID"
@@ -23,8 +23,8 @@
 #' resolves by being treated as a duplicate of a sample that doesn't
 #' actually exist in the data (an invented placeholder label, internally
 #' tagged \code{LABELNOTFOUND}).
-#' Vertex shape is keyed to \code{SwapCat_ID} (up to 5 distinct shapes; see
-#' \code{VISNETWORK_SWAPCAT_SHAPES}). Edge color indicates the relationship
+#' Vertex shape is keyed to \code{Label_Domain} (up to 5 distinct shapes; see
+#' \code{VISNETWORK_LABEL_DOMAIN_SHAPES}). Edge color indicates the relationship
 #' between two samples: forest green where the genetic (Genotype_Group_ID)
 #' and label (Subject_ID) graphs agree ("concordant"), orange for a
 #' genotype-only edge, and cornflower blue for a label-only edge; ghost

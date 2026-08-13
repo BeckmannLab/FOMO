@@ -22,19 +22,19 @@ big_tie_cycle_scenario <- function(k = 10) {
         stringsAsFactors = FALSE
     )
     sample_metadata <- rbind(a_rows, b_rows)
-    swap_cats <- data.frame(
+    label_domains <- data.frame(
         Sample_ID = sample_metadata$Sample_ID,
-        SwapCat_ID = "omic1",
+        Label_Domain = "omic1",
         stringsAsFactors = FALSE
     )
-    list(sample_metadata = sample_metadata, swap_cats = swap_cats)
+    list(sample_metadata = sample_metadata, label_domains = label_domains)
 }
 
 test_that("global search is skipped once nothing new is available to it, and solving still fully converges", {
     scenario <- big_tie_cycle_scenario(10)
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
 
     msgs <- capture_messages(
@@ -58,7 +58,7 @@ test_that("global search is not skipped on an attempt where something is genuine
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
 
     ## toy_swap_scenario() is immediately solvable by global search alone,

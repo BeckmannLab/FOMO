@@ -2,7 +2,7 @@ test_that("Relabeled_By starts NA for every sample at construction", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     expect_true(all(is.na(x@.solve_state$relabel_data$Relabeled_By)))
 })
@@ -11,7 +11,7 @@ test_that("Relabeled_By names the solver that actually relabeled a sample, and s
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     solved <- suppressMessages(solveEnsemble(x))
     rd <- solved@.solve_state$relabel_data
@@ -54,15 +54,15 @@ test_that("Relabeled_By can differ from Solved_By: it tracks the last solver to 
         stringsAsFactors = FALSE
     )
     sample_metadata <- rbind(a_rows, b_rows)
-    swap_cats <- data.frame(
+    label_domains <- data.frame(
         Sample_ID = sample_metadata$Sample_ID,
-        SwapCat_ID = "omic1",
+        Label_Domain = "omic1",
         stringsAsFactors = FALSE
     )
 
     x <- MislabelSolver(
         sample_metadata = sample_metadata,
-        swap_cats = swap_cats
+        label_domains = label_domains
     )
     solved <- suppressMessages(solveEnsemble(
         x,
@@ -89,7 +89,7 @@ test_that("Relabeled_By is exposed in collateOutput()'s Sample sheet, immediatel
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,
-        swap_cats = scenario$swap_cats
+        label_domains = scenario$label_domains
     )
     solved <- suppressMessages(solveEnsemble(x))
     out <- collateOutput(solved)

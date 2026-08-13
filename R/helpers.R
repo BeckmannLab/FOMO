@@ -83,14 +83,14 @@
                     "Subject_ID",
                     "Genotype_Group_ID",
                     "Is_Ghost",
-                    "SwapCat_ID",
-                    "SwapCat_Shape",
+                    "Label_Domain",
+                    "Label_Domain_Shape",
                     "vertex_size_scalar"
                 ),
             by = "Sample_ID"
         )
     ## For samples that don't appear in the Init_Sample_ID column (LABELNOTFOUND samples)
-    ## need to manually populate fields Is_Ghost, SwapCat_ID, and SwapCat_Shape
+    ## need to manually populate fields Is_Ghost, Label_Domain, and Label_Domain_Shape
     corrections_vertices_split <- corrections_vertices |>
         filter(!is.na(.data$Is_Ghost)) |>
         mutate(Is_LABELNOTFOUND = FALSE)
@@ -106,8 +106,8 @@
                     "Component_ID",
                     "Subject_ID",
                     "Genotype_Group_ID",
-                    "SwapCat_ID",
-                    "SwapCat_Shape",
+                    "Label_Domain",
+                    "Label_Domain_Shape",
                     "vertex_size_scalar"
                 ),
             by = "Sample_ID"
@@ -118,7 +118,7 @@
         corrections_vertices_label_not_found
     ) |>
         mutate(
-            shape = .data$SwapCat_Shape,
+            shape = .data$Label_Domain_Shape,
             color = case_when(
                 .data$Is_LABELNOTFOUND ~ PLOT_COLOR_LABEL_NOT_FOUND,
                 .data$Is_Ghost ~ PLOT_COLOR_GHOST,
@@ -139,6 +139,16 @@
     return(corrections_graph)
 }
 
-# .diagnose_contaminated_genotype_groups <- function(genotype_matrix) {
-#
-# }
+# Internal helper to rename the components of old MislabelSolver objects so that
+# they work with new package versions.
+fixup_MislabelSolver <- function(object) {
+    if (is.null(object@label_domains) && !is.null(object@swap_cats)) {
+        object@label_domains <- object@swap_cats |>
+            rename(
+                Label_Domain = .data$SwapCat_ID,
+                Label_Domain_Shape = .data$SwapCat_Shape
+            )
+        object@swap_cats <- NULL
+    }
+    object
+}

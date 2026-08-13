@@ -130,40 +130,40 @@
     )
 }
 
-.validate_swap_cats <- function(sample_metadata, swap_cats) {
-    required_columns <- c("Sample_ID", "SwapCat_ID")
-    missing_columns <- setdiff(required_columns, colnames(swap_cats))
+.validate_label_domains <- function(sample_metadata, label_domains) {
+    required_columns <- c("Sample_ID", "Label_Domain")
+    missing_columns <- setdiff(required_columns, colnames(label_domains))
     assert_that(
         length(missing_columns) == 0,
         msg = paste0(
-            "'swap_cats' is missing required column(s) ",
+            "'label_domains' is missing required column(s) ",
             paste(missing_columns, collapse = ", ")
         )
     )
 
-    missing_values <- swap_cats[is.na(swap_cats$SwapCat_ID), "Sample_ID"]
+    missing_values <- label_domains[is.na(label_domains$Label_Domain), "Sample_ID"]
     assert_that(
         length(missing_values) == 0,
         msg = paste0(
-            "'swap_cats' is missing SwapCat_ID for Sample_ID(s) ",
+            "'label_domains' is missing Label_Domain for Sample_ID(s) ",
             paste(missing_values, collapse = ", ")
         )
     )
 
-    duplicated_samples <- swap_cats$Sample_ID[duplicated(swap_cats$Sample_ID)]
+    duplicated_samples <- label_domains$Sample_ID[duplicated(label_domains$Sample_ID)]
     assert_that(
         length(duplicated_samples) == 0,
         msg = paste0(
-            "'swap_cats' has non-unique Sample_ID(s) ",
+            "'label_domains' has non-unique Sample_ID(s) ",
             paste(duplicated_samples, collapse = ", ")
         )
     )
 
-    missing_samples <- setdiff(sample_metadata$Sample_ID, swap_cats$Sample_ID)
+    missing_samples <- setdiff(sample_metadata$Sample_ID, label_domains$Sample_ID)
     assert_that(
         length(missing_samples) == 0,
         msg = paste0(
-            "'swap_cats' is missing Sample_ID(s) that exist in 'sample_metadata', check Sample_ID(s) ",
+            "'label_domains' is missing Sample_ID(s) that exist in 'sample_metadata', check Sample_ID(s) ",
             paste(missing_samples, collapse = ", ")
         )
     )

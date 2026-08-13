@@ -7,7 +7,7 @@
 MislabelSolver(
   sample_metadata,
   genotype_matrix = NULL,
-  swap_cats = NULL,
+  label_domains = NULL,
   anchor_samples = character(0)
 )
 }
@@ -20,10 +20,10 @@ is not provided, must also include a Genotype_Group_ID column.}
 samples came from the same person. Row and column names must come from
 Sample_ID column in 'sample_metadata'. Must be square, must be symmetric}
 
-\item{swap_cats}{(Optional) A data.frame with one row per sample specifying the SwapCat_ID,
-where by experimental design only samples with the same SwapCat_ID may be
+\item{label_domains}{(Optional) A data.frame with one row per sample specifying the Label_Domain,
+where by experimental design only samples with the same Label_Domain may be
 swapped for one another. For example, assay type or batch ID information
-can be used to categorize Sample_ID(s) into SwapCat_ID(s)}
+can be used to categorize Sample_ID(s) into Label_Domain(s)}
 
 \item{anchor_samples}{(Optional) A character vector of Sample_ID(s) where the label is known to be correct}
 }
@@ -34,7 +34,7 @@ A MislabelSolver object
 Constructor for the MislabelSolver class
 }
 \details{
-\code{sample_metadata} and \code{swap_cats} are sorted by \code{Sample_ID}
+\code{sample_metadata} and \code{label_domains} are sorted by \code{Sample_ID}
 internally, so the constructed object (and everything later solved from
 it) does not depend on the row order they happen to be provided in. One
 consequence of this: when a sample's mislabel can only be resolved by
