@@ -1,10 +1,10 @@
 ---
-title: "FOMO-Vignette"
+title: "Introduction to FOMO"
 author: "Charles Deng"
 package: fomo
 output: BiocStyle::html_document
 vignette: >
-  %\VignetteIndexEntry{FOMO-Vignette"}
+  %\VignetteIndexEntry{FOMOIntro"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
