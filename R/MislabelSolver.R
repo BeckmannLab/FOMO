@@ -129,6 +129,7 @@ setMethod(
         label_domains = NULL,
         anchor_samples = character(0)
     ) {
+        assert_that(is.data.frame(sample_metadata))
         ## Sort deterministically by Sample_ID, so that construction (and
         ## everything derived from it -- relabel_data's row order, and the
         ## placeholder IDs generated just below) does not depend on the row
@@ -139,24 +140,30 @@ setMethod(
             drop = FALSE
         ]
         rownames(sample_metadata) <- NULL
-        label_domains <- label_domains[order(label_domains$Sample_ID), , drop = FALSE]
-        rownames(label_domains) <- NULL
-
+        if (!is.null(label_domains)) {
+            assert_that(is.data.frame(label_domains))
+            label_domains <- label_domains[
+                order(label_domains$Sample_ID),
+                ,
+                drop = FALSE
+            ]
+            rownames(label_domains) <- NULL
+        }
         ## Pre-generate a random placeholder Sample_ID for every sample, once,
         ## up front, for .find_relabel_cycles_from_putative_subjects() to use
-        ## later if (and only if) that specific sample is determined to need
-        ## one -- i.e. no real or ghost sample is available to relabel it to,
-        ## so its mislabel can only be resolved by treating it as a duplicate
-        ## of a sample that doesn't actually exist ("unknown"/LABELNOTFOUND
-        ## labels; see helpers-solve.R). A sample whose pre-generated ID never
-        ## ends up needed is simply never referenced again.
+        ## later if (and only if) that specific sample is determined to need one
+        ## -- i.e. no real or ghost sample is available to relabel it to, so its
+        ## mislabel can only be resolved by treating it as a duplicate of a
+        ## sample that doesn't actually exist ("unknown"/LABELNOTFOUND labels;
+        ## see helpers-solve.R). A sample whose pre-generated ID never ends up
+        ## needed is simply never referenced again.
         ##
         ## Seeded from a hash of this (now sorted) input via a dedicated RNG
-        ## stream (with_seed(), which restores the prior RNG state
-        ## afterward), so that: (a) the same input always yields the same
-        ## placeholder IDs, (b) different input yields different ones rather
-        ## than colliding on one fixed global seed, and (c) this doesn't
-        ## consume from or interfere with the RNG stream solveMajoritySearch()/
+        ## stream (with_seed(), which restores the prior RNG state afterward),
+        ## so that: (a) the same input always yields the same placeholder IDs,
+        ## (b) different input yields different ones rather than colliding on
+        ## one fixed global seed, and (c) this doesn't consume from or interfere
+        ## with the RNG stream solveMajoritySearch()/
         ## solveGlobalSearch()/solveLocalSearch() use for their own purposes.
         input_seed <- .hash_to_seed(list(
             sample_metadata = sample_metadata,
@@ -179,7 +186,10 @@ setMethod(
             Label_Domain_Shape = "dot",
             vertex_size_scalar = 1
         )
-        if (length(all_label_domain_ids) <= length(VISNETWORK_LABEL_DOMAIN_SHAPES)) {
+        if (
+            length(all_label_domain_ids) <=
+                length(VISNETWORK_LABEL_DOMAIN_SHAPES)
+        ) {
             label_domain_shapes$Label_Domain_Shape <- VISNETWORK_LABEL_DOMAIN_SHAPES[seq_along(
                 all_label_domain_ids
             )]
