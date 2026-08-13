@@ -1035,7 +1035,7 @@
     putative_subjects <- object@.solve_state$putative_subjects
 
     ## Criteria 1:  filter only pairs of vertices that are within at exactly 2 edges of each other
-    adj_matrix_sparse <- Matrix(get.adjacency(combined_graph, sparse = TRUE))
+    adj_matrix_sparse <- Matrix(as_adjacency_matrix(combined_graph, sparse = TRUE))
     adj_matrix_idx <- Matrix::which(adj_matrix_sparse > 0, arr.ind = TRUE)
     dist_within_2_sparse <- adj_matrix_sparse %*% adj_matrix_sparse
     dist_within_2_idx <- Matrix::which(dist_within_2_sparse > 0, arr.ind = TRUE)
