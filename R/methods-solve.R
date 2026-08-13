@@ -984,14 +984,15 @@ solveEnsemble <- function(
         }
     }
 
-    ## The loop above can skip calling global search on its very last
-    ## iteration (if nothing new became available to it right at the end),
-    ## so run it once more here to make sure it never ends up skipped
-    ## entirely -- unless there's no point: either the loop stopped because
-    ## it ran out of time (in which case any further solving, global search
-    ## included, should also be skipped), or the caller didn't request
-    ## global search in the first place.
-    if (run_global && !time_limit_exceeded) {
+    # We give the global search one final try (if it is allowed to run at all),
+    # since it may have been skipped in the final iteration of the loop. This
+    # ensures that the global search always has the last word.
+    if (
+        run_global &&
+            !time_limit_exceeded &&
+            # Skip if everything is already solved
+            nrow(object@.solve_state$unsolved_relabel_data) == 0
+    ) {
         object <- solveGlobalSearch(
             object,
             max_genotypes = global_max_genotypes,
