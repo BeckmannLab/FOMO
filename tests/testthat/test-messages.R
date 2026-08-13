@@ -37,9 +37,9 @@ test_that("solveLocalSearch() and solveLocalSearchOld() emit distinct status tex
         sample_metadata = scenario$sample_metadata,
         label_domains = scenario$label_domains
     )
-    expect_message(solveLocalSearch(x1), "^Starting local search\n$")
+    expect_message(solveLocalSearch(x1), "Starting local search\n$")
     expect_message(
         solveLocalSearchOld(x2),
-        "^Starting local search \\(old\\)\n$"
+        "Starting local search \\(old\\)\n"
     )
 })

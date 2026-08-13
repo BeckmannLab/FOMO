@@ -521,6 +521,6 @@ writeOutput <- function(object, file) {
     # Freeze the header row
     formatted_tables <- lapply(object, xl_sheet, freeze = "A2")
     write_xlsx(formatted_tables, path = file)
-    message(paste0("Output successfully written to ", file))
+    tsmsg(paste0("Output successfully written to ", file))
     invisible(NULL)
 }

@@ -1,3 +1,7 @@
+tsmsg <- function(...) {
+    message(date(), ": ", ...)
+}
+
 ## Deterministically turn an arbitrary R object into a non-negative integer
 ## seed, via a hash of its serialized content. Used to seed a dedicated RNG
 ## stream from a MislabelSolver()'s (sorted) input -- see

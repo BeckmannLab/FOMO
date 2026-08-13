@@ -32,9 +32,9 @@
 #' @export
 #'
 solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
-    message("Starting majority search")
+    tsmsg("Starting majority search")
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-        message("0 samples relabeled")
+        tsmsg("0 samples relabeled")
         return(object)
     }
 
@@ -135,10 +135,10 @@ solveGlobalSearch <- function(
     ghost_penalty = 1.5,
     deletion_penalty = 4
 ) {
-    message("Starting global search")
+    tsmsg("Starting global search")
     .validate_search_penalties(ghost_penalty, deletion_penalty)
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-        message("0 samples relabeled")
+        tsmsg("0 samples relabeled")
         return(object)
     }
 
@@ -441,10 +441,10 @@ solveLocalSearch <- function(
     include_ghost = FALSE,
     filter_concordant_vertices = FALSE
 ) {
-    message("Starting local search")
+    tsmsg("Starting local search")
 
     for (i in 1:n_iter) {
-        message(paste(
+        tsmsg(paste(
             "Local search iteration (",
             i,
             " of ",
@@ -461,7 +461,7 @@ solveLocalSearch <- function(
         )
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             # All components already solved
-            message("0 samples relabeled")
+            tsmsg("0 samples relabeled")
             return(object)
         }
         votes <- table(
@@ -500,7 +500,7 @@ solveLocalSearch <- function(
                 Genotype_Group_B = "Genotype_Group_ID"
             )
 
-        message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
+        tsmsg(paste(nrow(neighbors), "candidate swaps being evaluated..."))
         all_component_ids <- sort(unique(
             object@.solve_state$unsolved_relabel_data$Component_ID
         ))
@@ -590,10 +590,10 @@ solveLocalSearchOld <- function(
     include_ghost = FALSE,
     filter_concordant_vertices = FALSE
 ) {
-    message("Starting local search (old)")
+    tsmsg("Starting local search (old)")
 
     for (i in 1:n_iter) {
-        message(paste(
+        tsmsg(paste(
             "Local search (old) iteration (",
             i,
             " of ",
@@ -609,7 +609,7 @@ solveLocalSearchOld <- function(
             object@.solve_state$unsolved_ghost_data
         )
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            message("0 samples relabeled")
+            tsmsg("0 samples relabeled")
             return(object)
         }
         votes <- table(
@@ -649,7 +649,7 @@ solveLocalSearchOld <- function(
                 Genotype_Group_B = "Genotype_Group_ID"
             )
 
-        message(paste(nrow(neighbors), "candidate swaps being evaluated..."))
+        tsmsg(paste(nrow(neighbors), "candidate swaps being evaluated..."))
         all_component_ids <- sort(unique(
             object@.solve_state$unsolved_relabel_data$Component_ID
         ))
@@ -830,7 +830,7 @@ solveEnsemble <- function(
             effective_local_iter_per_cycle < accelerated_local_iter_per_cycle
     ) {
         effective_local_iter_per_cycle <- accelerated_local_iter_per_cycle
-        message(
+        tsmsg(
             "'use_solvers' contains only local search; overriding ",
             "'local_iter_per_cycle' (",
             local_iter_per_cycle,
@@ -858,7 +858,7 @@ solveEnsemble <- function(
     time_limit_exceeded <- FALSE
     while (TRUE) {
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            message("All components fully solved. Stopping.")
+            tsmsg("All components fully solved. Stopping.")
             break
         }
         if (
@@ -893,7 +893,7 @@ solveEnsemble <- function(
                 )
                 global_available_samples <- current_available_samples
             } else {
-                message(
+                tsmsg(
                     "Skipping global search: no new samples have become available to it since it last ran."
                 )
             }
@@ -917,7 +917,7 @@ solveEnsemble <- function(
                 )
                 global_available_samples <- current_available_samples
             } else {
-                message(
+                tsmsg(
                     "Skipping global search: no new samples have become available to it since it last ran."
                 )
             }
@@ -972,7 +972,7 @@ solveEnsemble <- function(
                 ## data is byte-for-byte unchanged from before this
                 ## iteration ran), so further iterations would loop forever
                 ## without converging any further; stop here.
-                message(
+                tsmsg(
                     "Stopping because the solver has converged. Some samples may remain unsolved."
                 )
                 break
@@ -989,7 +989,7 @@ solveEnsemble <- function(
             # Skip if everything is already solved
             nrow(object@.solve_state$unsolved_relabel_data) > 0
     ) {
-        message("Running final global search")
+        tsmsg("Running final global search")
         object <- solveGlobalSearch(
             object,
             max_genotypes = global_max_genotypes,
@@ -997,7 +997,7 @@ solveEnsemble <- function(
             deletion_penalty = global_deletion_penalty
         )
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            message("All components fully solved after final global search.")
+            tsmsg("All components fully solved after final global search.")
         }
     }
 

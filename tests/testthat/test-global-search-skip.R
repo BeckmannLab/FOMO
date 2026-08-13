@@ -49,7 +49,7 @@ test_that("global search is skipped once nothing new is available to it, and sol
     ## Skipping is never the *only* thing that happens to global search --
     ## it should still run for real at least once (the component's initial,
     ## structural too-large-for-global check plus its final resolution).
-    expect_true(any(grepl("^Starting global search", msgs)))
+    expect_true(any(grepl("Starting global search", msgs)))
     ## Despite all the skipping, everything should still end up solved.
     expect_equal(sum(!solved@.solve_state$relabel_data$Solved), 0)
 })
@@ -68,5 +68,5 @@ test_that("global search is not skipped on an attempt where something is genuine
     first_global_msg <- msgs[grepl("global search", msgs, ignore.case = TRUE)][
         1
     ]
-    expect_match(first_global_msg, "^Starting global search")
+    expect_match(first_global_msg, "Starting global search")
 })

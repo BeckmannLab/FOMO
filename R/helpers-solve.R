@@ -695,7 +695,7 @@
         filter(.data$Is_Ghost)
     object <- .update_solve_state(object, solver_name = solver_name)
 
-    message(paste(nrow(relabels), "samples relabeled"))
+    tsmsg(paste(nrow(relabels), "samples relabeled"))
 
     return(object)
 }
