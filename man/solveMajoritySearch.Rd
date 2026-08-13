@@ -9,12 +9,12 @@ solveMajoritySearch(object, unambiguous_only = FALSE)
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{unambiguous_only}{(Default = FALSE) If TRUE, restrict relabeling to
-only the clearest cases. Candidate relabels that would require inventing a
-placeholder ("duplicate that doesn't exist") label or using up a ghost
-(ungenotyped) sample are skipped, as are any samples that have more than
-one possible real relabel target to choose between. Anything skipped this
-way is left for a later solver to attempt instead.}
+\item{unambiguous_only}{If TRUE, restrict relabeling to only the clearest
+cases. Candidate relabels that would require inventing a placeholder
+("duplicate that doesn't exist") label or using up a ghost (ungenotyped)
+sample are skipped, as are any samples that have more than one possible
+real relabel target to choose between. Anything skipped this way is left
+for a later solver to attempt instead.}
 }
 \value{
 A MislabelSolver object

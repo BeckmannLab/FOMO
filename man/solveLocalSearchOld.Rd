@@ -14,21 +14,19 @@ solveLocalSearchOld(
 \arguments{
 \item{object}{A MislabelSolver object}
 
-\item{n_iter}{(Default = 1) The number of hill-climbing iterations to run
-within this single call. Each iteration recomputes candidate swaps from the
-current (possibly already-updated, by an earlier iteration in this same
-call) state, and applies the single best non-conflicting swap per connected
+\item{n_iter}{The number of hill-climbing iterations to run within this
+single call. Each iteration recomputes candidate swaps from the current
+(possibly already-updated, by an earlier iteration in this same call)
+state, and applies the single best non-conflicting swap per connected
 component. This returns early, before using up every requested iteration,
 only once every sample becomes solved, or no further entropy-improving
 swaps can be found.}
 
-\item{include_ghost}{(Default = FALSE) If TRUE, allow swaps to include ghost
-samples}
+\item{include_ghost}{If TRUE, allow swaps to include ghost samples}
 
-\item{filter_concordant_vertices}{(Default = FALSE) If TRUE, filter out
-samples with at least one concordant edge. This reduces the search space
-but misses cases where multiple pairs of samples are swapped between the
-same subjects.}
+\item{filter_concordant_vertices}{If TRUE, filter out samples with at least
+one concordant edge. This reduces the search space but misses cases where
+multiple pairs of samples are swapped between the same subjects.}
 }
 \value{
 A MislabelSolver object, potentially with some samples relabeled.

@@ -896,8 +896,7 @@ solveEnsemble <- function(
                 global_available_samples <- current_available_samples
             } else {
                 message(
-                    "Skipping global search: no new samples have become ",
-                    "available to it since it last ran."
+                    "Skipping global search: no new samples have become available to it since it last ran."
                 )
             }
         }

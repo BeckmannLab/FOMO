@@ -47,6 +47,6 @@ more than 8 genotype groups).
 When choosing penalty values, keep in mind that the penalty for a relabeled
 normal sample is always 1, and the other penalties are set relative to this.
 
-Use via \code{solveEnsemble(object, use_solvers = c("majority", "global", "local"))} rather than calling this directly, unless you are composing your
-own solver loop.
+Use via \code{\link[=solveEnsemble]{solveEnsemble()}} rather than calling this directly, unless you are
+composing your own solver loop.
 }
