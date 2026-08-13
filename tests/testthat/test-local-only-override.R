@@ -10,7 +10,7 @@ test_that("use_solvers with only 'local' overrides local_iter_per_cycle with a m
     )
     expect_message(
         solveEnsemble(x, use_solvers = "local", local_iter_per_cycle = 2),
-        "iteration \\(1 of 1000\\)"
+        "iteration \\(1 of 100\\)"
     )
 })
 

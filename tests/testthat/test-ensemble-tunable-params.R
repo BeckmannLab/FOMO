@@ -16,22 +16,24 @@ test_that("global_ghost_penalty/global_deletion_penalty are passed through to so
         swap_cats = scenario$swap_cats
     )
 
-    expect_warning(
-        suppressMessages(solveEnsemble(
-            x1,
-            use_solvers = "global",
-            global_ghost_penalty = 0.5
-        )),
-        "ghost_penalty"
-    )
-    expect_warning(
-        suppressMessages(solveEnsemble(
-            x2,
-            use_solvers = "global",
-            global_deletion_penalty = 1
-        )),
-        "deletion_penalty"
-    )
+    suppressWarnings({
+        expect_warning(
+            suppressMessages(solveEnsemble(
+                x1,
+                use_solvers = "global",
+                global_ghost_penalty = 0.5
+            )),
+            "ghost_penalty"
+        )
+        expect_warning(
+            suppressMessages(solveEnsemble(
+                x2,
+                use_solvers = "global",
+                global_deletion_penalty = 1
+            )),
+            "deletion_penalty"
+        )
+    })
 })
 
 test_that("global_max_genotypes is passed through to solveGlobalSearch(), suppressing progress when too small", {

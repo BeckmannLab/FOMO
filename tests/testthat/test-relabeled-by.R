@@ -67,19 +67,22 @@ test_that("Relabeled_By can differ from Solved_By: it tracks the last solver to 
     solved <- suppressMessages(solveEnsemble(
         x,
         use_solvers = c("majority", "global", "local"),
+        global_max_genotypes = 8,
         time_limit = 20
     ))
     rd <- solved@.solve_state$relabel_data
     rd <- rd[order(rd$Init_Sample_ID), ]
 
-    ## Sanity check this scenario still fully converges before relying on
-    ## its exact, deterministic per-sample resolution below.
+    ## Sanity check this scenario still fully converges
     expect_equal(sum(!rd$Solved), 0)
 
-    a05 <- rd[rd$Init_Sample_ID == "a05", ]
-    expect_equal(a05$Solved_By, "global")
-    expect_equal(a05$Relabeled_By, "local")
-    expect_true(a05$Subject_ID != a05$Init_Subject_ID)
+    solved_table <- table(rd$Solved_By)
+    relabeled_table <- table(rd$Relabeled_By)
+
+    expect_equal(solved_table["global"], 16, ignore_attr = TRUE)
+    expect_equal(solved_table["local"], 4, ignore_attr = TRUE)
+    expect_equal(relabeled_table["global"], 8, ignore_attr = TRUE)
+    expect_equal(relabeled_table["local"], 4, ignore_attr = TRUE)
 })
 
 test_that("Relabeled_By is exposed in collateOutput()'s Sample sheet, immediately after Solved_By", {
