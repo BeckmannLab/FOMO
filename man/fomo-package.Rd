@@ -13,6 +13,7 @@ An R package to automatically detect and correct mislabeled samples in multi-omi
 
 Authors:
 \itemize{
+  \item Thompson Ryan \email{ryan.thompson2@mssm.edu} (\href{https://orcid.org/0000-0002-0450-8181}{ORCID})
   \item Deng Charles \email{charlesfanghuideng@gmail.com}
 }
 
