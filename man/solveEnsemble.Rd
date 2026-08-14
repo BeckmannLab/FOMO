@@ -13,7 +13,7 @@ solveEnsemble(
   global_max_genotypes = 8,
   global_ghost_penalty = 1.5,
   global_deletion_penalty = 4,
-  local_iter_per_cycle = 1
+  local_iter_per_cycle = 100
 )
 }
 \arguments{
@@ -33,11 +33,10 @@ of the while loop, which means that the actual run time may slightly exceed
 the specified limit. If the limit is reached before the solver has
 converged, the loop is terminated early, a warning is issued, and the
 MislabelSolver object is returned in its current, incompletely solved
-state. However, note that the solver only checks the time limit once per
-loop, so for very large data sets, it may continue running for some time
-after the limit is reached. Note that FOMO will not come anywhere near this
-time limit for most real world data sets, so users generally should not
-need to modify this.}
+state. Note that FOMO will not come anywhere near this time limit for most
+real world data sets, so users generally should not need to modify this. In
+some cases, it is possible for FOMO to overrun the time limit, since it
+only checks the time limit at specific points in between solver runs.}
 
 \item{seed}{The random seed to use for this run. The seed defaults to 1,
 which means this function is reproducible by default. You can disable this
