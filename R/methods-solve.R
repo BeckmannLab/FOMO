@@ -50,7 +50,9 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
         n_Max_Subject_ID = apply(votes, 1, max)
     ) |>
         filter(
+            # Multiple subjects to choose from
             .data$n_Max_Subject_ID >= 2,
+            # One subject has a majority
             .data$n_Max_Subject_ID > n / 2
         ) |>
         rename(Subject_ID = "Max_Subject_ID") |>
@@ -62,11 +64,14 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
         n_Max_Genotype_Group_ID = apply(votes, 2, max)
     ) |>
         filter(
+            # Multiple genotypes to choose from
             .data$n_Max_Genotype_Group_ID >= 2,
+            # One genotype has a majority
             .data$n_Max_Genotype_Group_ID > n / 2
         ) |>
         rename(Genotype_Group_ID = "Max_Genotype_Group_ID") |>
         select("Subject_ID", "Genotype_Group_ID")
+    # Inner join gives mutual best matches
     new_putative_subjects <- inner_join(
         votes_by_subject,
         votes_by_genotype,
