@@ -458,6 +458,14 @@ solveGlobalSearch <- function(
 #' @param filter_concordant_vertices If TRUE, filter out samples with at least
 #'   one concordant edge. This reduces the search space but misses cases where
 #'   multiple pairs of samples are swapped between the same subjects.
+#' @param min_genotypes Components of the mislabel network with fewer
+#'   not-yet-resolved Genotype_Group_ID(s) than this are skipped entirely for
+#'   this call. Defaults to 1, which has no effect, since every component has
+#'   at least 1 unsolved genotype group by definition. [solveEnsemble()]
+#'   raises this above 1 so that local search only works on components too
+#'   large for the other active solvers to have already handled themselves,
+#'   rather than duplicating (and potentially disturbing) their work; see its
+#'   documentation for the exact value used.
 #'
 #' @return A MislabelSolver object, potentially with some samples relabeled.
 #'
@@ -470,7 +478,8 @@ solveLocalSearch <- function(
     object,
     n_iter = 1,
     include_ghost = FALSE,
-    filter_concordant_vertices = FALSE
+    filter_concordant_vertices = FALSE,
+    min_genotypes = 1
 ) {
     tsmsg("Starting local search")
 
@@ -535,6 +544,12 @@ solveLocalSearch <- function(
         all_component_ids <- sort(unique(
             object@.solve_state$unsolved_relabel_data$Component_ID
         ))
+        ## Precomputed once per iteration so the min_genotypes check below is
+        ## a cheap lookup rather than a fresh filter() per component.
+        unsolved_genotype_ids_by_component <- split(
+            object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
+            object@.solve_state$unsolved_relabel_data$Component_ID
+        )
         relabels <- data.frame(matrix(
             data = NA,
             nrow = length(all_component_ids),
@@ -543,6 +558,15 @@ solveLocalSearch <- function(
         ))
         curr_idx <- 1
         for (curr_component_id in all_component_ids) {
+            n_unsolved_genotypes <- length(unique(
+                unsolved_genotype_ids_by_component[[as.character(
+                    curr_component_id
+                )]]
+            ))
+            if (n_unsolved_genotypes < min_genotypes) {
+                next
+            }
+
             cc_neighbors <- neighbors |>
                 filter(.data$Component_ID == curr_component_id)
 
@@ -788,7 +812,16 @@ solveLocalSearchOld <- function(
 #'   [solveLocalSearch()] directly, this does not control the *total* number of
 #'   local search iterations `solveEnsemble()` runs; it controls how many local
 #'   search iterations run per cycle, i.e. in between each round of the other
-#'   solvers in `use_solvers`.
+#'   solvers in `use_solvers`. Also unlike calling [solveLocalSearch()]
+#'   directly, `solveEnsemble()` always sets its `min_genotypes` argument to
+#'   one more than the smallest of `global_max_genotypes`/
+#'   `majority_max_genotypes` among whichever of `"global"`/`"majority"` are
+#'   also in `use_solvers` (or leaves it at its own no-op default of 1 if
+#'   neither is); this is not user-configurable. This keeps local search
+#'   focused on components too large for the other active solvers to have
+#'   already handled, instead of redoing their work. (This does not apply
+#'   when `use_solvers` includes `"local_old"` instead of `"local"`, since
+#'   [solveLocalSearchOld()] has no `min_genotypes` argument.)
 #'
 #' @return A MislabelSolver object with all detected correctable mislabeled
 #'   samples relabeled (unless the time limit is reached).
@@ -963,16 +996,44 @@ solveEnsemble <- function(
 
         global_relabel_data <- object@.solve_state$unsolved_relabel_data
         if ("local" %in% use_solvers || "local_old" %in% use_solvers) {
-            local_solver <- if ("local_old" %in% use_solvers) {
+            use_local_old <- "local_old" %in% use_solvers
+            local_solver <- if (use_local_old) {
                 solveLocalSearchOld
             } else {
                 solveLocalSearch
             }
-            object <- local_solver(
-                object,
-                n_iter = effective_local_iter_per_cycle,
-                include_ghost = TRUE,
-                filter_concordant_vertices = TRUE
+
+            ## solveLocalSearchOld() has no min_genotypes argument, and is
+            ## kept as an unmodified reference implementation, so this only
+            ## ever applies to solveLocalSearch(). The cap itself is based on
+            ## whichever of global/majority search are actually active in
+            ## use_solvers: if neither is, there is no other solver for local
+            ## search to defer to, so it keeps its own no-op default of 1
+            ## (nothing skipped).
+            local_solver_extra_args <- list()
+            if (!use_local_old) {
+                active_max_genotypes <- c(
+                    if ("global" %in% use_solvers) global_max_genotypes,
+                    if ("majority" %in% use_solvers) majority_max_genotypes
+                )
+                if (length(active_max_genotypes) > 0) {
+                    local_solver_extra_args <- list(
+                        min_genotypes = min(active_max_genotypes) + 1
+                    )
+                }
+            }
+
+            object <- do.call(
+                local_solver,
+                c(
+                    list(
+                        object,
+                        n_iter = effective_local_iter_per_cycle,
+                        include_ghost = TRUE,
+                        filter_concordant_vertices = TRUE
+                    ),
+                    local_solver_extra_args
+                )
             )
 
             ## If local search found no swaps, try allowing concordant vertices
@@ -986,11 +1047,17 @@ solveEnsemble <- function(
                         object@.solve_state$unsolved_relabel_data
                     )
                 ) {
-                    object <- local_solver(
-                        object,
-                        n_iter = effective_local_iter_per_cycle,
-                        include_ghost = TRUE,
-                        filter_concordant_vertices = FALSE
+                    object <- do.call(
+                        local_solver,
+                        c(
+                            list(
+                                object,
+                                n_iter = effective_local_iter_per_cycle,
+                                include_ghost = TRUE,
+                                filter_concordant_vertices = FALSE
+                            ),
+                            local_solver_extra_args
+                        )
                     )
                 }
             }

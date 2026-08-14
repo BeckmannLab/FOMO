@@ -55,7 +55,16 @@ function's documentation for what it controls. Note that, unlike calling
 \code{\link[=solveLocalSearch]{solveLocalSearch()}} directly, this does not control the \emph{total} number of
 local search iterations \code{solveEnsemble()} runs; it controls how many local
 search iterations run per cycle, i.e. in between each round of the other
-solvers in \code{use_solvers}.}
+solvers in \code{use_solvers}. Also unlike calling \code{\link[=solveLocalSearch]{solveLocalSearch()}}
+directly, \code{solveEnsemble()} always sets its \code{min_genotypes} argument to
+one more than the smallest of \code{global_max_genotypes}/
+\code{majority_max_genotypes} among whichever of \code{"global"}/\code{"majority"} are
+also in \code{use_solvers} (or leaves it at its own no-op default of 1 if
+neither is); this is not user-configurable. This keeps local search
+focused on components too large for the other active solvers to have
+already handled, instead of redoing their work. (This does not apply
+when \code{use_solvers} includes \code{"local_old"} instead of \code{"local"}, since
+\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} has no \code{min_genotypes} argument.)}
 }
 \value{
 A MislabelSolver object with all detected correctable mislabeled

@@ -8,7 +8,8 @@ solveLocalSearch(
   object,
   n_iter = 1,
   include_ghost = FALSE,
-  filter_concordant_vertices = FALSE
+  filter_concordant_vertices = FALSE,
+  min_genotypes = 1
 )
 }
 \arguments{
@@ -27,6 +28,15 @@ swaps can be found.}
 \item{filter_concordant_vertices}{If TRUE, filter out samples with at least
 one concordant edge. This reduces the search space but misses cases where
 multiple pairs of samples are swapped between the same subjects.}
+
+\item{min_genotypes}{Components of the mislabel network with fewer
+not-yet-resolved Genotype_Group_ID(s) than this are skipped entirely for
+this call. Defaults to 1, which has no effect, since every component has
+at least 1 unsolved genotype group by definition. \code{\link[=solveEnsemble]{solveEnsemble()}}
+raises this above 1 so that local search only works on components too
+large for the other active solvers to have already handled themselves,
+rather than duplicating (and potentially disturbing) their work; see its
+documentation for the exact value used.}
 }
 \value{
 A MislabelSolver object, potentially with some samples relabeled.
