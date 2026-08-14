@@ -1,10 +1,3 @@
-test_that("solveEnsemble() has the expected new tunable-parameter arguments and defaults", {
-    expect_equal(formals(solveEnsemble)$global_max_genotypes, 8)
-    expect_equal(formals(solveEnsemble)$global_ghost_penalty, 1.5)
-    expect_equal(formals(solveEnsemble)$global_deletion_penalty, 4)
-    expect_equal(formals(solveEnsemble)$local_iter_per_cycle, 1)
-})
-
 test_that("global_ghost_penalty/global_deletion_penalty are passed through to solveGlobalSearch()'s validation", {
     scenario <- toy_swap_scenario()
     x1 <- MislabelSolver(

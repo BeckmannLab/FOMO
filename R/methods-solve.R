@@ -833,7 +833,7 @@ solveEnsemble <- function(
     global_max_genotypes = 8,
     global_ghost_penalty = 1.5,
     global_deletion_penalty = 4,
-    local_iter_per_cycle = 1
+    local_iter_per_cycle = 100
 ) {
     object <- fixup_MislabelSolver(object)
     valid_solvers <- c(
