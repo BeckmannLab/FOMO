@@ -726,6 +726,74 @@
         relabel_from = character(0),
         relabel_to = character(0)
     )
+    if (vcount(relabels_graph) == 0) {
+        return(relabels)
+    }
+
+    ## A cycle can never span more than one weakly-connected component (a
+    ## cycle is itself connected), so every component's disjoint cycles can
+    ## be found independently of every other component's. The
+    ## pre-optimization version of this function searched the whole graph
+    ## at once: at every increasing cutoff, it re-scanned every remaining
+    ## vertex in *every* component, up to the size of the single largest
+    ## remaining component. On a graph with many small components -- the
+    ## common case in practice, since most mislabel events are simple
+    ## pairwise swaps, each its own tiny 2-vertex component -- that means
+    ## thousands of irrelevant vertices get rescanned at every cutoff level
+    ## for no benefit, just because one large component elsewhere hasn't
+    ## finished yet. Splitting into components up front and searching each
+    ## one on its own, only up to *its own* size (see
+    ## .find_relabel_cycles_in_component()), finds exactly the same cycles
+    ## -- just far faster. The only observable difference is the row order
+    ## of the returned data frame (component-by-component here, vs.
+    ## interleaved by cutoff level across all components before), which
+    ## does not affect correctness.
+    comp <- components(relabels_graph, mode = "weak")
+    relabels_by_component <- vector("list", comp$no)
+    for (comp_id in seq_len(comp$no)) {
+        comp_vertices <- V(relabels_graph)[comp$membership == comp_id]
+        if (length(comp_vertices) < 2) {
+            next
+        }
+        subgraph <- induced_subgraph(relabels_graph, comp_vertices)
+        relabels_by_component[[comp_id]] <- .find_relabel_cycles_in_component(
+            subgraph
+        )
+    }
+
+    return(do.call(rbind, c(list(relabels), relabels_by_component)))
+}
+
+## Finds the same greedy, shortest-cycles-first set of vertex-disjoint
+## relabel cycles within a single weakly-connected component that the
+## pre-optimization .find_all_relabel_cycles() found by repeatedly
+## searching the *whole* graph -- see the comment there for why searching
+## one component at a time gives identical results. Split out so it can be
+## called once per component instead.
+.find_relabel_cycles_in_component <- function(relabels_graph) {
+    relabels <- data.frame(
+        relabel_from = character(0),
+        relabel_to = character(0)
+    )
+
+    ## Fast path for by far the most common case: a component that is
+    ## exactly two vertices with an edge in each direction between them,
+    ## i.e. a simple 2-sample swap. This is exactly the (only possible)
+    ## cycle the general search below would otherwise find at cutoff = 1,
+    ## so this is not a behavior change -- just a shortcut around the
+    ## overhead of building a tiny igraph subgraph and calling
+    ## all_simple_paths() on it, for what is typically the overwhelming
+    ## majority of components.
+    if (vcount(relabels_graph) == 2 && ecount(relabels_graph) == 2) {
+        if (all(which_mutual(relabels_graph))) {
+            vertex_names <- V(relabels_graph)$name
+            return(data.frame(
+                relabel_from = vertex_names,
+                relabel_to = rev(vertex_names)
+            ))
+        }
+    }
+
     all_relabeled_samples <- NULL
     all_cycles <- list()
     cutoff <- 1
