@@ -185,6 +185,46 @@
     sort(unique(available_sample_ids))
 }
 
+## Component_ID(s) that solveMajoritySearch()'s max_genotypes argument says
+## to leave alone this round: components where the number of not-yet-locked
+## (i.e. not already present in putative_subjects) Genotype_Group_ID(s) or
+## Subject_ID(s) exceeds max_genotypes. This mirrors the free-genotype/
+## free-subject size check solveGlobalSearch() uses for its own
+## max_genotypes (see solveGlobalSearch() and
+## .global_search_available_samples() above), but deliberately omits the
+## additional "more genotypes than subjects" structural skip those use --
+## that skip is specific to global search's permutation-based approach and
+## has nothing to do with how expensive a component is to vote/cycle-search
+## over.
+.majority_search_skip_components <- function(
+    unsolved_relabel_data,
+    putative_subjects,
+    max_genotypes
+) {
+    component_ids <- sort(unique(unsolved_relabel_data$Component_ID))
+    skip_component_ids <- character(0)
+    for (component_id in component_ids) {
+        cc_unsolved_relabel_data <- unsolved_relabel_data |>
+            filter(.data$Component_ID == component_id)
+        cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
+        cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
+
+        free_genotypes <- setdiff(
+            cc_genotypes,
+            putative_subjects$Genotype_Group_ID
+        )
+        free_subjects <- setdiff(cc_subjects, putative_subjects$Subject_ID)
+
+        if (
+            length(free_genotypes) > max_genotypes ||
+                length(free_subjects) > max_genotypes
+        ) {
+            skip_component_ids <- c(skip_component_ids, component_id)
+        }
+    }
+    skip_component_ids
+}
+
 ## solver_name attributes newly-solved samples to whoever solved them, for
 ## the "Solved_By" column surfaced in writeOutput()'s Sample/Component
 ## sheets (see solveEnsemble()'s call sites for the actual solver names

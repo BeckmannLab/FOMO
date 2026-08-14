@@ -24,6 +24,13 @@
 #'   sample are skipped, as are any samples that have more than one possible
 #'   real relabel target to choose between. Anything skipped this way is left
 #'   for a later solver to attempt instead.
+#' @param max_genotypes Components of the mislabel network with more
+#'   not-yet-resolved Genotype_Group_ID(s) or Subject_ID(s) than this are
+#'   skipped entirely for this call, the same way [solveGlobalSearch()]'s own
+#'   `max_genotypes` argument works. Unlike global search, majority search's
+#'   cost per component doesn't grow factorially with its size, so it can
+#'   afford a much larger default; this mainly guards against wasting time on
+#'   the rare intractably-large component in extremely large inputs.
 #'
 #' @return A MislabelSolver object
 #'
@@ -31,17 +38,37 @@
 #'
 #' @export
 #'
-solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
+solveMajoritySearch <- function(
+    object,
+    unambiguous_only = FALSE,
+    max_genotypes = 100
+) {
     tsmsg("Starting majority search")
     if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
         tsmsg("0 samples relabeled")
         return(object)
     }
 
+    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
+    putative_subjects <- object@.solve_state$putative_subjects
+    skip_component_ids <- .majority_search_skip_components(
+        unsolved_relabel_data,
+        putative_subjects,
+        max_genotypes
+    )
+    if (length(skip_component_ids) > 0) {
+        unsolved_relabel_data <- unsolved_relabel_data |>
+            filter(!(.data$Component_ID %in% skip_component_ids))
+    }
+    if (nrow(unsolved_relabel_data) == 0) {
+        tsmsg("0 samples relabeled")
+        return(object)
+    }
+
     ## 1. Update putative subjects
     votes <- table(
-        object@.solve_state$unsolved_relabel_data$Genotype_Group_ID,
-        object@.solve_state$unsolved_relabel_data$Subject_ID
+        unsolved_relabel_data$Genotype_Group_ID,
+        unsolved_relabel_data$Subject_ID
     )
     votes_by_genotype <- data.frame(
         Genotype_Group_ID = rownames(votes),
@@ -84,7 +111,6 @@ solveMajoritySearch <- function(object, unambiguous_only = FALSE) {
     object <- .update_putative_subjects(object, new_putative_subjects)
 
     ## 2. Find relabel cycles
-    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
     putative_subjects <- object@.solve_state$putative_subjects
     relabels <- .find_relabel_cycles_from_putative_subjects(
         unsolved_relabel_data,
@@ -748,6 +774,9 @@ solveLocalSearchOld <- function(
 #' @param seed The random seed to use for this run. The seed defaults to 1,
 #'   which means this function is reproducible by default. You can disable this
 #'   behavior by setting the seed to `NULL`.
+#' @param majority_max_genotypes Passed to [solveMajoritySearch()] as its
+#'   `max_genotypes` argument (only used if `use_solvers` includes
+#'   `"majority"`); see that function's documentation for what it controls.
 #' @param global_max_genotypes,global_ghost_penalty,global_deletion_penalty
 #'   Passed to [solveGlobalSearch()] as its `max_genotypes`, `ghost_penalty`,
 #'   and `deletion_penalty` arguments respectively (only used if `use_solvers`
@@ -774,6 +803,7 @@ solveEnsemble <- function(
     use_solvers = c("majority", "global", "local"),
     time_limit = 2 * 60 * 60,
     seed = 1,
+    majority_max_genotypes = 100,
     global_max_genotypes = 8,
     global_ghost_penalty = 1.5,
     global_deletion_penalty = 4,
@@ -904,7 +934,10 @@ solveEnsemble <- function(
             }
         }
         if ("majority" %in% use_solvers) {
-            object <- solveMajoritySearch(object)
+            object <- solveMajoritySearch(
+                object,
+                max_genotypes = majority_max_genotypes
+            )
         }
         if (run_global) {
             current_available_samples <- .global_search_available_samples(

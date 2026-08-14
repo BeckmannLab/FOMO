@@ -4,7 +4,7 @@
 \alias{solveMajoritySearch}
 \title{Majority-based Sample Relabeling}
 \usage{
-solveMajoritySearch(object, unambiguous_only = FALSE)
+solveMajoritySearch(object, unambiguous_only = FALSE, max_genotypes = 100)
 }
 \arguments{
 \item{object}{A MislabelSolver object}
@@ -15,6 +15,14 @@ cases. Candidate relabels that would require inventing a placeholder
 sample are skipped, as are any samples that have more than one possible
 real relabel target to choose between. Anything skipped this way is left
 for a later solver to attempt instead.}
+
+\item{max_genotypes}{Components of the mislabel network with more
+not-yet-resolved Genotype_Group_ID(s) or Subject_ID(s) than this are
+skipped entirely for this call, the same way \code{\link[=solveGlobalSearch]{solveGlobalSearch()}}'s own
+\code{max_genotypes} argument works. Unlike global search, majority search's
+cost per component doesn't grow factorially with its size, so it can
+afford a much larger default; this mainly guards against wasting time on
+the rare intractably-large component in extremely large inputs.}
 }
 \value{
 A MislabelSolver object

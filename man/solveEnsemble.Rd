@@ -9,6 +9,7 @@ solveEnsemble(
   use_solvers = c("majority", "global", "local"),
   time_limit = 2 * 60 * 60,
   seed = 1,
+  majority_max_genotypes = 100,
   global_max_genotypes = 8,
   global_ghost_penalty = 1.5,
   global_deletion_penalty = 4,
@@ -38,6 +39,10 @@ real world data sets, so users generally should not need to modify this.}
 \item{seed}{The random seed to use for this run. The seed defaults to 1,
 which means this function is reproducible by default. You can disable this
 behavior by setting the seed to \code{NULL}.}
+
+\item{majority_max_genotypes}{Passed to \code{\link[=solveMajoritySearch]{solveMajoritySearch()}} as its
+\code{max_genotypes} argument (only used if \code{use_solvers} includes
+\code{"majority"}); see that function's documentation for what it controls.}
 
 \item{global_max_genotypes, global_ghost_penalty, global_deletion_penalty}{Passed to \code{\link[=solveGlobalSearch]{solveGlobalSearch()}} as its \code{max_genotypes}, \code{ghost_penalty},
 and \code{deletion_penalty} arguments respectively (only used if \code{use_solvers}
