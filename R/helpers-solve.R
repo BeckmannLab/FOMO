@@ -225,6 +225,57 @@
     skip_component_ids
 }
 
+## Mirrors .global_search_available_samples() above, but for
+## solveMajoritySearch()'s own max_genotypes: the set of Sample_ID(s)
+## belonging to a not-yet-locked (free) Genotype_Group_ID within a component
+## small enough for majority search to actually consider this round. Used by
+## solveEnsemble() to skip a redundant solveMajoritySearch() call when
+## nothing new has become available to it since it last ran -- see
+## .global_search_available_samples()'s own comment for why that's safe to
+## do. Deliberately does not apply the "more genotypes than subjects"
+## structural skip .global_search_available_samples() uses (see
+## .majority_search_skip_components() above for why), and does not include
+## ghost samples, since solveMajoritySearch() never relabels them.
+.majority_search_available_samples <- function(object, max_genotypes) {
+    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
+    putative_subjects <- object@.solve_state$putative_subjects
+
+    if (nrow(unsolved_relabel_data) == 0) {
+        return(character(0))
+    }
+
+    component_ids <- sort(unique(unsolved_relabel_data$Component_ID))
+    available_sample_ids <- character(0)
+    for (component_id in component_ids) {
+        cc_unsolved_relabel_data <- unsolved_relabel_data |>
+            filter(.data$Component_ID == component_id)
+        cc_genotypes <- unique(cc_unsolved_relabel_data$Genotype_Group_ID)
+        cc_subjects <- unique(cc_unsolved_relabel_data$Subject_ID)
+
+        free_genotypes <- setdiff(
+            cc_genotypes,
+            putative_subjects$Genotype_Group_ID
+        )
+        free_subjects <- setdiff(cc_subjects, putative_subjects$Subject_ID)
+
+        if (
+            length(free_genotypes) > max_genotypes ||
+                length(free_subjects) > max_genotypes
+        ) {
+            next
+        }
+
+        available_sample_ids <- c(
+            available_sample_ids,
+            cc_unsolved_relabel_data$Sample_ID[
+                cc_unsolved_relabel_data$Genotype_Group_ID %in%
+                    free_genotypes
+            ]
+        )
+    }
+    sort(unique(available_sample_ids))
+}
+
 ## solver_name attributes newly-solved samples to whoever solved them, for
 ## the "Solved_By" column surfaced in writeOutput()'s Sample/Component
 ## sheets (see solveEnsemble()'s call sites for the actual solver names

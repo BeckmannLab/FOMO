@@ -909,18 +909,24 @@ solveEnsemble <- function(
     }
 
     run_global <- "global" %in% use_solvers
+    run_majority <- "majority" %in% use_solvers
 
-    ## Tracks the set of samples available for solveGlobalSearch() to analyze
-    ## (see .global_search_available_samples() in helpers-solve.R) as of the
-    ## last time it actually ran, so it can be skipped below when nothing new
-    ## has become available to it since then -- calling it again in that case is
-    ## guaranteed to be futile: every component it would look at now is one it
-    ## either already fully resolved (and so has left the unsolved pool
-    ## entirely) or already skipped for the exact same reason (too large, or
-    ## more genotypes than subjects) last time, and neither of those can change
-    ## without changing this set. Starts empty, before anything has been
-    ## analyzed.
+    ## Tracks the set of samples available for solveGlobalSearch() (and,
+    ## separately, solveMajoritySearch()) to analyze -- see
+    ## .global_search_available_samples()/.majority_search_available_samples()
+    ## in helpers-solve.R -- as of the last time each one actually ran, so
+    ## each can be skipped below when nothing new has become available to it
+    ## since then -- calling it again in that case is guaranteed to be
+    ## futile: every component it would look at now is one it either already
+    ## fully resolved (and so has left the unsolved pool entirely) or
+    ## already skipped for the exact same reason last time, and neither of
+    ## those can change without changing this set. These two are tracked
+    ## separately because global_max_genotypes and majority_max_genotypes
+    ## are generally different, so a component can become newly available to
+    ## one without becoming newly available to the other. Both start empty,
+    ## before anything has been analyzed.
     global_available_samples <- character(0)
+    majority_available_samples <- character(0)
 
     start_time <- Sys.time()
     time_limit_exceeded <- FALSE
@@ -966,11 +972,27 @@ solveEnsemble <- function(
                 )
             }
         }
-        if ("majority" %in% use_solvers) {
-            object <- solveMajoritySearch(
+        if (run_majority) {
+            current_majority_available_samples <- .majority_search_available_samples(
                 object,
-                max_genotypes = majority_max_genotypes
+                majority_max_genotypes
             )
+            if (
+                !identical(
+                    current_majority_available_samples,
+                    majority_available_samples
+                )
+            ) {
+                object <- solveMajoritySearch(
+                    object,
+                    max_genotypes = majority_max_genotypes
+                )
+                majority_available_samples <- current_majority_available_samples
+            } else {
+                tsmsg(
+                    "Skipping majority search: no new samples have become available to it since it last ran."
+                )
+            }
         }
         if (run_global) {
             current_available_samples <- .global_search_available_samples(
@@ -1013,8 +1035,8 @@ solveEnsemble <- function(
             local_solver_extra_args <- list()
             if (!use_local_old) {
                 active_max_genotypes <- c(
-                    if ("global" %in% use_solvers) global_max_genotypes,
-                    if ("majority" %in% use_solvers) majority_max_genotypes
+                    if (run_global) global_max_genotypes,
+                    if (run_majority) majority_max_genotypes
                 )
                 if (length(active_max_genotypes) > 0) {
                     local_solver_extra_args <- list(
