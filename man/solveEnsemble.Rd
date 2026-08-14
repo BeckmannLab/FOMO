@@ -33,8 +33,11 @@ of the while loop, which means that the actual run time may slightly exceed
 the specified limit. If the limit is reached before the solver has
 converged, the loop is terminated early, a warning is issued, and the
 MislabelSolver object is returned in its current, incompletely solved
-state. Note that FOMO will not come anywhere near this time limit for most
-real world data sets, so users generally should not need to modify this.}
+state. However, note that the solver only checks the time limit once per
+loop, so for very large data sets, it may continue running for some time
+after the limit is reached. Note that FOMO will not come anywhere near this
+time limit for most real world data sets, so users generally should not
+need to modify this.}
 
 \item{seed}{The random seed to use for this run. The seed defaults to 1,
 which means this function is reproducible by default. You can disable this
@@ -55,16 +58,7 @@ function's documentation for what it controls. Note that, unlike calling
 \code{\link[=solveLocalSearch]{solveLocalSearch()}} directly, this does not control the \emph{total} number of
 local search iterations \code{solveEnsemble()} runs; it controls how many local
 search iterations run per cycle, i.e. in between each round of the other
-solvers in \code{use_solvers}. Also unlike calling \code{\link[=solveLocalSearch]{solveLocalSearch()}}
-directly, \code{solveEnsemble()} always sets its \code{min_genotypes} argument to
-one more than the smallest of \code{global_max_genotypes}/
-\code{majority_max_genotypes} among whichever of \code{"global"}/\code{"majority"} are
-also in \code{use_solvers} (or leaves it at its own no-op default of 1 if
-neither is); this is not user-configurable. This keeps local search
-focused on components too large for the other active solvers to have
-already handled, instead of redoing their work. (This does not apply
-when \code{use_solvers} includes \code{"local_old"} instead of \code{"local"}, since
-\code{\link[=solveLocalSearchOld]{solveLocalSearchOld()}} has no \code{min_genotypes} argument.)}
+solvers in \code{use_solvers}.}
 }
 \value{
 A MislabelSolver object with all detected correctable mislabeled

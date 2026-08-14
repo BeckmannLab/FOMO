@@ -812,16 +812,7 @@ solveLocalSearchOld <- function(
 #'   [solveLocalSearch()] directly, this does not control the *total* number of
 #'   local search iterations `solveEnsemble()` runs; it controls how many local
 #'   search iterations run per cycle, i.e. in between each round of the other
-#'   solvers in `use_solvers`. Also unlike calling [solveLocalSearch()]
-#'   directly, `solveEnsemble()` always sets its `min_genotypes` argument to
-#'   one more than the smallest of `global_max_genotypes`/
-#'   `majority_max_genotypes` among whichever of `"global"`/`"majority"` are
-#'   also in `use_solvers` (or leaves it at its own no-op default of 1 if
-#'   neither is); this is not user-configurable. This keeps local search
-#'   focused on components too large for the other active solvers to have
-#'   already handled, instead of redoing their work. (This does not apply
-#'   when `use_solvers` includes `"local_old"` instead of `"local"`, since
-#'   [solveLocalSearchOld()] has no `min_genotypes` argument.)
+#'   solvers in `use_solvers`.
 #'
 #' @return A MislabelSolver object with all detected correctable mislabeled
 #'   samples relabeled (unless the time limit is reached).
@@ -910,6 +901,42 @@ solveEnsemble <- function(
 
     run_global <- "global" %in% use_solvers
     run_majority <- "majority" %in% use_solvers
+    run_local <- any(c("local", "local_old") %in% use_solvers)
+
+    ## solveLocalSearchOld() has no min_genotypes argument, and is kept as
+    ## an unmodified reference implementation, so when we're using
+    ## solveLocalSearchOld(), the min_genotypes argument is effectively
+    ## always 1. The cap itself is based on whichever of global/majority
+    ## search are actually active in use_solvers: if neither is, then we
+    ## keep the normal value of 1 since there is no other solver for local
+    ## search to defer to.
+    local_solver <- function(...) {
+        stop("Local search called unexpectedly while disabled")
+    }
+    local_min_genotypes <- 1
+    use_local_old <- FALSE
+    if (run_local) {
+        use_local_old <- "local_old" %in% use_solvers
+        local_solver <- solveLocalSearch
+        if (use_local_old) {
+            local_solver <- solveLocalSearchOld
+        } else {
+            # Compute the appropriate min_genotypes and bake it into
+            # local_solver
+            active_max_genotypes <- c(
+                if (run_global) global_max_genotypes,
+                if (run_majority) majority_max_genotypes
+            )
+            if (length(active_max_genotypes) > 0) {
+                local_min_genotypes <- min(active_max_genotypes) + 1
+            } else {
+                local_min_genotypes <- 1
+            }
+            local_solver <- function(...) {
+                solveLocalSearch(..., min_genotypes = local_min_genotypes)
+            }
+        }
+    }
 
     ## Tracks the set of samples available for solveGlobalSearch() (and,
     ## separately, solveMajoritySearch()) to analyze -- see
@@ -929,8 +956,11 @@ solveEnsemble <- function(
     majority_available_samples <- character(0)
 
     start_time <- Sys.time()
+    # TODO: Predict whether the next iteration will exceed the time limit and
+    # stop if so.
     time_limit_exceeded <- FALSE
-    while (TRUE) {
+    repeat {
+        # Check a few stopping conditions
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             tsmsg("All components fully solved. Stopping.")
             break
@@ -957,8 +987,12 @@ solveEnsemble <- function(
                 global_max_genotypes
             )
             if (
-                !identical(current_available_samples, global_available_samples)
+                identical(current_available_samples, global_available_samples)
             ) {
+                tsmsg(
+                    "Skipping global search: no new samples have become available to it since it last ran."
+                )
+            } else {
                 object <- solveGlobalSearch(
                     object,
                     max_genotypes = global_max_genotypes,
@@ -966,10 +1000,6 @@ solveEnsemble <- function(
                     deletion_penalty = global_deletion_penalty
                 )
                 global_available_samples <- current_available_samples
-            } else {
-                tsmsg(
-                    "Skipping global search: no new samples have become available to it since it last ran."
-                )
             }
         }
         if (run_majority) {
@@ -978,129 +1008,103 @@ solveEnsemble <- function(
                 majority_max_genotypes
             )
             if (
-                !identical(
+                identical(
                     current_majority_available_samples,
                     majority_available_samples
                 )
             ) {
+                tsmsg(
+                    "Skipping majority search: no new samples have become available to it since it last ran."
+                )
+            } else {
                 object <- solveMajoritySearch(
                     object,
                     max_genotypes = majority_max_genotypes
                 )
                 majority_available_samples <- current_majority_available_samples
-            } else {
-                tsmsg(
-                    "Skipping majority search: no new samples have become available to it since it last ran."
-                )
             }
-        }
-        # If we aren't running majority search, then this would just run global
-        # a 2nd time consecutively, which is pointless.
-        if (run_global && "majority" %in% use_solvers) {
-            current_available_samples <- .global_search_available_samples(
-                object,
-                global_max_genotypes
-            )
-            if (
-                !identical(current_available_samples, global_available_samples)
-            ) {
-                object <- solveGlobalSearch(
+
+            # NOTE: This is inside the use_majority section because if we aren't
+            # running majority search, then this would just run global a 2nd
+            # time consecutively, which is pointless.
+            if (run_global) {
+                current_available_samples <- .global_search_available_samples(
                     object,
-                    max_genotypes = global_max_genotypes,
-                    ghost_penalty = global_ghost_penalty,
-                    deletion_penalty = global_deletion_penalty
+                    global_max_genotypes
                 )
-                global_available_samples <- current_available_samples
-            } else {
-                tsmsg(
-                    "Skipping global search: no new samples have become available to it since it last ran."
-                )
+                if (
+                    identical(
+                        current_available_samples,
+                        global_available_samples
+                    )
+                ) {
+                    tsmsg(
+                        "Skipping global search: no new samples have become available to it since it last ran."
+                    )
+                } else {
+                    object <- solveGlobalSearch(
+                        object,
+                        max_genotypes = global_max_genotypes,
+                        ghost_penalty = global_ghost_penalty,
+                        deletion_penalty = global_deletion_penalty
+                    )
+                    global_available_samples <- current_available_samples
+                }
             }
         }
 
         global_relabel_data <- object@.solve_state$unsolved_relabel_data
-        if ("local" %in% use_solvers || "local_old" %in% use_solvers) {
-            use_local_old <- "local_old" %in% use_solvers
-            local_solver <- if (use_local_old) {
-                solveLocalSearchOld
-            } else {
-                solveLocalSearch
-            }
 
-            ## solveLocalSearchOld() has no min_genotypes argument, and is
-            ## kept as an unmodified reference implementation, so this only
-            ## ever applies to solveLocalSearch(). The cap itself is based on
-            ## whichever of global/majority search are actually active in
-            ## use_solvers: if neither is, there is no other solver for local
-            ## search to defer to, so it keeps its own no-op default of 1
-            ## (nothing skipped).
-            local_solver_extra_args <- list()
-            if (!use_local_old) {
-                active_max_genotypes <- c(
-                    if (run_global) global_max_genotypes,
-                    if (run_majority) majority_max_genotypes
-                )
-                if (length(active_max_genotypes) > 0) {
-                    local_solver_extra_args <- list(
-                        min_genotypes = min(active_max_genotypes) + 1
-                    )
-                }
-            }
-
-            object <- do.call(
-                local_solver,
-                c(
-                    list(
-                        object,
-                        n_iter = effective_local_iter_per_cycle,
-                        include_ghost = TRUE,
-                        filter_concordant_vertices = TRUE
-                    ),
-                    local_solver_extra_args
-                )
+        if (run_local) {
+            object <- local_solver(
+                object,
+                n_iter = effective_local_iter_per_cycle,
+                include_ghost = TRUE,
+                filter_concordant_vertices = TRUE
             )
 
             ## If local search found no swaps, try allowing concordant vertices
             if (
                 nrow(global_relabel_data) ==
-                    nrow(object@.solve_state$unsolved_relabel_data)
-            ) {
-                if (
+                    nrow(object@.solve_state$unsolved_relabel_data) &&
                     identical(
                         global_relabel_data,
                         object@.solve_state$unsolved_relabel_data
                     )
-                ) {
-                    object <- do.call(
-                        local_solver,
-                        c(
-                            list(
-                                object,
-                                n_iter = effective_local_iter_per_cycle,
-                                include_ghost = TRUE,
-                                filter_concordant_vertices = FALSE
-                            ),
-                            local_solver_extra_args
-                        )
-                    )
-                }
+            ) {
+                object <- local_solver(
+                    object,
+                    n_iter = effective_local_iter_per_cycle,
+                    include_ghost = TRUE,
+                    filter_concordant_vertices = FALSE
+                )
             }
         }
 
         if (
             nrow(prev_relabel_data) ==
-                nrow(object@.solve_state$unsolved_relabel_data)
-        ) {
-            if (
+                nrow(object@.solve_state$unsolved_relabel_data) &&
                 identical(
                     prev_relabel_data,
                     object@.solve_state$unsolved_relabel_data
                 )
-            ) {
-                ## This pass made no further progress at all (the unsolved
-                ## data is byte-for-byte unchanged from before this
-                ## iteration ran), so further iterations would loop forever
-                ## without converging any further; stop here.
+        ) {
+            # Local search last chance phase: This pass made no further progress
+            # at all (the unsolved data is unchanged from before this iteration
+            # ran), so further iterations would loop forever without converging
+            # any further. The first time this happens, we reduce
+            # local_min_genotypes to 1 and keep looping to give local search a
+            # final chance to get the other algorithms unstuck If
+            # local_min_genotypes is already 1, we have truly converged.
+            if (!use_local_old && local_min_genotypes > 1) {
+                # Activate local search last chance phase
+                tsmsg(
+                    "Local search last-chance phase: setting local_min_genotypes to 1."
+                )
+                local_min_genotypes <- 1
+            } else {
+                # Local search last chance phase is already done, so terminate
+                # the loop.
                 tsmsg(
                     "Stopping because the solver has converged. Some samples may remain unsolved."
                 )
@@ -1109,28 +1113,59 @@ solveEnsemble <- function(
         }
     }
 
-    # We give the global search one final try (if it is allowed to run at all),
-    # since it may have been skipped in the final iteration of the loop. This
-    # ensures that the global search always has the last word.
-    if (
-        run_global &&
-            !time_limit_exceeded &&
-            # Skip if everything is already solved
-            nrow(object@.solve_state$unsolved_relabel_data) > 0
-    ) {
-        tsmsg("Running final global search")
+    # If we're already done, we can skip the last-chance phase.
+    if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+        return(object)
+    }
+
+    # Majority & global last chance phase: We run the majority and global
+    # searches one last chance each (if they are allowed to run at all), since
+    # they may have been skipped in the final iteration of the loop.
+    time_limit_exceeded <-
+        as.numeric(difftime(Sys.time(), start_time, units = "secs")) >
+            time_limit
+    if (time_limit_exceeded) {
+        warning(
+            "solveEnsemble() reached 'time_limit' of ",
+            time_limit,
+            " second(s) before converging; returning the object in its current, incompletely solved state."
+        )
+        return(object)
+    }
+    if (run_majority) {
+        tsmsg("Running last-chance majority search")
+        object <- solveMajoritySearch(
+            object,
+            max_genotypes = majority_max_genotypes
+        )
+    }
+    if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+        tsmsg("All components fully solved in last-chance phase.")
+        return(object)
+    }
+    time_limit_exceeded <-
+        as.numeric(difftime(Sys.time(), start_time, units = "secs")) >
+            time_limit
+    if (time_limit_exceeded) {
+        warning(
+            "solveEnsemble() reached 'time_limit' of ",
+            time_limit,
+            " second(s) before converging; returning the object in its current, incompletely solved state."
+        )
+        return(object)
+    }
+    if (run_global) {
+        tsmsg("Running last-chance global search")
         object <- solveGlobalSearch(
             object,
             max_genotypes = global_max_genotypes,
             ghost_penalty = global_ghost_penalty,
             deletion_penalty = global_deletion_penalty
         )
-        if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
-            tsmsg("All components fully solved after final global search.")
-        }
     }
-
-    ## After the solve, check if cycles can be broken down
+    if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
+        tsmsg("All components fully solved in last-chance phase.")
+    }
 
     return(object)
 }
