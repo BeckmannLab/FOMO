@@ -65,12 +65,14 @@ importFrom(igraph,
   graph.union,
   graph_from_adjacency_matrix,
   graph_from_data_frame,
+  induced_subgraph,
   is_directed,
   layout_with_drl,
   layout_with_mds,
   neighbors,
   subgraph,
-  vcount
+  vcount,
+  which_mutual
 )
 importFrom(methods,
   is,

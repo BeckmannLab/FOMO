@@ -4,7 +4,13 @@ EMPTY_RELABELS <- data.frame(
     relabel_from = character(0),
     relabel_to = character(0)
 )
-VISNETWORK_LABEL_DOMAIN_SHAPES <- c("dot", "square", "triangle", "diamond", "star")
+VISNETWORK_LABEL_DOMAIN_SHAPES <- c(
+    "dot",
+    "square",
+    "triangle",
+    "diamond",
+    "star"
+)
 LABEL_NOT_FOUND <- "LABELNOTFOUND"
 
 ## Colors used by the package's graph-plotting helpers (.generate_graph() in

@@ -812,6 +812,67 @@
     all_ghost_labels <- character(0)
     all_unknown_labels <- character(0)
 
+    ## The loop below used to re-filter 'mislabel_data', 'unsolved_relabel_data',
+    ## and 'unsolved_ghost_data' from scratch (via dplyr::filter()) on every
+    ## iteration -- fine for the handful of rows in the package's toy
+    ## scenarios, but O(number of mislabeled Label_Domain/Genotype_Group_ID
+    ## pairs * table size) on realistically large datasets, where both the
+    ## number of pairs and the table sizes can be large simultaneously.
+    ## Splitting each table by its grouping key(s) once up front, and doing
+    ## plain list lookups inside the loop, computes exactly the same
+    ## per-iteration values (same rows, same order, since split() preserves
+    ## each group's original row order just like filter() does) in a small
+    ## fraction of the time. The composite split keys below are built by
+    ## pasting the grouping columns together with a control character
+    ## ("\x1f", ASCII unit separator) that is not expected to ever appear in
+    ## a real Label_Domain/Genotype_Group_ID/Subject_ID value, so there is no
+    ## practical risk of two distinct groups colliding onto the same key.
+    key_sep <- "\x1f"
+
+    mislabel_group_key <- paste(
+        mislabel_data$Label_Domain,
+        mislabel_data$Genotype_Group_ID,
+        sep = key_sep
+    )
+    mislabeled_samples_by_group <- split(
+        mislabel_data$Sample_ID,
+        mislabel_group_key
+    )
+    ## Pre-sort by Sample_ID (once, globally) so that splitting preserves,
+    ## within each group, the same order `arrange(Sample_ID) |>
+    ## pull(Placeholder_ID)` produced before.
+    mislabel_sample_order <- order(mislabel_data$Sample_ID)
+    mislabel_placeholders_by_group <- split(
+        mislabel_data$Placeholder_ID[mislabel_sample_order],
+        mislabel_group_key[mislabel_sample_order]
+    )
+
+    eligible_group_key <- paste(
+        unsolved_relabel_data$Label_Domain,
+        unsolved_relabel_data$Subject_ID,
+        sep = key_sep
+    )
+    eligible_samples_by_group <- split(
+        unsolved_relabel_data$Sample_ID,
+        eligible_group_key
+    )
+    eligible_genotypes_by_group <- split(
+        unsolved_relabel_data$Genotype_Group_ID,
+        eligible_group_key
+    )
+
+    if (allow_ghosts) {
+        ghost_group_key <- paste(
+            unsolved_ghost_data$Label_Domain,
+            unsolved_ghost_data$Subject_ID,
+            sep = key_sep
+        )
+        ghost_samples_by_group <- split(
+            unsolved_ghost_data$Sample_ID,
+            ghost_group_key
+        )
+    }
+
     ## Iterate over all Label_Domain/Genotype_Group_ID pairs and search for
     ## potential relabels
     for (i in seq_len(nrow(mislabeled_genotype_label_domains))) {
@@ -823,22 +884,26 @@
         subject_id <- mislabeled_genotype_label_domains[i, "Subject_ID"]
 
         ## These are all the mislabeled samples for a Label_Domain/Genotype_Group_ID pair
-        mislabeled_subset <- mislabel_data |>
-            filter(
-                .data$Label_Domain == label_domain_id,
-                .data$Genotype_Group_ID == genotype_group_id
-            )
-        mislabeled_samples <- mislabeled_subset |> pull(.data$Sample_ID)
+        curr_mislabel_key <- paste(
+            label_domain_id,
+            genotype_group_id,
+            sep = key_sep
+        )
+        mislabeled_samples <- mislabeled_samples_by_group[[curr_mislabel_key]]
+        if (is.null(mislabeled_samples)) {
+            mislabeled_samples <- character(0)
+        }
         n_mislabeled_samples <- length(mislabeled_samples)
 
         ## The eligible relabels have the putative Subject_ID but are in a different Genotype_Group
-        eligible_labels <- unsolved_relabel_data |>
-            filter(
-                .data$Label_Domain == label_domain_id,
-                .data$Subject_ID == subject_id,
-                .data$Genotype_Group_ID != genotype_group_id
-            ) |>
-            pull(.data$Sample_ID)
+        curr_subject_key <- paste(label_domain_id, subject_id, sep = key_sep)
+        candidate_labels <- eligible_samples_by_group[[curr_subject_key]]
+        candidate_genotypes <- eligible_genotypes_by_group[[curr_subject_key]]
+        eligible_labels <- if (is.null(candidate_labels)) {
+            character(0)
+        } else {
+            candidate_labels[candidate_genotypes != genotype_group_id]
+        }
         n_eligible_labels <- length(eligible_labels)
 
         n_label_deficit <- n_mislabeled_samples - n_eligible_labels
@@ -847,12 +912,10 @@
         n_ghost_labels <- 0
         ## If there aren't enough eligible labels, try using ghosts to plug the gap
         if (allow_ghosts && n_label_deficit > 0) {
-            ghost_labels <- unsolved_ghost_data |>
-                filter(
-                    .data$Label_Domain == label_domain_id,
-                    .data$Subject_ID == subject_id
-                ) |>
-                pull(.data$Sample_ID)
+            ghost_labels <- ghost_samples_by_group[[curr_subject_key]]
+            if (is.null(ghost_labels)) {
+                ghost_labels <- character(0)
+            }
             n_ghost_labels <- length(ghost_labels)
 
             ## If we have more ghost labels than needed, select a subset
@@ -876,10 +939,10 @@
         ## the same input. Every mislabeled sample already has its own pre-generated
         ## Placeholder_ID regardless of whether it ends up used here.
         if (allow_unknowns && n_label_deficit > 0) {
-            chosen_placeholder_ids <- mislabeled_subset |>
-                arrange(.data$Sample_ID) |>
-                pull(.data$Placeholder_ID) |>
-                head(n_label_deficit)
+            chosen_placeholder_ids <- head(
+                mislabel_placeholders_by_group[[curr_mislabel_key]],
+                n_label_deficit
+            )
             unknown_labels <- str_c(
                 LABEL_NOT_FOUND,
                 "#",
@@ -1036,7 +1099,10 @@
 
     ## Criteria 1: filter only pairs of vertices that are within at
     ## exactly 2 edges of each other
-    adj_matrix_sparse <- Matrix(as_adjacency_matrix(combined_graph, sparse = TRUE))
+    adj_matrix_sparse <- Matrix(as_adjacency_matrix(
+        combined_graph,
+        sparse = TRUE
+    ))
     adj_matrix_idx <- Matrix::which(adj_matrix_sparse > 0, arr.ind = TRUE)
     dist_within_2_sparse <- adj_matrix_sparse %*% adj_matrix_sparse
     dist_within_2_idx <- Matrix::which(dist_within_2_sparse > 0, arr.ind = TRUE)
@@ -1438,7 +1504,9 @@
             "n_labels"
         )
         v_ghost <- vec_lookup(
-            ghost_label_counts[ghost_label_counts$Label_Domain == label_domain_id, ],
+            ghost_label_counts[
+                ghost_label_counts$Label_Domain == label_domain_id,
+            ],
             "Subject_ID",
             "n_ghost_labels"
         )
@@ -1449,7 +1517,8 @@
         )
         v_conc <- vec_lookup(
             genotype_subject_concordant_counts[
-                genotype_subject_concordant_counts$Label_Domain == label_domain_id,
+                genotype_subject_concordant_counts$Label_Domain ==
+                    label_domain_id,
             ],
             c("Subject_ID", "Genotype_Group_ID"),
             "n_samples_correct"

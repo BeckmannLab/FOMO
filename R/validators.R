@@ -141,7 +141,10 @@
         )
     )
 
-    missing_values <- label_domains[is.na(label_domains$Label_Domain), "Sample_ID"]
+    missing_values <- label_domains[
+        is.na(label_domains$Label_Domain),
+        "Sample_ID"
+    ]
     assert_that(
         length(missing_values) == 0,
         msg = paste0(
@@ -150,7 +153,9 @@
         )
     )
 
-    duplicated_samples <- label_domains$Sample_ID[duplicated(label_domains$Sample_ID)]
+    duplicated_samples <- label_domains$Sample_ID[duplicated(
+        label_domains$Sample_ID
+    )]
     assert_that(
         length(duplicated_samples) == 0,
         msg = paste0(
@@ -159,7 +164,10 @@
         )
     )
 
-    missing_samples <- setdiff(sample_metadata$Sample_ID, label_domains$Sample_ID)
+    missing_samples <- setdiff(
+        sample_metadata$Sample_ID,
+        label_domains$Sample_ID
+    )
     assert_that(
         length(missing_samples) == 0,
         msg = paste0(
