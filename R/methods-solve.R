@@ -994,7 +994,9 @@ solveEnsemble <- function(
                 )
             }
         }
-        if (run_global) {
+        # If we aren't running majority search, then this would just run global
+        # a 2nd time consecutively, which is pointless.
+        if (run_global && "majority" %in% use_solvers) {
             current_available_samples <- .global_search_available_samples(
                 object,
                 global_max_genotypes
