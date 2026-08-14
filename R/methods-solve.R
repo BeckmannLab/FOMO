@@ -794,7 +794,9 @@ solveLocalSearchOld <- function(
 #'   converged, the loop is terminated early, a warning is issued, and the
 #'   MislabelSolver object is returned in its current, incompletely solved
 #'   state. Note that FOMO will not come anywhere near this time limit for most
-#'   real world data sets, so users generally should not need to modify this.
+#'   real world data sets, so users generally should not need to modify this. In
+#'   some cases, it is possible for FOMO to overrun the time limit, since it
+#'   only checks the time limit at specific points in between solver runs.
 #' @param seed The random seed to use for this run. The seed defaults to 1,
 #'   which means this function is reproducible by default. You can disable this
 #'   behavior by setting the seed to `NULL`.
@@ -956,19 +958,24 @@ solveEnsemble <- function(
     majority_available_samples <- character(0)
 
     start_time <- Sys.time()
-    # TODO: Predict whether the next iteration will exceed the time limit and
-    # stop if so.
     time_limit_exceeded <- FALSE
+    prev_loop_elapsed_time <- 0
     repeat {
+        loop_start_time <- Sys.time()
         # Check a few stopping conditions
         if (nrow(object@.solve_state$unsolved_relabel_data) == 0) {
             tsmsg("All components fully solved. Stopping.")
             break
         }
-        if (
-            as.numeric(difftime(Sys.time(), start_time, units = "secs")) >
-                time_limit
-        ) {
+        current_elapsed_time <- as.numeric(difftime(
+            Sys.time(),
+            start_time,
+            units = "secs"
+        ))
+        # We project that the next loop will take the same time as the last one,
+        # and if this projected time overruns our time budget, we terminate
+        # before trying to run this loop.
+        if (current_elapsed_time + prev_loop_elapsed_time > time_limit) {
             warning(
                 "solveEnsemble() reached 'time_limit' of ",
                 time_limit,
@@ -1111,6 +1118,11 @@ solveEnsemble <- function(
                 break
             }
         }
+        prev_loop_elapsed_time <- as.numeric(difftime(
+            Sys.time(),
+            loop_start_time,
+            units = "secs"
+        ))
     }
 
     # If we're already done, we can skip the last-chance phase.
