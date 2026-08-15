@@ -986,6 +986,19 @@ solveEnsemble <- function(
             time_limit_exceeded <- TRUE
             break
         }
+        # Give an update on the largest component size, which is the primary
+        # determinant of solve time.
+        largest_comp_geno <- object@.solve_state$unsolved_relabel_data |>
+            distinct(.data$Genotype_Group_ID, .data$Component_ID) |>
+            do.call(what = table) |>
+            colSums() |>
+            max()
+        tsmsg(
+            "Current largest component contains ",
+            largest_comp_geno,
+            " genotype groups."
+        )
+
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
         if (run_global) {
