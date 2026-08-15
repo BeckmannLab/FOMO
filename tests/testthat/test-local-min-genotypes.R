@@ -4,10 +4,7 @@ test_that("solveLocalSearch() has the expected min_genotypes default", {
 
 test_that("solveLocalSearch() resolves toy_swap_scenario() under the default min_genotypes", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     solved <- suppressMessages(solveLocalSearch(x))
 
@@ -16,10 +13,7 @@ test_that("solveLocalSearch() resolves toy_swap_scenario() under the default min
 
 test_that("solveLocalSearch()'s min_genotypes skips components with too few unsolved genotypes", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     n_unsolved_before <- nrow(x@.solve_state$unsolved_relabel_data)
 
     ## toy_swap_scenario()'s single component only has 2 unsolved genotype

@@ -1,18 +1,12 @@
 test_that("Relabeled_By starts NA for every sample at construction", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     expect_true(all(is.na(x@.solve_state$relabel_data$Relabeled_By)))
 })
 
 test_that("Relabeled_By names the solver that actually relabeled a sample, and stays NA for samples that were never relabeled", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     solved <- suppressMessages(solveEnsemble(x))
     rd <- solved@.solve_state$relabel_data
     rd <- rd[order(rd$Init_Sample_ID), ]
@@ -58,15 +52,6 @@ test_that("Relabeled_By can differ from Solved_By: it tracks the last solver to 
         Actually_Mislabeled = FALSE,
         Genotype_Group_ID = geno
     )
-    # # A single sample to serve as a tie-breaker to ensure we get the correct
-    # # solution.
-    # c_rows <- tibble(
-    #     Sample_ID = "c01",
-    #     Subject_ID = "S01",
-    #     Correct_Subject_ID = "S01",
-    #     Actually_Mislabeled = FALSE,
-    #     Genotype_Group_ID = "G01"
-    # )
     sample_metadata <- rbind(a_rows, b_rows, c_rows)
 
     x <- MislabelSolver(sample_metadata)
@@ -126,10 +111,7 @@ test_that("Relabeled_By can differ from Solved_By: it tracks the last solver to 
 
 test_that("Relabeled_By is exposed in collateOutput()'s Sample sheet, immediately after Solved_By", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     solved <- suppressMessages(solveEnsemble(x))
     out <- collateOutput(solved)
 

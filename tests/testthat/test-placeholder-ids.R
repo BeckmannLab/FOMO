@@ -1,13 +1,7 @@
 test_that("placeholder IDs for unresolvable samples are reproducible for the same input", {
     scenario <- toy_deficit_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x1 <- MislabelSolver(sample_metadata = scenario$sample_metadata)
+    x2 <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     putative_subjects <- data.frame(
         Genotype_Group_ID = c("G1", "G2"),
         Subject_ID = c("S1", "S2")
@@ -33,14 +27,8 @@ test_that("placeholder IDs for unresolvable samples are reproducible for the sam
 test_that("placeholder IDs do not depend on input row order", {
     ordered <- toy_deficit_scenario(shuffle = FALSE)
     shuffled <- toy_deficit_scenario(shuffle = TRUE)
-    x1 <- MislabelSolver(
-        sample_metadata = ordered$sample_metadata,
-        label_domains = ordered$label_domains
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = shuffled$sample_metadata,
-        label_domains = shuffled$label_domains
-    )
+    x1 <- MislabelSolver(sample_metadata = ordered$sample_metadata)
+    x2 <- MislabelSolver(sample_metadata = shuffled$sample_metadata)
     putative_subjects <- data.frame(
         Genotype_Group_ID = c("G1", "G2"),
         Subject_ID = c("S1", "S2")
@@ -70,15 +58,10 @@ test_that("placeholder IDs do not depend on input row order", {
 
 test_that("placeholder IDs differ for genuinely different input", {
     scenario1 <- toy_deficit_scenario()
-    scenario2 <- toy_deficit_scenario(ids = c("sampleA", "sampleB", "sampleC"))
-    x1 <- MislabelSolver(
-        sample_metadata = scenario1$sample_metadata,
-        label_domains = scenario1$label_domains
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = scenario2$sample_metadata,
-        label_domains = scenario2$label_domains
-    )
+    scenario2 <- scenario1
+    scenario2$sample_metadata$Sample_ID <- c("sampleA", "sampleB", "sampleC")
+    x1 <- MislabelSolver(sample_metadata = scenario1$sample_metadata)
+    x2 <- MislabelSolver(sample_metadata = scenario2$sample_metadata)
     putative_subjects <- data.frame(
         Genotype_Group_ID = c("G1", "G2"),
         Subject_ID = c("S1", "S2")
@@ -105,10 +88,7 @@ test_that("constructing a MislabelSolver does not disturb the caller's RNG strea
     expected_after <- runif(3)
 
     set.seed(999)
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     actual_after <- runif(3)
 
     expect_identical(expected_after, actual_after)

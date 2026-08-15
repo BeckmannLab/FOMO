@@ -1,9 +1,6 @@
 test_that("majority search is skipped once nothing new is available to it", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     ## With majority_max_genotypes = 1, toy_swap_scenario()'s single
     ## 2-genotype component is too large for majority search from the very
@@ -25,10 +22,7 @@ test_that("majority search is skipped once nothing new is available to it", {
 
 test_that("majority search is not skipped on an attempt where something is genuinely available", {
     scenario <- toy_majority_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     ## toy_majority_scenario() is immediately solvable by majority search
     ## alone, so its very first attempt (nothing has run yet, so anything

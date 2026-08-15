@@ -5,10 +5,7 @@ test_that("solveMajoritySearch() and solveEnsemble() have the expected max_genot
 
 test_that("solveMajoritySearch() fully resolves toy_majority_scenario() under the default max_genotypes", {
     scenario <- toy_majority_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     solved <- suppressMessages(solveMajoritySearch(x))
 
@@ -18,10 +15,7 @@ test_that("solveMajoritySearch() fully resolves toy_majority_scenario() under th
 
 test_that("solveMajoritySearch()'s max_genotypes skips components that are too large", {
     scenario <- toy_majority_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     n_unsolved_before <- nrow(x@.solve_state$unsolved_relabel_data)
 
     solved <- suppressMessages(solveMajoritySearch(x, max_genotypes = 1))
@@ -39,10 +33,7 @@ test_that("solveMajoritySearch()'s max_genotypes skips components that are too l
 
 test_that("majority_max_genotypes is passed through to solveMajoritySearch() by solveEnsemble()", {
     scenario <- toy_majority_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     n_unsolved_before <- nrow(x@.solve_state$unsolved_relabel_data)
 
     solved <- suppressMessages(solveEnsemble(

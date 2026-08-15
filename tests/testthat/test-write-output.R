@@ -7,10 +7,7 @@ test_that("writeOutput() actually succeeds and produces a non-empty .xlsx file",
     ## tolerates the resulting NAMESPACE/import inconsistency) failed with
     ## "object 'xl_sheet' not found".
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     solved <- suppressMessages(solveEnsemble(x))
 
     out_file <- withr::local_tempfile(fileext = ".xlsx")
@@ -21,10 +18,7 @@ test_that("writeOutput() actually succeeds and produces a non-empty .xlsx file",
 
 test_that("writeOutput() also accepts the result of collateOutput() directly", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     solved <- suppressMessages(solveEnsemble(x))
     collated <- collateOutput(solved)
 

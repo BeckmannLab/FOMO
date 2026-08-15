@@ -1,18 +1,11 @@
 test_that("global_ghost_penalty/global_deletion_penalty are passed through to solveGlobalSearch()'s validation", {
     scenario <- toy_swap_scenario()
-    x1 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
-    x2 <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     suppressWarnings({
         expect_warning(
             suppressMessages(solveEnsemble(
-                x1,
+                x,
                 use_solvers = "global",
                 global_ghost_penalty = 0.5
             )),
@@ -20,7 +13,7 @@ test_that("global_ghost_penalty/global_deletion_penalty are passed through to so
         )
         expect_warning(
             suppressMessages(solveEnsemble(
-                x2,
+                x,
                 use_solvers = "global",
                 global_deletion_penalty = 1
             )),
@@ -31,10 +24,7 @@ test_that("global_ghost_penalty/global_deletion_penalty are passed through to so
 
 test_that("global_max_genotypes is passed through to solveGlobalSearch(), suppressing progress when too small", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     n_unsolved_before <- nrow(x@.solve_state$unsolved_relabel_data)
 
     solved <- suppressMessages(solveEnsemble(
@@ -55,10 +45,7 @@ test_that("global_max_genotypes is passed through to solveGlobalSearch(), suppre
 
 test_that("local_iter_per_cycle is passed through to the local solver as n_iter", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
     ## toy_swap_scenario() is fully resolved by global search alone, so by
     ## the time local search runs there is nothing left for it to do -- but
     ## it still announces its first requested iteration (out of

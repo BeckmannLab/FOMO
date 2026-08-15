@@ -1,41 +1,6 @@
-## A "tie cycle": k genotype groups <-> k subjects, where every genotype
-## group has an exact 1-1 tie between two candidate subjects (so majority
-## search can never resolve any of it) and the whole cycle forms a single
-## connected component. With k > global_max_genotypes (default 8), the
-## entire component is permanently ineligible for global search, so only
-## local search can make progress on it -- this is the situation where
-## solveEnsemble() should keep skipping global search across outer-loop
-## iterations until the component is fully resolved by local search alone.
-big_tie_cycle_scenario <- function(k = 10) {
-    subj <- sprintf("S%02d", seq_len(k))
-    geno <- sprintf("G%02d", seq_len(k))
-    a_rows <- data.frame(
-        Sample_ID = sprintf("a%02d", seq_len(k)),
-        Subject_ID = subj,
-        Genotype_Group_ID = geno,
-        stringsAsFactors = FALSE
-    )
-    b_rows <- data.frame(
-        Sample_ID = sprintf("b%02d", seq_len(k)),
-        Subject_ID = subj[c(2:k, 1)],
-        Genotype_Group_ID = geno,
-        stringsAsFactors = FALSE
-    )
-    sample_metadata <- rbind(a_rows, b_rows)
-    label_domains <- data.frame(
-        Sample_ID = sample_metadata$Sample_ID,
-        Label_Domain = "omic1",
-        stringsAsFactors = FALSE
-    )
-    list(sample_metadata = sample_metadata, label_domains = label_domains)
-}
-
 test_that("global search is skipped once nothing new is available to it, and solving still fully converges", {
     scenario <- big_tie_cycle_scenario(10)
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     msgs <- capture_messages(
         solved <- solveEnsemble(
@@ -56,10 +21,7 @@ test_that("global search is skipped once nothing new is available to it, and sol
 
 test_that("global search is not skipped on an attempt where something is genuinely available", {
     scenario <- toy_swap_scenario()
-    x <- MislabelSolver(
-        sample_metadata = scenario$sample_metadata,
-        label_domains = scenario$label_domains
-    )
+    x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
 
     ## toy_swap_scenario() is immediately solvable by global search alone,
     ## so its very first attempt (nothing has run yet, so anything
