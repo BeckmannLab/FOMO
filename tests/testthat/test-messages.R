@@ -1,7 +1,10 @@
 test_that("solvers emit status text via message(), not print()/cat()", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
-    expect_message(solveGlobalSearch(x), "Starting global search")
+    suppressMessages(expect_message(
+        solveGlobalSearch(x),
+        "Starting global search"
+    ))
 })
 
 test_that("solver status messages are properly suppressible and do not leak to stdout", {
@@ -15,9 +18,11 @@ test_that("solver status messages are properly suppressible and do not leak to s
 test_that("solveLocalSearch() and solveLocalSearchOld() emit distinct status text", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
-    expect_message(solveLocalSearch(x), "Starting local search\n$")
-    expect_message(
-        solveLocalSearchOld(x),
-        "Starting local search \\(old\\)\n"
-    )
+    suppressMessages({
+        expect_message(solveLocalSearch(x), "Starting local search\n$")
+        expect_message(
+            solveLocalSearchOld(x),
+            "Starting local search \\(old\\)\n"
+        )
+    })
 })

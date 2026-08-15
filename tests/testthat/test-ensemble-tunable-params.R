@@ -51,12 +51,14 @@ test_that("local_iter_per_cycle is passed through to the local solver as n_iter"
     ## it still announces its first requested iteration (out of
     ## local_iter_per_cycle) before noticing that and returning early, which
     ## is enough to confirm the argument was passed through correctly.
-    expect_message(
-        solveEnsemble(
-            x,
-            use_solvers = c("global", "local"),
-            local_iter_per_cycle = 3
-        ),
-        "iteration \\(1 of 3\\)"
+    suppressMessages(
+        expect_message(
+            solveEnsemble(
+                x,
+                use_solvers = c("global", "local"),
+                local_iter_per_cycle = 3
+            ),
+            "iteration \\(1 of 3\\)"
+        )
     )
 })

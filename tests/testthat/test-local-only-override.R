@@ -1,22 +1,30 @@
 test_that("use_solvers with only 'local' overrides local_iter_per_cycle with a message", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
-    expect_message(
-        solveEnsemble(x, use_solvers = "local", local_iter_per_cycle = 2),
-        "overriding"
-    )
-    expect_message(
-        solveEnsemble(x, use_solvers = "local", local_iter_per_cycle = 2),
-        "iteration \\(1 of 100\\)"
-    )
+    suppressMessages({
+        expect_message(
+            solveEnsemble(x, use_solvers = "local", local_iter_per_cycle = 2),
+            "overriding"
+        )
+        expect_message(
+            solveEnsemble(x, use_solvers = "local", local_iter_per_cycle = 2),
+            "iteration \\(1 of 100\\)"
+        )
+    })
 })
 
 test_that("use_solvers with only 'local_old' also overrides local_iter_per_cycle", {
     scenario <- toy_swap_scenario()
     x <- MislabelSolver(sample_metadata = scenario$sample_metadata)
-    expect_message(
-        solveEnsemble(x, use_solvers = "local_old", local_iter_per_cycle = 2),
-        "overriding"
+    suppressMessages(
+        expect_message(
+            solveEnsemble(
+                x,
+                use_solvers = "local_old",
+                local_iter_per_cycle = 2
+            ),
+            "overriding"
+        )
     )
 })
 
