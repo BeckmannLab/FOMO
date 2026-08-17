@@ -489,9 +489,9 @@ solveLocalSearch <- function(
             i,
             " of ",
             n_iter,
-            "):: 'include_ghost'=",
+            "):: include_ghost = ",
             include_ghost,
-            ", 'filter_concordant_vertices'=",
+            ", filter_concordant_vertices = ",
             filter_concordant_vertices,
             sep = ""
         ))
@@ -1042,33 +1042,33 @@ solveEnsemble <- function(
                     max_genotypes = majority_max_genotypes
                 )
                 majority_available_samples <- current_majority_available_samples
-            }
 
-            # NOTE: This is inside the use_majority section because if we aren't
-            # running majority search, then this would just run global a 2nd
-            # time consecutively, which is pointless.
-            if (run_global) {
-                current_available_samples <- .global_search_available_samples(
-                    object,
-                    global_max_genotypes
-                )
-                if (
-                    identical(
-                        current_available_samples,
-                        global_available_samples
-                    )
-                ) {
-                    tsmsg(
-                        "Skipping global search: no new samples have become available to it since it last ran."
-                    )
-                } else {
-                    object <- solveGlobalSearch(
+                # NOTE: This is inside the use_majority section because if we
+                # aren't running majority search, then this would just run
+                # global a 2nd time consecutively, which is pointless.
+                if (run_global) {
+                    current_available_samples <- .global_search_available_samples(
                         object,
-                        max_genotypes = global_max_genotypes,
-                        ghost_penalty = global_ghost_penalty,
-                        deletion_penalty = global_deletion_penalty
+                        global_max_genotypes
                     )
-                    global_available_samples <- current_available_samples
+                    if (
+                        identical(
+                            current_available_samples,
+                            global_available_samples
+                        )
+                    ) {
+                        tsmsg(
+                            "Skipping global search: no new samples have become available to it since it last ran."
+                        )
+                    } else {
+                        object <- solveGlobalSearch(
+                            object,
+                            max_genotypes = global_max_genotypes,
+                            ghost_penalty = global_ghost_penalty,
+                            deletion_penalty = global_deletion_penalty
+                        )
+                        global_available_samples <- current_available_samples
+                    }
                 }
             }
         }
