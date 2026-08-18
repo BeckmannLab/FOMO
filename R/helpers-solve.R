@@ -1237,6 +1237,36 @@
         relabels <- bind_rows(relabels, new_relabels)
     }
 
+    ## The unknown_labels built above are chosen once per mislabeled group
+    ## (a Sample_ID-sorted subset of that group's own pre-generated
+    ## Placeholder_ID(s), sized to the group's label deficit -- see above),
+    ## then connected to *every* mislabeled sample in the group in the
+    ## bipartite graph, since at that point it is not yet known which
+    ## specific samples in the group will end up using a real eligible/ghost
+    ## label instead. Whenever a group's label deficit is smaller than its
+    ## number of mislabeled samples (i.e. at least one of them gets a real
+    ## label), cycle-finding is therefore free to pair a sample with an
+    ## invented label built from a *different* sample's Placeholder_ID.
+    ## Enforce the invariant that a sample's own Placeholder_ID is always
+    ## the one embedded in its own invented label, now that it is known
+    ## exactly which samples (relabel_from) ended up with an invented label
+    ## (relabel_to), by re-embedding relabel_from's own Placeholder_ID --
+    ## the Subject_ID/Label_Domain portion of relabel_to is unaffected.
+    if (allow_unknowns) {
+        is_unknown_relabel <- str_detect(relabels$relabel_to, LABEL_NOT_FOUND)
+        if (any(is_unknown_relabel)) {
+            own_placeholder_id <- mislabel_data$Placeholder_ID[match(
+                relabels$relabel_from[is_unknown_relabel],
+                mislabel_data$Sample_ID
+            )]
+            relabels$relabel_to[is_unknown_relabel] <- str_c(
+                sub("#[^#]*$", "", relabels$relabel_to[is_unknown_relabel]),
+                "#",
+                own_placeholder_id
+            )
+        }
+    }
+
     return(relabels)
 }
 

@@ -93,3 +93,43 @@ test_that("constructing a MislabelSolver does not disturb the caller's RNG strea
 
     expect_identical(expected_after, actual_after)
 })
+
+test_that("an invented placeholder label always embeds its own row's Placeholder_ID", {
+    ## G1 is genetically a single subject's four samples: g1a happens to
+    ## still carry a correct-looking label (S1), while g1b/g1c/g1d each
+    ## carry a *different* other subject's label (S2/S3/S4) -- i.e. three
+    ## other subjects each appear to have a duplicate sample that is really
+    ## G1's. G2/G3/G4 each independently anchor S2/S3/S4 with one real
+    ## sample. Whichever subject G1 is ultimately assigned to, no real or
+    ## ghost sample anywhere else legitimately claims it once its one
+    ## eligible real sample is used up, so at least two of G1's remaining
+    ## samples can only be resolved by inventing placeholder duplicates.
+    ## This is the scenario that originally surfaced two samples ending up
+    ## with the identical (post-relabel) Sample_ID: one sample's invented
+    ## label reused a *different* sample's Placeholder_ID rather than its
+    ## own.
+    sample_metadata <- data.frame(
+        Sample_ID = c("g1a", "g1b", "g1c", "g1d", "g2", "g3", "g4"),
+        Subject_ID = c("S1", "S2", "S3", "S4", "S2", "S3", "S4"),
+        Genotype_Group_ID = c("G1", "G1", "G1", "G1", "G2", "G3", "G4"),
+        stringsAsFactors = FALSE
+    )
+    x <- MislabelSolver(sample_metadata = sample_metadata)
+    solved <- suppressMessages(solveGlobalSearch(x))
+
+    rd <- solved@.solve_state$relabel_data
+    unknown_rows <- grepl("LABELNOTFOUND", rd$Sample_ID)
+    ## The scenario is only a meaningful test of the invariant if it
+    ## actually exercises the "invented duplicate" path.
+    expect_true(any(unknown_rows))
+
+    embedded_placeholder_id <- vapply(
+        strsplit(rd$Sample_ID[unknown_rows], "#"),
+        \(parts) parts[4],
+        character(1)
+    )
+    expect_identical(
+        embedded_placeholder_id,
+        unname(rd$Placeholder_ID[unknown_rows])
+    )
+})
