@@ -960,6 +960,8 @@ solveEnsemble <- function(
     start_time <- Sys.time()
     time_limit_exceeded <- FALSE
     prev_loop_elapsed_time <- 0
+    largest_comp_geno <- NA
+    prev_loop_largest_comp_geno <- NA
     repeat {
         loop_start_time <- Sys.time()
         # Check a few stopping conditions
@@ -998,7 +1000,30 @@ solveEnsemble <- function(
             largest_comp_geno,
             " genotype groups."
         )
-
+        # If we're currently relying primarily on local search, we can do linear
+        # estimation of ETA, which will probably be an upper bound.
+        last_loop_time <- current_elapsed_time - prev_loop_elapsed_time
+        if (
+            run_local &&
+                largest_comp_geno >= local_min_genotypes &&
+                !is.na(prev_loop_largest_comp_geno) &&
+                largest_comp_geno < prev_loop_largest_comp_geno &&
+                last_loop_time > 1
+        ) {
+            delta_largest_comp_geno <- prev_loop_largest_comp_geno -
+                largest_comp_geno
+            est_remaining_loops <- ceiling(
+                largest_comp_geno / delta_largest_comp_geno
+            )
+            est_remaining_time <- est_remaining_loops * prev_loop_elapsed_time
+            est_remaining_difftime <- difftime(est_remaining_time, 0)
+            est_remaining_time_string <- sprintf(
+                "%0.3g %s",
+                as.numeric(est_remaining_difftime),
+                attr(est_remaining_difftime, "units")
+            )
+            tsmsg("Approximate time remaining: ", est_remaining_time_string)
+        }
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
         if (run_global) {
