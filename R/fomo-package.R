@@ -6,6 +6,7 @@
 #' @importFrom digest digest
 #' @importFrom dplyr anti_join
 #' @importFrom dplyr arrange
+#' @importFrom dplyr bind_rows
 #' @importFrom dplyr case_when
 #' @importFrom dplyr coalesce
 #' @importFrom dplyr count

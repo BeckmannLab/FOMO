@@ -377,7 +377,7 @@ solveGlobalSearch <- function(
                 cc_genotypes,
                 new_putative_subjects$Genotype_Group_ID
             )
-            new_putative_subjects <- rbind(
+            new_putative_subjects <- bind_rows(
                 new_putative_subjects,
                 data.frame(
                     Genotype_Group_ID = unmatched_genotypes,
@@ -390,7 +390,7 @@ solveGlobalSearch <- function(
                 cc_subjects,
                 new_putative_subjects$Subject_ID
             )
-            new_putative_subjects <- rbind(
+            new_putative_subjects <- bind_rows(
                 new_putative_subjects,
                 data.frame(
                     Genotype_Group_ID = NA_character_,
@@ -460,12 +460,12 @@ solveGlobalSearch <- function(
 #'   multiple pairs of samples are swapped between the same subjects.
 #' @param min_genotypes Components of the mislabel network with fewer
 #'   not-yet-resolved Genotype_Group_ID(s) than this are skipped entirely for
-#'   this call. Defaults to 1, which has no effect, since every component has
-#'   at least 1 unsolved genotype group by definition. [solveEnsemble()]
-#'   raises this above 1 so that local search only works on components too
-#'   large for the other active solvers to have already handled themselves,
-#'   rather than duplicating (and potentially disturbing) their work; see its
-#'   documentation for the exact value used.
+#'   this call. Defaults to 1, which has no effect, since every component has at
+#'   least 1 unsolved genotype group by definition. [solveEnsemble()] raises
+#'   this above 1 so that local search only works on components too large for
+#'   the other active solvers to have already handled themselves, rather than
+#'   duplicating (and potentially disturbing) their work; see its documentation
+#'   for the exact value used.
 #'
 #' @return A MislabelSolver object, potentially with some samples relabeled.
 #'
@@ -495,7 +495,7 @@ solveLocalSearch <- function(
             filter_concordant_vertices,
             sep = ""
         ))
-        unsolved_all_data <- rbind(
+        unsolved_all_data <- bind_rows(
             object@.solve_state$unsolved_relabel_data,
             object@.solve_state$unsolved_ghost_data
         )
@@ -573,8 +573,10 @@ solveLocalSearch <- function(
             if (nrow(cc_neighbors) == 0) {
                 next
             }
-            ## Closed-form vectorized delta instead of mapply(.calc_swapped_delta_entropy, ...);
-            ## see .calc_swapped_delta_entropy_fast() in helpers-solve.R for the derivation.
+            ## Closed-form vectorized delta instead of
+            ## mapply(.calc_swapped_delta_entropy, ...); see
+            ## .calc_swapped_delta_entropy_fast() in helpers-solve.R for the
+            ## derivation.
             cc_neighbor_objectives <- cc_neighbors |>
                 mutate(
                     delta = .calc_swapped_delta_entropy_fast(
@@ -601,7 +603,7 @@ solveLocalSearch <- function(
         }
 
         relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
-        relabels <- rbind(
+        relabels <- bind_rows(
             relabels,
             data.frame(
                 relabel_from = relabels$relabel_to,
@@ -659,7 +661,7 @@ solveLocalSearchOld <- function(
             filter_concordant_vertices,
             sep = ""
         ))
-        unsolved_all_data <- rbind(
+        unsolved_all_data <- bind_rows(
             object@.solve_state$unsolved_relabel_data,
             object@.solve_state$unsolved_ghost_data
         )
@@ -754,7 +756,7 @@ solveLocalSearchOld <- function(
         }
 
         relabels <- relabels[!is.na(relabels[, 1]) & !is.na(relabels[, 2]), ]
-        relabels <- rbind(
+        relabels <- bind_rows(
             relabels,
             data.frame(
                 relabel_from = relabels$relabel_to,
@@ -943,17 +945,17 @@ solveEnsemble <- function(
     ## Tracks the set of samples available for solveGlobalSearch() (and,
     ## separately, solveMajoritySearch()) to analyze -- see
     ## .global_search_available_samples()/.majority_search_available_samples()
-    ## in helpers-solve.R -- as of the last time each one actually ran, so
-    ## each can be skipped below when nothing new has become available to it
-    ## since then -- calling it again in that case is guaranteed to be
-    ## futile: every component it would look at now is one it either already
-    ## fully resolved (and so has left the unsolved pool entirely) or
-    ## already skipped for the exact same reason last time, and neither of
-    ## those can change without changing this set. These two are tracked
-    ## separately because global_max_genotypes and majority_max_genotypes
-    ## are generally different, so a component can become newly available to
-    ## one without becoming newly available to the other. Both start empty,
-    ## before anything has been analyzed.
+    ## in helpers-solve.R -- as of the last time each one actually ran, so each
+    ## can be skipped below when nothing new has become available to it since
+    ## then -- calling it again in that case is guaranteed to be futile: every
+    ## component it would look at now is one it either already fully resolved
+    ## (and so has left the unsolved pool entirely) or already skipped for the
+    ## exact same reason last time, and neither of those can change without
+    ## changing this set. These two are tracked separately because
+    ## global_max_genotypes and majority_max_genotypes are generally different,
+    ## so a component can become newly available to one without becoming newly
+    ## available to the other. Both start empty, before anything has been
+    ## analyzed.
     global_available_samples <- character(0)
     majority_available_samples <- character(0)
 

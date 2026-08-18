@@ -67,12 +67,12 @@ setMethod(
             query_by <- as.character(query_by)
             query_by <- match.arg(query_by)
             if (query_by == "Init_Component_ID") {
-                component_id <- rbind(relabel_data, ghost_data) |>
+                component_id <- bind_rows(relabel_data, ghost_data) |>
                     filter(!!sym(query_by) == query_val) |>
                     pull(.data$Init_Component_ID) |>
                     unique()
             } else {
-                component_id <- rbind(relabel_data, ghost_data) |>
+                component_id <- bind_rows(relabel_data, ghost_data) |>
                     filter(!!sym(query_by) == query_val) |>
                     pull(.data$Component_ID) |>
                     unique()

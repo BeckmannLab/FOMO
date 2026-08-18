@@ -117,7 +117,7 @@ tsmsg <- function(...) {
             by = "Sample_ID"
         ) |>
         mutate(Is_Ghost = FALSE)
-    corrections_vertices <- rbind(
+    corrections_vertices <- bind_rows(
         corrections_vertices_split,
         corrections_vertices_label_not_found
     ) |>

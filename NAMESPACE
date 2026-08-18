@@ -19,6 +19,7 @@ importFrom(digest,digest)
 importFrom(dplyr,
   anti_join,
   arrange,
+  bind_rows,
   case_when,
   coalesce,
   count,

@@ -321,7 +321,7 @@
     ## 2. Determine which Sample_ID(s) are newly solved
     ##    A Sample_ID is solved if it belongs to a Component_ID that includes only one
     ##    Genotype_Group_ID and one Subject_ID
-    component_data <- rbind(unsolved_relabel_data, unsolved_ghost_data) |>
+    component_data <- bind_rows(unsolved_relabel_data, unsolved_ghost_data) |>
         group_by(.data$Component_ID) |>
         summarise(
             n_Genotype_Group_ID = n_distinct(.data$Genotype_Group_ID) -
@@ -438,10 +438,10 @@
             select(all_of(col_order)) |>
             mutate(Init_Component_ID = .data$Component_ID) |>
             relocate("Init_Component_ID", .before = "Component_ID")
-        relabel_data <- rbind(unsolved_relabel_data, unsolved_ghost_data)
+        relabel_data <- bind_rows(unsolved_relabel_data, unsolved_ghost_data)
     } else {
         ## Update 'relabel_data' with new sample labels in 'unsolved_relabel_data' and 'unsolved_ghost_data'
-        unsolved_data <- rbind(unsolved_relabel_data, unsolved_ghost_data)
+        unsolved_data <- bind_rows(unsolved_relabel_data, unsolved_ghost_data)
         relabel_data <- rows_update(
             object@.solve_state$relabel_data,
             unsolved_data,
@@ -476,7 +476,7 @@
             !(.data$Subject_ID %in% existing_subjects),
             !(.data$Genotype_Group_ID %in% existing_genotypes)
         )
-    putative_subjects <- rbind(
+    putative_subjects <- bind_rows(
         object@.solve_state$putative_subjects,
         proposed_putative_subjects
     )
@@ -607,7 +607,7 @@
                 ) |>
                 distinct()
         }
-        all_data <- rbind(relabel_data, ghost_data)
+        all_data <- bind_rows(relabel_data, ghost_data)
     }
 
     if (graph_type == "combined") {
@@ -751,7 +751,7 @@
         select(-"Deleted_relabel_from")
 
     ## Call it relabeled sample ID instead
-    unsolved_all_data <- rbind(
+    unsolved_all_data <- bind_rows(
         object@.solve_state$unsolved_relabel_data,
         object@.solve_state$unsolved_ghost_data
     )
@@ -852,7 +852,7 @@
         )
     }
 
-    return(do.call(rbind, c(list(relabels), relabels_by_component)))
+    return(do.call(bind_rows, c(list(relabels), relabels_by_component)))
 }
 
 ## Finds the same greedy, shortest-cycles-first set of vertex-disjoint
@@ -910,7 +910,7 @@
             relabel_from = curr_cycle,
             relabel_to = c(curr_cycle[2:n], curr_cycle[1])
         )
-        relabels <- rbind(relabels, curr_relabels)
+        relabels <- bind_rows(relabels, curr_relabels)
     }
 
     return(relabels)
@@ -1149,7 +1149,7 @@
     ## 1. Find relabel cycles without using ghosts or unknowns
     new_relabels <- .find_all_relabel_cycles(relabels_graph)
     relabels_graph <- relabels_graph - new_relabels$relabel_from
-    relabels <- rbind(relabels, new_relabels)
+    relabels <- bind_rows(relabels, new_relabels)
 
     ## 2. Find relabel cycles allowing for ghosts
     if (allow_ghosts) {
@@ -1191,7 +1191,7 @@
         }
         new_relabels <- .find_all_relabel_cycles(relabels_graph)
         relabels_graph <- relabels_graph - new_relabels$relabel_from
-        relabels <- rbind(relabels, new_relabels)
+        relabels <- bind_rows(relabels, new_relabels)
     }
 
     ## 3. Find relabel cycles allowing for unknowns
@@ -1234,7 +1234,7 @@
         }
         new_relabels <- .find_all_relabel_cycles(relabels_graph)
         relabels_graph <- relabels_graph - new_relabels$relabel_from
-        relabels <- rbind(relabels, new_relabels)
+        relabels <- bind_rows(relabels, new_relabels)
     }
 
     return(relabels)
@@ -1255,7 +1255,7 @@
         graph_type = "combined",
         unsolved_ghost_data
     )
-    unsolved_all_data <- rbind(unsolved_relabel_data, unsolved_ghost_data)
+    unsolved_all_data <- bind_rows(unsolved_relabel_data, unsolved_ghost_data)
     putative_subjects <- object@.solve_state$putative_subjects
 
     ## Criteria 1: filter only pairs of vertices that are within at
