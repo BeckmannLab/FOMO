@@ -1024,6 +1024,8 @@ solveEnsemble <- function(
             )
             tsmsg("Approximate time remaining: ", est_remaining_time_string)
         }
+        prev_loop_largest_comp_geno <- largest_comp_geno
+
         prev_relabel_data <- object@.solve_state$unsolved_relabel_data
 
         if (run_global) {
