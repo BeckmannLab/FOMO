@@ -938,8 +938,8 @@
         mutate(
             Inferred_Correctly_Labeled = .data$Putative_Subject_ID ==
                 .data$Subject_ID,
-            ## Only include samples where the current label is a Subject_ID
-            ## that also has a Genotype_Group_ID assigned
+            ## Only include samples where the current label is a Subject_ID that
+            ## also has a Genotype_Group_ID assigned
             Curr_Subject_ID_Genotyped = .data$Subject_ID %in%
                 putative_subjects$Subject_ID
         ) |>
@@ -955,9 +955,9 @@
         return(relabels)
     }
 
-    ## Every mislabeled sample with the same genotype and same label
-    ## domain must also have the same potential relabels. We search
-    ## for relabels at at the Label_Domain/Genotype_Group_ID level
+    ## Every mislabeled sample with the same genotype and same label domain must
+    ## also have the same potential relabels. We search for relabels at at the
+    ## Label_Domain/Genotype_Group_ID level
     mislabeled_genotype_label_domains <- mislabel_data |>
         select("Label_Domain", "Genotype_Group_ID") |>
         distinct() |>
@@ -971,21 +971,21 @@
     all_ghost_labels <- character(0)
     all_unknown_labels <- character(0)
 
-    ## The loop below used to re-filter 'mislabel_data', 'unsolved_relabel_data',
-    ## and 'unsolved_ghost_data' from scratch (via dplyr::filter()) on every
-    ## iteration -- fine for the handful of rows in the package's toy
-    ## scenarios, but O(number of mislabeled Label_Domain/Genotype_Group_ID
-    ## pairs * table size) on realistically large datasets, where both the
-    ## number of pairs and the table sizes can be large simultaneously.
-    ## Splitting each table by its grouping key(s) once up front, and doing
-    ## plain list lookups inside the loop, computes exactly the same
-    ## per-iteration values (same rows, same order, since split() preserves
+    ## The loop below used to re-filter 'mislabel_data',
+    ## 'unsolved_relabel_data', and 'unsolved_ghost_data' from scratch (via
+    ## dplyr::filter()) on every iteration -- fine for the handful of rows in
+    ## the package's toy scenarios, but O(number of mislabeled
+    ## Label_Domain/Genotype_Group_ID pairs * table size) on realistically large
+    ## datasets, where both the number of pairs and the table sizes can be large
+    ## simultaneously. Splitting each table by its grouping key(s) once up
+    ## front, and doing plain list lookups inside the loop, computes exactly the
+    ## same per-iteration values (same rows, same order, since split() preserves
     ## each group's original row order just like filter() does) in a small
-    ## fraction of the time. The composite split keys below are built by
-    ## pasting the grouping columns together with a control character
-    ## ("\x1f", ASCII unit separator) that is not expected to ever appear in
-    ## a real Label_Domain/Genotype_Group_ID/Subject_ID value, so there is no
-    ## practical risk of two distinct groups colliding onto the same key.
+    ## fraction of the time. The composite split keys below are built by pasting
+    ## the grouping columns together with a control character ("\x1f", ASCII
+    ## unit separator) that is not expected to ever appear in a real
+    ## Label_Domain/Genotype_Group_ID/Subject_ID value, so there is no practical
+    ## risk of two distinct groups colliding onto the same key.
     key_sep <- "\x1f"
 
     mislabel_group_key <- paste(
@@ -1090,13 +1090,15 @@
 
         unknown_labels <- character(0)
         n_unknown_labels <- 0
-        ## If there still aren't enough eligible labels, resort to plugging the gap with
-        ## unknowns. Reuse the Placeholder_ID(s) pre-generated at MislabelSolver()
-        ## construction time (see MislabelSolver.R/.generate_placeholder_ids()) for a
-        ## deterministic, Sample_ID-sorted subset of this group's own mislabeled samples,
-        ## rather than minting new ones now -- so the resulting label is reproducible given
-        ## the same input. Every mislabeled sample already has its own pre-generated
-        ## Placeholder_ID regardless of whether it ends up used here.
+        ## If there still aren't enough eligible labels, resort to plugging the
+        ## gap with unknowns. Reuse the Placeholder_ID(s) pre-generated at
+        ## MislabelSolver() construction time (see
+        ## MislabelSolver.R/.generate_placeholder_ids()) for a deterministic,
+        ## Sample_ID-sorted subset of this group's own mislabeled samples,
+        ## rather than minting new ones now -- so the resulting label is
+        ## reproducible given the same input. Every mislabeled sample already
+        ## has its own pre-generated Placeholder_ID regardless of whether it
+        ## ends up used here.
         if (allow_unknowns && n_label_deficit > 0) {
             chosen_placeholder_ids <- head(
                 mislabel_placeholders_by_group[[curr_mislabel_key]],
