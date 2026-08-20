@@ -781,6 +781,10 @@ solveLocalSearchOld <- function(
 #' the ensemble to handle a wider range of mislabel situations than any single
 #' algorithm can by itself. This is therefore the recommended way to run FOMO.
 #'
+#' For long-running tasks, the solver will periodically output an estimated time
+#' remaining. However, this estimate is *very* approximate and tends to be an
+#' over-estimate, especially with the first few estimates.
+#'
 #' @param object A MislabelSolver object
 #' @param use_solvers A character vector giving the subset of single-method
 #'   solvers to run on each iteration of the ensemble loop. Must be a non-empty
@@ -1017,7 +1021,11 @@ solveEnsemble <- function(
             est_remaining_loops <- ceiling(
                 largest_comp_geno / delta_largest_comp_geno
             )
-            est_remaining_time <- est_remaining_loops * prev_loop_elapsed_time
+            # Dividing by 2 assumes that loops get linearly faster for the rest
+            # of the run.
+            est_remaining_time <- est_remaining_loops *
+                prev_loop_elapsed_time /
+                2
             est_remaining_difftime <- difftime(est_remaining_time, 0)
             est_remaining_time_string <- sprintf(
                 "%0.3g %s",
