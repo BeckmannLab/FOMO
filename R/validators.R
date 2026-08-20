@@ -183,7 +183,23 @@
         length(extra_samples) == 0,
         msg = paste0(
             "'anchor_samples' contains Sample_ID(s) not in 'sample_metadata', check ",
-            paste(extra_samples, collapse = ", ")
+            paste(head(extra_samples), collapse = ", ")
+        )
+    )
+
+    # Check that no samples are both anchor and ghost
+    anchor_ghost_samples <- sample_metadata |>
+        filter(
+            .data$Sample_ID %in% anchor_samples,
+            is.na(.data$Genotype_Group_ID)
+        )
+    assert_that(
+        nrow(anchor_ghost_samples) == 0,
+        msg = str_c(
+            "'anchor_samples' contains ",
+            nrow(anchor_ghost_samples),
+            " Sample_ID(s) with missing genotypes: ",
+            deparse1(head(anchor_ghost_samples$Sample_ID))
         )
     )
 
