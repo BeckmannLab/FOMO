@@ -87,6 +87,7 @@ importFrom(rlang,
   is_bare_numeric,
   is_character,
   is_logical,
+  rep_along,
   sym
 )
 importFrom(stats,

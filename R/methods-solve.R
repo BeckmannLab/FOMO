@@ -179,6 +179,10 @@ solveGlobalSearch <- function(
     component_ids <- sort(unique(
         object@.solve_state$unsolved_relabel_data$Component_ID
     ))
+
+    eligible_components <- rep_along(component_ids, FALSE)
+    names(eligible_components) <- component_ids
+
     for (component_id in component_ids) {
         cc_unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
             filter(.data$Component_ID == component_id)
@@ -218,6 +222,8 @@ solveGlobalSearch <- function(
         ) {
             next
         }
+        # Mark the compoent as eligible for consideration
+        eligible_components[component_id] <- TRUE
 
         if (length(free_genotypes) > 0 && length(free_subjects) > 0) {
             n <- length(free_subjects)
@@ -406,10 +412,23 @@ solveGlobalSearch <- function(
         object <- .update_putative_subjects(object, new_putative_subjects)
     }
 
+    eligible_component_ids <- names(which(eligible_components))
+    # Restrict relabel search to only the eligible components
+    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data |>
+        filter(.data$Component_ID %in% eligible_component_ids)
+    unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data |>
+        filter(.data$Component_ID %in% eligible_component_ids)
+    putative_subjects <- object@.solve_state$putative_subjects |>
+        filter(
+            .data$Genotype_Group_ID %in%
+                unsolved_relabel_data$Genotype_Group_ID |
+                .data$Subject_ID %in%
+                    c(
+                        unsolved_relabel_data$Subject_ID,
+                        unsolved_ghost_data$Subject_ID
+                    )
+        )
     ## Find relabel cycles
-    unsolved_relabel_data <- object@.solve_state$unsolved_relabel_data
-    unsolved_ghost_data <- object@.solve_state$unsolved_ghost_data
-    putative_subjects <- object@.solve_state$putative_subjects
     relabels <- .find_relabel_cycles_from_putative_subjects(
         unsolved_relabel_data,
         putative_subjects,

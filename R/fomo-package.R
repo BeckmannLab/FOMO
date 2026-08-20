@@ -69,6 +69,7 @@
 #' @importFrom rlang is_bare_numeric
 #' @importFrom rlang is_character
 #' @importFrom rlang is_logical
+#' @importFrom rlang rep_along
 #' @importFrom rlang sym
 #' @importFrom stats na.omit
 #' @importFrom stats setNames
