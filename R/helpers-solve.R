@@ -791,40 +791,28 @@
     return(object)
 }
 
-# TODO: drop duplicate cycles
-##
-## For each vertex, only the *shortest* out-going path back to each of its
-## in-neighbors is computed (via shortest_paths(), a single BFS per pair),
-## rather than every simple path up to 'cutoff' (via all_simple_paths(), as
-## this used to do). A cycle through 'vertex' of length <= cutoff exists if
-## and only if this shortest path's length is <= cutoff, so this finds
-## exactly the same set of (vertex, in_neighbor) pairs that close a cycle
-## within 'cutoff' -- it just stops at the first (shortest) closing path
-## instead of enumerating every alternative one. That matters because the
-## number of simple paths between two vertices can grow exponentially with
-## path length on a densely-connected component (e.g. many
-## mutually-eligible relabel candidates sharing a component, or several
-## genotypes all eligible to relabel into the same slot), even though only
-## one such path is ever used by the caller
-## (.find_relabel_cycles_in_component()) -- so all_simple_paths() could
-## make this call, and the search it's part of, take impractically long on
-## such components even though the search itself always terminates in a
-## bounded number of outer-loop iterations. See
-## .find_relabel_cycles_in_component() for how repeating this search
-## recovers the completeness that came from all_simple_paths() offering
-## every alternative path at once.
+
+#' Search for a cycle starting at each vertex in a graph
+#'
+#' This function goes through each vertex in a directed graph and searches for a
+#' cycle starting and ending at that vertex. Only a single cycle can be returned
+#' per vertex.
+#'
+#' @param graph An igraph object
+#' @param cutoff Maximum allowed cycle length
+#'
+#' @returns A list of the found cycles.
+#'
+#'   Note that the the same cycle can be included more than once starting at
+#'   different nodes.
 .find_directed_cycles <- function(graph, cutoff = 1) {
     assert_that(is_directed(graph), msg = "param 'graph' must be directed")
     cycles <- list()
     for (vertex in V(graph)) {
         in_neighbors <- names(neighbors(graph, vertex, mode = "in"))
         for (in_neighbor in in_neighbors) {
-            ## suppressWarnings(): shortest_paths() warns when 'in_neighbor'
-            ## isn't reachable from 'vertex' at all, which is a routine,
-            ## expected outcome here (most vertex/in_neighbor pairs in a
-            ## partially-cyclic graph won't close a cycle), not a problem to
-            ## surface to the caller -- all_simple_paths() silently returned
-            ## an empty result in the same situation.
+            ## Suppress the warning when no path is found, which an expected
+            ## outcome here.
             path <- suppressWarnings(shortest_paths(
                 graph,
                 vertex,
@@ -837,7 +825,10 @@
             }
         }
     }
+    # Get the node names in each cycle
     cycles <- lapply(cycles, names)
+    # TODO: drop duplicate cycles (but this isn't a correctness issue, only an
+    # efficiency issue)
     return(cycles)
 }
 
@@ -850,24 +841,8 @@
         return(relabels)
     }
 
-    ## A cycle can never span more than one weakly-connected component (a
-    ## cycle is itself connected), so every component's disjoint cycles can
-    ## be found independently of every other component's. The
-    ## pre-optimization version of this function searched the whole graph
-    ## at once: at every increasing cutoff, it re-scanned every remaining
-    ## vertex in *every* component, up to the size of the single largest
-    ## remaining component. On a graph with many small components -- the
-    ## common case in practice, since most mislabel events are simple
-    ## pairwise swaps, each its own tiny 2-vertex component -- that means
-    ## thousands of irrelevant vertices get rescanned at every cutoff level
-    ## for no benefit, just because one large component elsewhere hasn't
-    ## finished yet. Splitting into components up front and searching each
-    ## one on its own, only up to *its own* size (see
-    ## .find_relabel_cycles_in_component()), finds exactly the same cycles
-    ## -- just far faster. The only observable difference is the row order
-    ## of the returned data frame (component-by-component here, vs.
-    ## interleaved by cutoff level across all components before), which
-    ## does not affect correctness.
+    # A cycle can never span more than one weakly connected component (a cycle
+    # is itself connected), so we can search each component independently.
     comp <- components(relabels_graph, mode = "weak")
     relabels_by_component <- vector("list", comp$no)
     for (comp_id in seq_len(comp$no)) {
@@ -884,26 +859,14 @@
     return(do.call(bind_rows, c(list(relabels), relabels_by_component)))
 }
 
-## Finds the same greedy, shortest-cycles-first set of vertex-disjoint
-## relabel cycles within a single weakly-connected component that the
-## pre-optimization .find_all_relabel_cycles() found by repeatedly
-## searching the *whole* graph -- see the comment there for why searching
-## one component at a time gives identical results. Split out so it can be
-## called once per component instead.
 .find_relabel_cycles_in_component <- function(relabels_graph) {
     relabels <- data.frame(
         relabel_from = character(0),
         relabel_to = character(0)
     )
 
-    ## Fast path for by far the most common case: a component that is
-    ## exactly two vertices with an edge in each direction between them,
-    ## i.e. a simple 2-sample swap. This is exactly the (only possible)
-    ## cycle the general search below would otherwise find at cutoff = 1,
-    ## so this is not a behavior change -- just a shortcut around the
-    ## overhead of building a tiny igraph subgraph and calling
-    ## all_simple_paths() on it, for what is typically the overwhelming
-    ## majority of components.
+    ## Fast path for the most common case: two vertices each pointing an edge at
+    ## each other, i.e. a simple 2-sample swap.
     if (vcount(relabels_graph) == 2 && ecount(relabels_graph) == 2) {
         if (all(which_mutual(relabels_graph))) {
             vertex_names <- V(relabels_graph)$name
@@ -917,54 +880,25 @@
     all_relabeled_samples <- NULL
     all_cycles <- list()
 
-    ## A single shortest-cycles-first sweep through increasing cutoff
-    ## values, exactly as before -- but at each cutoff, .find_directed_cycles()
-    ## is called repeatedly, re-claiming from the *current* graph each time,
-    ## until a call finds nothing new, before moving on to the next cutoff.
-    ## This matters because .find_directed_cycles() computes every (vertex,
-    ## in_neighbor) pair's path against one fixed graph snapshot per call --
-    ## deletions from cycles claimed earlier in the *same* call only take
-    ## effect on the *next* call -- so a pair whose one-and-only offered
-    ## path happens to route through a vertex that a different pair's cycle
-    ## claims earlier in the same call is skipped that time, even though
-    ## the two cycles didn't actually have to conflict. Re-calling
-    ## .find_directed_cycles() at the *same* cutoff, rather than moving on
-    ## to cutoff + 1 first, recomputes that pair's shortest path from
-    ## scratch now that the conflicting vertex is actually gone -- it may
-    ## route around the gap, succeeding this time -- while guaranteeing
-    ## every cycle closeable within the current cutoff is claimed before
-    ## any longer one is even attempted. An earlier version of this
-    ## instead re-ran the *entire* cutoff = 1..max sweep from scratch
-    ## whenever any cutoff finished with leftover vertices, which also
-    ## recovers such cycles eventually, but not necessarily before a
-    ## longer cycle elsewhere in the same component: since the largest
-    ## remaining cutoff bound (below) is recomputed from whatever is left
-    ## after each sweep's claims, a *different*, genuinely longer cycle
-    ## can still get claimed later in that same sweep, ahead of a shorter
-    ## one that only becomes claimable on the next sweep -- breaking the
-    ## shortest-cycles-first guarantee the sweep is meant to provide (see
-    ## the regression test for a concrete example). Converging at each
-    ## cutoff before advancing avoids that: nothing shorter than the
-    ## current cutoff can possibly be left unclaimed by the time it's safe
-    ## to move on, so nothing longer ever jumps ahead of it. Termination is
-    ## still guaranteed: every non-empty call at a given cutoff deletes at
-    ## least 2 vertices (the smallest possible cycle), so re-calling at the
-    ## same cutoff happens at most vcount(relabels_graph) / 2 times before
-    ## that cutoff is exhausted, and cutoff itself still only ever
-    ## increases -- each call remaining a polynomial (shortest_paths()-based)
-    ## one, so, unlike the exhaustive all_simple_paths() search this
-    ## replaces, this has no exponential worst case to guard against.
+    # Search for all relabel cycles, finding smaller cycles before larger ones.
     cutoff <- 1
     while (
         vcount(relabels_graph) > 0 &&
-            cutoff < max(table(components(relabels_graph)$membership))
+            # Maximum cycle length is the number of vertices
+            cutoff < length(V(relabels_graph))
     ) {
+        # We neet to repeat until the graph stops changing, because
+        # .find_directed_cycles() only finds a single cycle per vertex, and some
+        # vertices on that path may be "claimed" by another cycle. As long as
+        # another cycle exists for the same vertex, it can still be found in a
+        # subsequent repeat, so repeating until convergence completes an
+        # exhaustive cycle search in polynomial time.
         repeat {
             curr_cycles <- .find_directed_cycles(
                 relabels_graph,
                 cutoff = cutoff
             )
-            n_found_this_cutoff <- 0
+            n_found_this_repeat <- 0
             for (curr_cycle in curr_cycles) {
                 if (!any(curr_cycle %in% all_relabeled_samples)) {
                     all_cycles <- append(all_cycles, list(curr_cycle))
@@ -976,10 +910,10 @@
                         relabels_graph,
                         curr_cycle
                     )
-                    n_found_this_cutoff <- n_found_this_cutoff + 1
+                    n_found_this_repeat <- n_found_this_repeat + 1
                 }
             }
-            if (n_found_this_cutoff == 0 || vcount(relabels_graph) == 0) {
+            if (n_found_this_repeat == 0 || vcount(relabels_graph) == 0) {
                 break
             }
         }
