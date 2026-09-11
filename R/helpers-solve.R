@@ -792,20 +792,49 @@
 }
 
 # TODO: drop duplicate cycles
+##
+## For each vertex, only the *shortest* out-going path back to each of its
+## in-neighbors is computed (via shortest_paths(), a single BFS per pair),
+## rather than every simple path up to 'cutoff' (via all_simple_paths(), as
+## this used to do). A cycle through 'vertex' of length <= cutoff exists if
+## and only if this shortest path's length is <= cutoff, so this finds
+## exactly the same set of (vertex, in_neighbor) pairs that close a cycle
+## within 'cutoff' -- it just stops at the first (shortest) closing path
+## instead of enumerating every alternative one. That matters because the
+## number of simple paths between two vertices can grow exponentially with
+## path length on a densely-connected component (e.g. many
+## mutually-eligible relabel candidates sharing a component, or several
+## genotypes all eligible to relabel into the same slot), even though only
+## one such path is ever used by the caller
+## (.find_relabel_cycles_in_component()) -- so all_simple_paths() could
+## make this call, and the search it's part of, take impractically long on
+## such components even though the search itself always terminates in a
+## bounded number of outer-loop iterations. See
+## .find_relabel_cycles_in_component() for how repeating this search
+## recovers the completeness that came from all_simple_paths() offering
+## every alternative path at once.
 .find_directed_cycles <- function(graph, cutoff = 1) {
     assert_that(is_directed(graph), msg = "param 'graph' must be directed")
     cycles <- list()
     for (vertex in V(graph)) {
         in_neighbors <- names(neighbors(graph, vertex, mode = "in"))
         for (in_neighbor in in_neighbors) {
-            simple_paths <- all_simple_paths(
+            ## suppressWarnings(): shortest_paths() warns when 'in_neighbor'
+            ## isn't reachable from 'vertex' at all, which is a routine,
+            ## expected outcome here (most vertex/in_neighbor pairs in a
+            ## partially-cyclic graph won't close a cycle), not a problem to
+            ## surface to the caller -- all_simple_paths() silently returned
+            ## an empty result in the same situation.
+            path <- suppressWarnings(shortest_paths(
                 graph,
                 vertex,
                 in_neighbor,
-                mode = "out",
-                cutoff = cutoff
-            )
-            cycles <- append(cycles, simple_paths)
+                mode = "out"
+            )$vpath[[1]])
+            path_length <- length(path) - 1L
+            if (length(path) >= 2 && path_length <= cutoff) {
+                cycles <- append(cycles, list(path))
+            }
         }
     }
     cycles <- lapply(cycles, names)
@@ -887,20 +916,63 @@
 
     all_relabeled_samples <- NULL
     all_cycles <- list()
-    cutoff <- 1
-    while (
-        vcount(relabels_graph) > 0 &&
-            cutoff < max(table(components(relabels_graph)$membership))
-    ) {
-        curr_cycles <- .find_directed_cycles(relabels_graph, cutoff = cutoff)
-        for (curr_cycle in curr_cycles) {
-            if (!any(curr_cycle %in% all_relabeled_samples)) {
-                all_cycles <- append(all_cycles, list(curr_cycle))
-                all_relabeled_samples <- c(all_relabeled_samples, curr_cycle)
-                relabels_graph <- delete_vertices(relabels_graph, curr_cycle)
+
+    ## Each outer repetition performs one full shortest-cycles-first sweep
+    ## (cutoff = 1 up to the current largest component size), exactly as a
+    ## single pass always has. .find_directed_cycles() computes every
+    ## (vertex, in_neighbor) pair's path against the *same* graph snapshot
+    ## -- deletions from cycles claimed earlier in this same sweep only
+    ## take effect for the *next* sweep, not retroactively -- so a pair
+    ## whose one-and-only offered path happens to route through a vertex
+    ## that a different pair's cycle claims earlier in the same sweep is
+    ## skipped for that sweep, even though the two cycles didn't actually
+    ## have to conflict. Once that other cycle's vertices are deleted,
+    ## though, the blocked pair's shortest path is free to be recomputed
+    ## from scratch on the next sweep -- it may now route around the gap,
+    ## or a previously-irrelevant alternative may now be available -- so
+    ## repeating the sweep on the leftover graph can, and empirically does,
+    ## surface cycles the first sweep missed. This is the same mechanism
+    ## that made calling the pre-fix, all_simple_paths()-based search a
+    ## second time on an unchanged leftover graph resolve samples the first
+    ## call didn't: offering every alternative path at once let a single
+    ## pass fall back to an alternative within the pair itself, whereas
+    ## offering only the shortest needs a repeat once a conflict is
+    ## discovered. Repeat until a full sweep finds nothing new; since every
+    ## non-empty sweep deletes at least 2 vertices (the smallest possible
+    ## cycle), this always terminates in at most vcount(relabels_graph) / 2
+    ## repeats, each one itself a polynomial (shortest_paths()-based) sweep
+    ## -- so, unlike the exhaustive all_simple_paths() search this
+    ## replaces, this has no exponential worst case to guard against.
+    repeat {
+        cutoff <- 1
+        n_found_this_sweep <- 0
+        while (
+            vcount(relabels_graph) > 0 &&
+                cutoff < max(table(components(relabels_graph)$membership))
+        ) {
+            curr_cycles <- .find_directed_cycles(
+                relabels_graph,
+                cutoff = cutoff
+            )
+            for (curr_cycle in curr_cycles) {
+                if (!any(curr_cycle %in% all_relabeled_samples)) {
+                    all_cycles <- append(all_cycles, list(curr_cycle))
+                    all_relabeled_samples <- c(
+                        all_relabeled_samples,
+                        curr_cycle
+                    )
+                    relabels_graph <- delete_vertices(
+                        relabels_graph,
+                        curr_cycle
+                    )
+                    n_found_this_sweep <- n_found_this_sweep + 1
+                }
             }
+            cutoff <- cutoff + 1
         }
-        cutoff <- cutoff + 1
+        if (n_found_this_sweep == 0 || vcount(relabels_graph) == 0) {
+            break
+        }
     }
 
     ## From the found cycles, construct relabels dataframe
