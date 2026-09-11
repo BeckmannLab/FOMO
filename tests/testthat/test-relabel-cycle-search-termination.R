@@ -25,16 +25,41 @@
 ## completeness, though: .find_directed_cycles() computes every pair's path
 ## against one fixed graph snapshot, so a pair whose only offered path (the
 ## shortest one) happens to route through a vertex that a *different* pair's
-## cycle claims earlier in the same sweep is skipped for that sweep, even
+## cycle claims earlier in the same pass is skipped for that pass, even
 ## though the two cycles didn't strictly have to conflict -- the exhaustive
 ## search didn't have this gap, because it offered every alternative path for
 ## a pair at once, so a single pass could fall back to a different route
-## within the same pair. .find_relabel_cycles_in_component() closes this gap
-## by repeating the full shortest-cycles-first sweep (see its own comment)
-## until a sweep finds nothing new, rather than running it only once: once a
-## conflicting cycle's vertices are actually deleted, the blocked pair's
-## shortest path gets recomputed from scratch on the next sweep and is free
-## to route around the gap.
+## within the same pair. Once a conflicting cycle's vertices are actually
+## deleted, the blocked pair's shortest path gets recomputed from scratch on
+## the next pass at the same cutoff and is free to route around the gap -- so
+## .find_relabel_cycles_in_component() re-runs the search at each cutoff
+## level until a pass finds nothing new, before ever moving on to the next
+## cutoff.
+##
+## That per-cutoff convergence loop is also what makes the search reliably
+## prefer shorter cycles over longer ones, which matters because claiming a
+## cycle deletes its vertices and can foreclose a different, unrelated cycle
+## elsewhere in the component -- a genotype-swap resolved by a short cycle is
+## a more conservative call than one resolved by a long one, so shorter
+## should always win when both are on the table. An earlier version of this
+## fix instead wrapped the *entire* cutoff-range loop in an outer repeat{}
+## and restarted cutoff at 1 on the leftover graph whenever a full sweep
+## found something new. That also achieves completeness (nothing is ever
+## permanently lost to staleness), but not this ordering guarantee: the
+## upper bound on cutoff is
+## `max(table(components(relabels_graph)$membership))`, recomputed fresh
+## from the *current*, shrinking graph on every iteration -- so once enough
+## vertices elsewhere are deleted, that bound can drop low enough to end a
+## sweep before a stale-blocked *short* pair ever gets revisited, while a
+## *longer* cycle elsewhere in the same component (or even the same
+## cutoff-level call) gets claimed first. Confirmed while developing this fix
+## by constructing a component where that is exactly what happens (see the
+## fourth test below): a length-4 cycle, then a length-5 cycle, then a
+## *second* length-4 cycle, in that claim order -- shorter-after-longer.
+## Restructuring so cutoff only ever increments once its own level has fully
+## converged (this version) closes that gap: nothing shorter than the
+## current cutoff can be left unclaimed before moving past it, so nothing
+## longer can ever jump ahead of it.
 ##
 ## The exact originally-reported input is unavailable (multi-day runs aren't
 ## reproducible in a test), so these tests instead target the failure
@@ -45,17 +70,27 @@
 ##    multiple equally-short alternatives exist), and the cutoff bound is
 ##    respected;
 ##  - the third test exercises .find_relabel_cycles_in_component() directly
-##    on a small, hand-built graph specifically shaped so that a single sweep
-##    provably cannot resolve every vertex (confirmed while developing this
-##    fix by temporarily disabling the repeat{} wrapper and rerunning this
-##    exact graph -- a single sweep resolves only half of it), to pin down
-##    that repetition is actually doing the work it's meant to;
-##  - the fourth test drives the public solveEnsemble() workflow on a small
+##    on a small, hand-built graph specifically shaped so that a single,
+##    non-converging pass through the cutoff range provably cannot resolve
+##    every vertex (confirmed while developing this fix by temporarily
+##    replacing the per-cutoff convergence loop with a single call per
+##    cutoff and rerunning this exact graph -- a single pass resolves only
+##    half of it), to pin down that convergence is actually doing the work
+##    it's meant to;
+##  - the fourth test exercises .find_relabel_cycles_in_component() on a
+##    hand-built graph -- two differently-sized bipartite rings of samples,
+##    bridged by a single relabel edge -- specifically shaped to demonstrate
+##    the shorter-cycles-first ordering guarantee described above, and to
+##    reproduce the shorter-after-longer violation of it that the earlier,
+##    whole-sweep-repeating version of this fix had (confirmed while
+##    developing this fix by running this exact graph against that earlier
+##    version);
+##  - the fifth test drives the public solveEnsemble() workflow on a small
 ##    (well under 15 subjects) ring scenario with just enough redundancy to
 ##    be fully solvable by exhaustive search -- confirming that realistic
 ##    amounts of redundancy are resolved exactly as the pre-fix
 ##    implementation would, with no correctness trade-off;
-##  - the fifth test drives solveEnsemble() on a larger, densely
+##  - the sixth test drives solveEnsemble() on a larger, densely
 ##    cross-connected version of the same scenario, shaped to create the same
 ##    kind of combinatorial blowup the pre-fix implementation hung on, under a
 ##    hard, process-level timeout so the test fails cleanly instead of hanging
@@ -133,25 +168,27 @@ test_that(".find_directed_cycles() respects the cutoff bound", {
     expect_identical(cycles_from_a_ok[[1]], c("A", "X", "Y", "B"))
 })
 
-test_that(".find_relabel_cycles_in_component() recovers cycles that a single sweep misses", {
+test_that(".find_relabel_cycles_in_component() recovers cycles that a single, non-converging pass misses", {
     ## Two "parallel" 3-cycles worth of samples (g1/g2/g3, two samples per
     ## genotype), but every sample in genotype g_i is eligible to relabel
     ## against *both* samples in genotype g_(i+1) (a complete bipartite
     ## connection between consecutive layers, wrapping from g3 back to
     ## g1) -- the same redundant-eligibility shape .make_ring_scenario()
     ## below builds from realistic sample data, just built directly as a
-    ## graph here for a fast, deterministic, non-end-to-end check. With a
-    ## single (non-repeated) sweep, cutoff reaches the component's full
-    ## size before a second attempt is possible, and greedily claiming the
-    ## first-found 3-cycle deletes vertices that the *other* 3-cycle's
-    ## pairs had already (now stale) precomputed a path through -- exactly
-    ## the gap described in the file-level comment above. Confirmed while
-    ## developing this fix, by temporarily replacing the repeat{} wrapper
-    ## in .find_relabel_cycles_in_component() with a single pass and
-    ## rerunning this exact graph, that a single sweep resolves only 3 of
-    ## the 6 vertices (one of the two 3-cycles) -- leaving the other
-    ## entirely unresolved, not just partially -- which is exactly the
-    ## failure mode repeating the sweep is meant to fix.
+    ## graph here for a fast, deterministic, non-end-to-end check. Both
+    ## 3-cycles first become reachable at the same cutoff (2), and a single
+    ## (non-converging) call at that cutoff greedily claims whichever one
+    ## is found first, deleting its vertices -- which leaves the *other*
+    ## 3-cycle's pairs stuck on a now-stale precomputed path through a
+    ## vertex that's already gone. Confirmed while developing this fix, by
+    ## temporarily replacing the per-cutoff convergence loop in
+    ## .find_relabel_cycles_in_component() with a single call per cutoff and
+    ## rerunning this exact graph, that doing so resolves only 3 of the 6
+    ## vertices (one of the two 3-cycles) -- leaving the other entirely
+    ## unresolved, not just partially. Re-calling at the *same* cutoff
+    ## (rather than moving on) is what recovers it: the second 3-cycle's
+    ## pairs get their paths recomputed from scratch against the
+    ## already-shrunk graph and close normally.
     edges <- rbind(
         expand.grid(
             from = c("g1_m1", "g1_m2"),
@@ -197,6 +234,90 @@ test_that(".find_relabel_cycles_in_component() recovers cycles that a single swe
         }
         expect_identical(cur, start)
     }
+})
+
+## Used by the ordering test below: an L-layer, W-samples-per-layer
+## bipartite ring, given a prefix so two rings of different sizes can be
+## unioned into one graph. Same redundant-eligibility shape as the 6-vertex
+## graph in the test above (that's the L = 3, W = 2 case), generalized to
+## any L and W.
+.make_bipartite_ring_edges <- function(L, W, prefix) {
+    do.call(
+        rbind,
+        lapply(seq_len(L), function(g) {
+            next_g <- (g %% L) + 1
+            expand.grid(
+                from = sprintf("%s_g%d_m%d", prefix, g, seq_len(W)),
+                to = sprintf("%s_g%d_m%d", prefix, next_g, seq_len(W)),
+                stringsAsFactors = FALSE
+            )
+        })
+    )
+}
+
+test_that(".find_relabel_cycles_in_component() claims shorter cycles before longer ones", {
+    ## Two bipartite rings of different sizes -- "A" with 5 layers of 2
+    ## samples (10 vertices; every cycle through it has length 5) and "B"
+    ## with 4 layers of 2 samples (8 vertices; every cycle through it has
+    ## length 4) -- joined into one component by a single relabel edge from
+    ## A into B. That bridge gives one of B's samples a third, much longer
+    ## relabel candidate (through all of A and back across the bridge), but
+    ## it's never actually needed: every vertex is still resolvable using
+    ## only the short cycles native to its own ring. A correct search should
+    ## therefore claim both of B's length-4 cycles before either of A's
+    ## length-5 cycles.
+    ##
+    ## This is a hand-minimized version of a randomized construction that
+    ## surfaced this exact failure while developing this fix: joining
+    ## differently-sized bipartite rings with a single bridge edge let an
+    ## earlier, whole-sweep-repeating version of this fix claim a cycle from
+    ## A (length 5) before a second cycle from B (length 4), because the
+    ## bound on cutoff it recomputes every sweep
+    ## (`max(table(components(relabels_graph)$membership))`) had already
+    ## dropped low enough, after other vertices were deleted, to end that
+    ## sweep before B's stale-blocked pair was revisited -- confirmed on
+    ## this exact graph, claim order length 4, 5, 4, 5 (shorter-after-longer,
+    ## twice over). The current implementation, which only ever advances
+    ## cutoff once its own level has converged, cannot do this: confirmed on
+    ## this exact graph, claim order 4, 4, 5, 5.
+    all_edges <- rbind(
+        .make_bipartite_ring_edges(L = 5, W = 2, prefix = "A"),
+        .make_bipartite_ring_edges(L = 4, W = 2, prefix = "B"),
+        data.frame(from = "A_g1_m1", to = "B_g1_m1", stringsAsFactors = FALSE)
+    )
+    relabels_graph <- igraph::graph_from_data_frame(all_edges, directed = TRUE)
+
+    result <- fomo:::.find_relabel_cycles_in_component(relabels_graph)
+
+    all_samples <- unique(c(all_edges$from, all_edges$to))
+    expect_setequal(result$relabel_from, all_samples)
+    edge_set <- paste(all_edges$from, all_edges$to)
+    expect_true(all(
+        paste(result$relabel_from, result$relabel_to) %in% edge_set
+    ))
+
+    ## Reconstruct which contiguous rows belong to the same cycle by
+    ## following relabel_from -> relabel_to from the start of each block
+    ## until it closes, then check the lengths of successive cycles, in the
+    ## order they were claimed, never decrease.
+    next_of <- setNames(result$relabel_to, result$relabel_from)
+    lengths_in_claim_order <- integer(0)
+    i <- 1
+    while (i <= nrow(result)) {
+        start <- result$relabel_from[i]
+        cur <- start
+        len <- 0L
+        repeat {
+            cur <- next_of[[cur]]
+            len <- len + 1L
+            if (identical(cur, start)) {
+                break
+            }
+        }
+        lengths_in_claim_order <- c(lengths_in_claim_order, len)
+        i <- i + len
+    }
+    expect_identical(lengths_in_claim_order, c(4L, 4L, 5L, 5L))
 })
 
 ## Shared by the two solveEnsemble()-level tests below: a ring of L genotype
@@ -273,8 +394,8 @@ test_that("solveEnsemble() terminates promptly on a densely cross-connected comp
     ## under 5s, fully solved. A *single*, non-repeated shortest_paths()
     ## sweep is fast on this input too, but resolves none of it at all
     ## (also verified while developing this fix) -- so this test also
-    ## guards against the repeat{} wrapper being dropped, not just against
-    ## all_simple_paths() being reintroduced.
+    ## guards against the per-cutoff convergence loop being dropped, not
+    ## just against all_simple_paths() being reintroduced.
     scenario <- .make_ring_scenario(L = 8, W = 5)
     x <- MislabelSolver(
         sample_metadata = scenario$sample_metadata,

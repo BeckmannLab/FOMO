@@ -917,43 +917,54 @@
     all_relabeled_samples <- NULL
     all_cycles <- list()
 
-    ## Each outer repetition performs one full shortest-cycles-first sweep
-    ## (cutoff = 1 up to the current largest component size), exactly as a
-    ## single pass always has. .find_directed_cycles() computes every
-    ## (vertex, in_neighbor) pair's path against the *same* graph snapshot
-    ## -- deletions from cycles claimed earlier in this same sweep only
-    ## take effect for the *next* sweep, not retroactively -- so a pair
-    ## whose one-and-only offered path happens to route through a vertex
-    ## that a different pair's cycle claims earlier in the same sweep is
-    ## skipped for that sweep, even though the two cycles didn't actually
-    ## have to conflict. Once that other cycle's vertices are deleted,
-    ## though, the blocked pair's shortest path is free to be recomputed
-    ## from scratch on the next sweep -- it may now route around the gap,
-    ## or a previously-irrelevant alternative may now be available -- so
-    ## repeating the sweep on the leftover graph can, and empirically does,
-    ## surface cycles the first sweep missed. This is the same mechanism
-    ## that made calling the pre-fix, all_simple_paths()-based search a
-    ## second time on an unchanged leftover graph resolve samples the first
-    ## call didn't: offering every alternative path at once let a single
-    ## pass fall back to an alternative within the pair itself, whereas
-    ## offering only the shortest needs a repeat once a conflict is
-    ## discovered. Repeat until a full sweep finds nothing new; since every
-    ## non-empty sweep deletes at least 2 vertices (the smallest possible
-    ## cycle), this always terminates in at most vcount(relabels_graph) / 2
-    ## repeats, each one itself a polynomial (shortest_paths()-based) sweep
-    ## -- so, unlike the exhaustive all_simple_paths() search this
+    ## A single shortest-cycles-first sweep through increasing cutoff
+    ## values, exactly as before -- but at each cutoff, .find_directed_cycles()
+    ## is called repeatedly, re-claiming from the *current* graph each time,
+    ## until a call finds nothing new, before moving on to the next cutoff.
+    ## This matters because .find_directed_cycles() computes every (vertex,
+    ## in_neighbor) pair's path against one fixed graph snapshot per call --
+    ## deletions from cycles claimed earlier in the *same* call only take
+    ## effect on the *next* call -- so a pair whose one-and-only offered
+    ## path happens to route through a vertex that a different pair's cycle
+    ## claims earlier in the same call is skipped that time, even though
+    ## the two cycles didn't actually have to conflict. Re-calling
+    ## .find_directed_cycles() at the *same* cutoff, rather than moving on
+    ## to cutoff + 1 first, recomputes that pair's shortest path from
+    ## scratch now that the conflicting vertex is actually gone -- it may
+    ## route around the gap, succeeding this time -- while guaranteeing
+    ## every cycle closeable within the current cutoff is claimed before
+    ## any longer one is even attempted. An earlier version of this
+    ## instead re-ran the *entire* cutoff = 1..max sweep from scratch
+    ## whenever any cutoff finished with leftover vertices, which also
+    ## recovers such cycles eventually, but not necessarily before a
+    ## longer cycle elsewhere in the same component: since the largest
+    ## remaining cutoff bound (below) is recomputed from whatever is left
+    ## after each sweep's claims, a *different*, genuinely longer cycle
+    ## can still get claimed later in that same sweep, ahead of a shorter
+    ## one that only becomes claimable on the next sweep -- breaking the
+    ## shortest-cycles-first guarantee the sweep is meant to provide (see
+    ## the regression test for a concrete example). Converging at each
+    ## cutoff before advancing avoids that: nothing shorter than the
+    ## current cutoff can possibly be left unclaimed by the time it's safe
+    ## to move on, so nothing longer ever jumps ahead of it. Termination is
+    ## still guaranteed: every non-empty call at a given cutoff deletes at
+    ## least 2 vertices (the smallest possible cycle), so re-calling at the
+    ## same cutoff happens at most vcount(relabels_graph) / 2 times before
+    ## that cutoff is exhausted, and cutoff itself still only ever
+    ## increases -- each call remaining a polynomial (shortest_paths()-based)
+    ## one, so, unlike the exhaustive all_simple_paths() search this
     ## replaces, this has no exponential worst case to guard against.
-    repeat {
-        cutoff <- 1
-        n_found_this_sweep <- 0
-        while (
-            vcount(relabels_graph) > 0 &&
-                cutoff < max(table(components(relabels_graph)$membership))
-        ) {
+    cutoff <- 1
+    while (
+        vcount(relabels_graph) > 0 &&
+            cutoff < max(table(components(relabels_graph)$membership))
+    ) {
+        repeat {
             curr_cycles <- .find_directed_cycles(
                 relabels_graph,
                 cutoff = cutoff
             )
+            n_found_this_cutoff <- 0
             for (curr_cycle in curr_cycles) {
                 if (!any(curr_cycle %in% all_relabeled_samples)) {
                     all_cycles <- append(all_cycles, list(curr_cycle))
@@ -965,14 +976,17 @@
                         relabels_graph,
                         curr_cycle
                     )
-                    n_found_this_sweep <- n_found_this_sweep + 1
+                    n_found_this_cutoff <- n_found_this_cutoff + 1
                 }
             }
-            cutoff <- cutoff + 1
+            if (n_found_this_cutoff == 0 || vcount(relabels_graph) == 0) {
+                break
+            }
         }
-        if (n_found_this_sweep == 0 || vcount(relabels_graph) == 0) {
+        if (vcount(relabels_graph) == 0) {
             break
         }
+        cutoff <- cutoff + 1
     }
 
     ## From the found cycles, construct relabels dataframe
