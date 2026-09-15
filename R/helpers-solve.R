@@ -805,6 +805,8 @@
 #'
 #'   Note that the the same cycle can be included more than once starting at
 #'   different nodes.
+#'
+#' @keywords internal
 .find_directed_cycles <- function(graph, cutoff = 1) {
     assert_that(is_directed(graph), msg = "param 'graph' must be directed")
     cycles <- list()

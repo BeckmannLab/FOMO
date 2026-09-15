@@ -69,6 +69,11 @@ heuristic, and local search to identify and correct mislabels. This allows
 the ensemble to handle a wider range of mislabel situations than any single
 algorithm can by itself. This is therefore the recommended way to run FOMO.
 }
+\details{
+For long-running tasks, the solver will periodically output an estimated time
+remaining. However, this estimate is \emph{very} approximate and tends to be an
+over-estimate, especially with the first few estimates.
+}
 \seealso{
 \code{\link[=solveMajoritySearch]{solveMajoritySearch()}}, \code{\link[=solveGlobalSearch]{solveGlobalSearch()}},
 \code{\link[=solveLocalSearch]{solveLocalSearch()}}, the solvers used in this ensemble algorithm.
