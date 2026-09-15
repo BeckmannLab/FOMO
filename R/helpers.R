@@ -74,8 +74,8 @@ tsmsg <- function(...) {
 
     corrections_vertices <- data.frame(
         Sample_ID = unique(c(
-            sample_corrections_df[, "Init_Sample_ID"],
-            sample_corrections_df[, "Sample_ID"]
+            sample_corrections_df$Init_Sample_ID,
+            sample_corrections_df$Sample_ID
         ))
     ) |>
         left_join(
