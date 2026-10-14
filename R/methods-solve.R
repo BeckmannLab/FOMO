@@ -329,44 +329,44 @@ solveGlobalSearch <- function(
             deletion_penalty = deletion_penalty
         )
 
-        best_permutation <- perm_genotypes[
-            permutation_stats$Permutation_ID[1],
+        best_score <- permutation_stats$perm_score[1]
+        tied_permutation_stats <- permutation_stats |>
+            filter(.data$perm_score == best_score)
+        tied_permutations <- perm_genotypes[
+            tied_permutation_stats$Permutation_ID,
             ,
             drop = FALSE
         ]
-
-        if (nrow(permutation_stats) > 1) {
-            best_score <- permutation_stats$perm_score[1]
-            tied_permutation_stats <- permutation_stats |>
-                filter(.data$perm_score == best_score)
-            if (nrow(tied_permutation_stats) > 1) {
-                tied_permutations <- perm_genotypes[
-                    tied_permutation_stats$Permutation_ID,
-                    ,
-                    drop = FALSE
-                ]
-                for (curr_genotype_group in colnames(tied_permutations)) {
-                    if (
-                        !(curr_genotype_group %in%
-                            names(object@.solve_state$ambiguous_subjects))
-                    ) {
-                        object@.solve_state$ambiguous_subjects[[
-                            curr_genotype_group
-                        ]] <- tied_permutations[, curr_genotype_group]
-                    } else {
-                        object@.solve_state$ambiguous_subjects[[
-                            curr_genotype_group
-                        ]] <-
-                            unique(c(
-                                object@.solve_state$ambiguous_subjects[[
-                                    curr_genotype_group
-                                ]],
-                                tied_permutations[curr_genotype_group]
-                            ))
-                    }
+        if (nrow(tied_permutations) > 1) {
+            for (curr_genotype_group in colnames(tied_permutations)) {
+                if (
+                    !(curr_genotype_group %in%
+                        names(object@.solve_state$ambiguous_subjects))
+                ) {
+                    object@.solve_state$ambiguous_subjects[[
+                        curr_genotype_group
+                    ]] <- tied_permutations[, curr_genotype_group]
+                } else {
+                    object@.solve_state$ambiguous_subjects[[
+                        curr_genotype_group
+                    ]] <-
+                        unique(c(
+                            object@.solve_state$ambiguous_subjects[[
+                                curr_genotype_group
+                            ]],
+                            tied_permutations[curr_genotype_group]
+                        ))
                 }
             }
         }
+
+        # We select a random permutation from among the ones tied for best. This
+        # ensures that we don't implicitly break ties in any systematic manner.
+        best_permutation <- tied_permutations[
+            sample(nrow(tied_permutations), 1),
+            ,
+            drop = FALSE
+        ]
 
         new_putative_subjects <- best_permutation |>
             t() |>
