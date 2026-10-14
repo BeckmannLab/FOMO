@@ -70,7 +70,7 @@ collateOutput <- function(object) {
                 function(x) {
                     if (x %in% names(object@.solve_state$ambiguous_subjects)) {
                         str_c(
-                            object@.solve_state$ambiguous_subjects[[x]],
+                            sort(object@.solve_state$ambiguous_subjects[[x]]),
                             collapse = ", "
                         )
                     } else {
@@ -171,7 +171,7 @@ collateOutput <- function(object) {
         }
         if (length(sample_ambiguities) > 1) {
             ambiguity_summary[i, "All_Valid_Sample_IDs"] <- str_c(
-                sample_ambiguities,
+                sort(sample_ambiguities),
                 collapse = ", "
             )
         }

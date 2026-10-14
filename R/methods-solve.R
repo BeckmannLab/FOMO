@@ -338,6 +338,7 @@ solveGlobalSearch <- function(
             drop = FALSE
         ]
         if (nrow(tied_permutations) > 1) {
+            # We have a tie, so there is subject-level ambiguity
             for (curr_genotype_group in colnames(tied_permutations)) {
                 if (
                     !(curr_genotype_group %in%
