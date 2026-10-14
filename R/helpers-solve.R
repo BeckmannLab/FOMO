@@ -735,11 +735,7 @@
         mutate(
             Subject_ID = if_else(
                 is.na(.data$Subject_ID),
-                vapply(
-                    .data$Sample_ID,
-                    \(x) str_split_1(x, "#")[2],
-                    character(1)
-                ),
+                map_chr(.data$Sample_ID, \(x) str_split_1(x, "#")[2]),
                 .data$Subject_ID
             ),
             Deleted_relabel_from = str_detect(
@@ -828,7 +824,7 @@
         }
     }
     # Get the node names in each cycle
-    cycles <- lapply(cycles, names)
+    cycles <- map(cycles, names)
     # TODO: drop duplicate cycles (but this isn't a correctness issue, only an
     # efficiency issue)
     return(cycles)

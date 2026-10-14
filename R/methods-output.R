@@ -65,7 +65,7 @@ collateOutput <- function(object) {
             Proposed_Final_Subject_ID = .data$Subject_ID,
             Proposed_Final_Sample_ID = .data$Sample_ID,
             Inferred_Subject_ID = .data$Subject_ID_putative,
-            All_Valid_Subject_IDs = sapply(
+            All_Valid_Subject_IDs = map_chr(
                 .data$Genotype_Group_ID,
                 function(x) {
                     if (x %in% names(object@.solve_state$ambiguous_subjects)) {
@@ -131,8 +131,8 @@ collateOutput <- function(object) {
             .data$Proposed_Final_Sample_ID
         )
 
-    ## Mislabeled samples in the same genotype group with identical
-    ## label domains are are ambiguities for one another
+    ## Mislabeled samples in the same genotype group with identical label
+    ## domains are are ambiguities for one another
     ambiguity_summary <- sample_summary |>
         filter(.data$Init_Subject_ID != .data$Inferred_Subject_ID) |>
         group_by(.data$Genotype_Group_ID, .data$Label_Domain) |>
@@ -270,7 +270,7 @@ collateOutput <- function(object) {
     ## Mislabeling_Event_ID_renamer_map's values are character (built via
     ## str_c() below), so the "missing" branch needs a typed NA_character_
     ## rather than a bare (logical) NA for if_else()'s stricter type check.
-    sample_summary$Mislabeling_Event_ID <- sapply(
+    sample_summary$Mislabeling_Event_ID <- map_chr(
         sample_summary$Mislabeling_Event_ID,
         \(x) {
             if_else(
@@ -515,11 +515,11 @@ writeOutput <- function(object, file) {
     }
     assert_that(
         is.list(object),
-        all(vapply(object, is, logical(1), "data.frame")),
+        all(map_lgl(object, is, "data.frame")),
         msg = "object must be either a MislabelSolver or the result of collateOutput()."
     )
     # Freeze the header row
-    formatted_tables <- lapply(object, xl_sheet, freeze = "A2")
+    formatted_tables <- map(object, xl_sheet, freeze = "A2")
     write_xlsx(formatted_tables, path = file)
     invisible(NULL)
 }

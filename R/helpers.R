@@ -26,7 +26,7 @@ tsmsg <- function(...) {
     hex <- function(k) {
         str_c(sample(hex_digits, k, replace = TRUE), collapse = "")
     }
-    vapply(
+    map_chr(
         seq_len(n),
         function(i) {
             str_c(
@@ -37,8 +37,7 @@ tsmsg <- function(...) {
                 hex(12),
                 sep = "-"
             )
-        },
-        character(1)
+        }
     )
 }
 
@@ -47,15 +46,14 @@ tsmsg <- function(...) {
     genotype_group_ids <- components(genotype_graph)$membership
     n_genotype_groups <- length(unique(genotype_group_ids))
     n_digits <- floor(log10(n_genotype_groups)) + 1
-    genotype_group_ids <- vapply(
+    genotype_group_ids <- map_chr(
         genotype_group_ids,
-        \(x) {
+        function (x) {
             str_c(
                 "Genotype_Group",
                 formatC(x, width = n_digits, format = "d", flag = "0")
             )
-        },
-        "character"
+        }
     )
     genotype_df <- data.frame(
         Sample_ID = names(genotype_group_ids),

@@ -37,7 +37,8 @@ Imports:
     rlang,
     tidyselect,
     utils,
-    writexl (>= 2.0.0)
+    writexl (>= 2.0.0),
+    purrr
 Suggests:
     BiocStyle, 
     callr,

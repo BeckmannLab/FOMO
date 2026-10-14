@@ -87,7 +87,7 @@ MislabelSolver <- function(
     anchor_samples = character(0)
 ) {
     ## Convert and validate inputs
-    sample_metadata <- as.data.frame(lapply(sample_metadata, as.character))
+    sample_metadata <- as.data.frame(map(sample_metadata, as.character))
     .validate_sample_metadata(
         sample_metadata,
         has_genotype_matrix = !is.null(genotype_matrix)
@@ -104,7 +104,7 @@ MislabelSolver <- function(
         label_domains <- sample_metadata[, "Sample_ID", drop = FALSE]
         label_domains$Label_Domain <- "Label_Domain1"
     }
-    label_domains <- as.data.frame(lapply(label_domains, as.character))
+    label_domains <- as.data.frame(map(label_domains, as.character))
     .validate_label_domains(sample_metadata, label_domains)
 
     anchor_samples <- unique(as.character(anchor_samples))

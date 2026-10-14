@@ -81,6 +81,11 @@ importFrom(methods,
   new,
   setGeneric
 )
+importFrom(purrr,
+  map,
+  map_chr,
+  map_lgl
+)
 importFrom(reshape2,melt)
 importFrom(rlang,
   .data,
